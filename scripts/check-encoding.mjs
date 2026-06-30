@@ -13,6 +13,8 @@ const textExtensions = new Set([
   ".json",
   ".md",
   ".mjs",
+  ".ts",
+  ".tsx",
   ".toml",
   ".yaml",
   ".yml",
@@ -54,7 +56,7 @@ const expectedStrings = [
   { file: "index.html", value: "Расчётные параметры" },
   { file: "index.html", value: "Скачать SVG" },
   { file: "index.html", value: "Координаты станций" },
-  { file: "script.js", value: "точек" },
+  { file: "src/modules/ui/table.ts", value: "точек" },
 ];
 
 const results = {
