@@ -1,0 +1,17 @@
+name: ${COMPOSE_PROJECT_NAME:-airship}
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+      args:
+        NODE_VERSION: ${NODE_VERSION:-24}
+        NGINX_VERSION: ${NGINX_VERSION:-1.29}
+    image: ${APP_IMAGE:-airship:local}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

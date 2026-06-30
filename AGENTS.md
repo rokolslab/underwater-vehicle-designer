@@ -1,96 +1,118 @@
-﻿# AGENTS.md
+# AGENTS.md
 
-> РљР°СЂС‚Р° РїСЂРѕРµРєС‚Р° РґР»СЏ AI-Р°РіРµРЅС‚РѕРІ. РћР±РЅРѕРІР»СЏР№С‚Рµ СЌС‚РѕС‚ С„Р°Р№Р» РїСЂРё СЃСѓС‰РµСЃС‚РІРµРЅРЅРѕРј РёР·РјРµРЅРµРЅРёРё СЃС‚СЂСѓРєС‚СѓСЂС‹ СЂРµРїРѕР·РёС‚РѕСЂРёСЏ.
+> Карта проекта для AI-агентов. Обновляйте этот файл при существенном изменении структуры репозитория.
 
-## РћР±Р·РѕСЂ РїСЂРѕРµРєС‚Р°
+## Обзор проекта
 
-Airship / Underwater Vehicle Designer вЂ” Р±СЂР°СѓР·РµСЂРЅС‹Р№ РёРЅР¶РµРЅРµСЂРЅС‹Р№ РёРЅСЃС‚СЂСѓРјРµРЅС‚ РґР»СЏ РїРѕСЃС‚СЂРѕРµРЅРёСЏ 2D-РѕР±РІРѕРґРѕРІ РєРѕСЂРїСѓСЃР° РґРёСЂРёР¶Р°Р±Р»СЏ РёР»Рё РїРѕРґРІРѕРґРЅРѕРіРѕ Р°РїРїР°СЂР°С‚Р°. РўРµРєСѓС‰Р°СЏ РІРµСЂСЃРёСЏ СЂР°Р±РѕС‚Р°РµС‚ РЅР° Vite + TypeScript, СЃРѕС…СЂР°РЅСЏРµС‚ canvas-РІРёР·СѓР°Р»РёР·Р°С†РёСЋ, С‚Р°Р±Р»РёС†Сѓ РєРѕРѕСЂРґРёРЅР°С‚ СЃС‚Р°РЅС†РёР№ Рё СЌРєСЃРїРѕСЂС‚ SVG/CSV. РџРѕРґСЂРѕР±РЅРѕРµ РѕРїРёСЃР°РЅРёРµ РїСЂРѕРµРєС‚Р° С…СЂР°РЅРёС‚СЃСЏ РІ `.ai-factory/DESCRIPTION.md`.
+Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D-обводов корпуса дирижабля или подводного аппарата. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, таблицу координат станций и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
 
-## РўРµРєСѓС‰РёР№ СЃС‚РµРє
+## Текущий стек
 
-- **РЇР·С‹Рє:** TypeScript
-- **РРЅС‚РµСЂС„РµР№СЃ:** HTML, CSS Modules С‡РµСЂРµР· Vite entrypoint
-- **Р“СЂР°С„РёРєР°:** Canvas 2D
-- **РЎР±РѕСЂРєР°:** Vite
-- **РўРµСЃС‚С‹:** Vitest
-- **Р­РєСЃРїРѕСЂС‚:** SVG, CSV
+- **Язык:** TypeScript
+- **Интерфейс:** HTML, CSS через Vite entrypoint
+- **Графика:** Canvas 2D
+- **Сборка:** Vite
+- **Тесты:** Vitest
+- **Экспорт:** SVG, CSV
+- **Docker:** dev/prod контейнеры для разработки и VPS smoke checks
 
-## РЎР»РµРґСѓСЋС‰РёРµ С†РµР»РµРІС‹Рµ СЂР°СЃС€РёСЂРµРЅРёСЏ
+## Следующие целевые расширения
 
-- **3D-РіСЂР°С„РёРєР°:** Three.js
-- **Р“РµРѕРјРµС‚СЂРёСЏ:** С†РёР»РёРЅРґСЂРёС‡РµСЃРєР°СЏ РІСЃС‚Р°РІРєР° РєРѕСЂРїСѓСЃР°
-- **РљРѕРјРїРѕРЅРѕРІРєР°:** РѕР±РѕСЂСѓРґРѕРІР°РЅРёРµ РІРЅСѓС‚СЂРё РєРѕСЂРїСѓСЃР°
-- **Р‘Р°Р»Р°РЅСЃ:** Р¦Рў, Р¦Р’, РєСЂРµРЅ Рё РґРёС„С„РµСЂРµРЅС‚
-- **РџСЂРѕРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ:** JSON import/export
+- **3D-графика:** Three.js
+- **Геометрия:** цилиндрическая вставка корпуса
+- **Компоновка:** оборудование внутри корпуса
+- **Баланс:** ЦТ, ЦВ, крен и дифферент
+- **Проектные данные:** JSON import/export
 
-## РЎС‚СЂСѓРєС‚СѓСЂР° РїСЂРѕРµРєС‚Р°
+## Структура проекта
 
 ```text
 .
-в”њв”Ђв”Ђ .agents/                  # Р›РѕРєР°Р»СЊРЅС‹Рµ AI Factory skills
-в”њв”Ђв”Ђ .codex/                   # Р›РѕРєР°Р»СЊРЅР°СЏ РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Codex, РµСЃР»Рё РїРѕСЏРІРёС‚СЃСЏ
-в”њв”Ђв”Ђ .ai-factory/              # РљРѕРЅС‚РµРєСЃС‚ AI Factory: РїР»Р°РЅС‹, РїСЂР°РІРёР»Р°, Р°СЂС…РёС‚РµРєС‚СѓСЂР°
-в”њв”Ђв”Ђ src/
-в”‚   в”њв”Ђв”Ђ app/
-в”‚   в”‚   в”њв”Ђв”Ђ main.ts           # Vite entrypoint Рё UI orchestration
-в”‚   в”‚   в”њв”Ђв”Ђ appState.ts       # РќРѕСЂРјР°Р»РёР·Р°С†РёСЏ РІРІРѕРґР°, lastEdited, reset
-в”‚   в”‚   в””в”Ђв”Ђ styles.css        # РћСЃРЅРѕРІРЅС‹Рµ СЃС‚РёР»Рё РїСЂРёР»РѕР¶РµРЅРёСЏ
-в”‚   в”њв”Ђв”Ђ modules/
-в”‚   в”‚   в”њв”Ђв”Ђ geometry/         # Р§РёСЃС‚Р°СЏ СЂР°СЃС‡РµС‚РЅР°СЏ РіРµРѕРјРµС‚СЂРёСЏ Рё ProfileSnapshot
-в”‚   в”‚   в”њв”Ђв”Ђ rendering/        # Canvas 2D rendering
-в”‚   в”‚   в”њв”Ђв”Ђ persistence/      # CSV/SVG/download
-в”‚   в”‚   в””в”Ђв”Ђ ui/               # Controls, table, metrics
-в”‚   в””в”Ђв”Ђ shared/               # РћР±С‰РёРµ helpers: math, format, logger
-в”њв”Ђв”Ђ tests/fixtures/           # Р­С‚Р°Р»РѕРЅРЅС‹Рµ РґР°РЅРЅС‹Рµ, РІРєР»СЋС‡Р°СЏ fixture РїРѕ formula.xlsx
-в”њв”Ђв”Ђ index.html                # Vite HTML shell
-в”њв”Ђв”Ђ package.json              # npm scripts Рё dev dependencies
-в”њв”Ђв”Ђ package-lock.json         # Р—Р°С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ РІРµСЂСЃРёРё toolchain
-в”њв”Ђв”Ђ tsconfig.json             # TypeScript strict config
-в”њв”Ђв”Ђ vite.config.ts            # Vite/Vitest config
-в”њв”Ђв”Ђ TECHNICAL_SPEC.md         # РўРµС…РЅРёС‡РµСЃРєРѕРµ Р·Р°РґР°РЅРёРµ РЅР° СЃР»РµРґСѓСЋС‰РёРµ РІРµСЂСЃРёРё
-в”њв”Ђв”Ђ formula.xls               # РўР°Р±Р»РёС‡РЅС‹Р№ РёСЃС‚РѕС‡РЅРёРє/СЂРµРіСЂРµСЃСЃРёСЏ СЂР°СЃС‡РµС‚РѕРІ
-в””в”Ђв”Ђ formula.xlsx              # РўР°Р±Р»РёС‡РЅС‹Р№ РёСЃС‚РѕС‡РЅРёРє/СЂРµРіСЂРµСЃСЃРёСЏ СЂР°СЃС‡РµС‚РѕРІ
+├── .agents/                  # Локальные AI Factory skills
+├── .codex/                   # Локальная конфигурация Codex, если появится
+├── .ai-factory/              # Контекст AI Factory: планы, правила, архитектура
+├── docker/
+│   └── nginx/                # Конфигурация nginx для production container
+├── docs/                     # Документация по разработке и эксплуатации
+├── src/
+│   ├── app/
+│   │   ├── main.ts           # Vite entrypoint и UI orchestration
+│   │   ├── appState.ts       # Нормализация ввода, lastEdited, reset
+│   │   └── styles.css        # Основные стили приложения
+│   ├── modules/
+│   │   ├── geometry/         # Чистая расчетная геометрия и ProfileSnapshot
+│   │   ├── rendering/        # Canvas 2D rendering
+│   │   ├── persistence/      # CSV/SVG/download
+│   │   └── ui/               # Controls, table, metrics
+│   └── shared/               # Общие helpers: math, format, logger
+├── tests/fixtures/           # Эталонные данные, включая fixture по formula.xlsx
+├── index.html                # Vite HTML shell
+├── package.json              # npm scripts и dev dependencies
+├── package-lock.json         # Зафиксированные версии toolchain
+├── tsconfig.json             # TypeScript strict config
+├── vite.config.ts            # Vite/Vitest config
+├── Dockerfile                # Multi-stage dev/build/production image
+├── compose.yml               # Базовая Docker Compose конфигурация
+├── compose.override.yml      # Development override для Vite dev server
+├── compose.production.yml    # Hardened production overlay для VPS
+├── TECHNICAL_SPEC.md         # Техническое задание на следующие версии
+├── formula.xls               # Табличный источник/регрессия расчетов
+└── formula.xlsx              # Табличный источник/регрессия расчетов
 ```
 
-## РљР»СЋС‡РµРІС‹Рµ С‚РѕС‡РєРё РІС…РѕРґР°
+## Ключевые точки входа
 
-| Р¤Р°Р№Р» | РќР°Р·РЅР°С‡РµРЅРёРµ |
+| Файл | Назначение |
 | --- | --- |
-| `index.html` | Vite HTML shell, Р·Р°РіСЂСѓР¶Р°РµС‚ `/src/app/main.ts` |
-| `src/app/main.ts` | РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ DOM, СЃР±РѕСЂРєР° snapshot, canvas/table/metrics/export orchestration |
-| `src/app/appState.ts` | РќРѕСЂРјР°Р»РёР·Р°С†РёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРіРѕ РІРІРѕРґР°, СЃРІСЏР·СЊ `D = L / lambda`, `lastEdited` |
-| `src/modules/geometry/profile.ts` | Р¤РѕСЂРјСѓР»Р° СЂР°РґРёСѓСЃР°, СЃС‚Р°РЅС†РёРё, smooth points, extents, `ProfileSnapshot` |
-| `src/modules/rendering/canvas2d.ts` | РћС‚СЂРёСЃРѕРІРєР° 2D-РїСЂРѕС„РёР»СЏ РЅР° canvas |
-| `src/modules/persistence/svg.ts` | SVG export С‚РµРєСѓС‰РµРіРѕ РїСЂРѕС„РёР»СЏ |
-| `src/modules/persistence/csv.ts` | CSV export РєРѕРѕСЂРґРёРЅР°С‚ СЃС‚Р°РЅС†РёР№ |
-| `scripts/check-encoding.mjs` | РџСЂРѕРІРµСЂРєР° UTF-8 Рё РєР»СЋС‡РµРІС‹С… СЂСѓСЃСЃРєРёС… UI-СЃС‚СЂРѕРє |
-| `formula.xlsx` | Р­С‚Р°Р»РѕРЅРЅС‹Рµ РґР°РЅРЅС‹Рµ РґР»СЏ СЂРµРіСЂРµСЃСЃРёРё С„РѕСЂРјСѓР»С‹ |
+| `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
+| `src/app/main.ts` | Инициализация DOM, сборка snapshot, canvas/table/metrics/export orchestration |
+| `src/app/appState.ts` | Нормализация пользовательского ввода, связь `D = L / lambda`, `lastEdited` |
+| `src/modules/geometry/profile.ts` | Формула радиуса, станции, smooth points, extents, `ProfileSnapshot` |
+| `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
+| `src/modules/persistence/svg.ts` | SVG export текущего профиля |
+| `src/modules/persistence/csv.ts` | CSV export координат станций |
+| `scripts/check-encoding.mjs` | Проверка UTF-8 и ключевых русских UI-строк |
+| `Dockerfile` | Сборка dev/build/production образов |
+| `compose.override.yml` | Docker-окружение разработки на `127.0.0.1:5173` |
+| `compose.production.yml` | Production smoke/deploy overlay для VPS |
+| `formula.xlsx` | Эталонные данные для регрессии формулы |
 
-## Р”РѕРєСѓРјРµРЅС‚Р°С†РёСЏ
+## Документация
 
-| Р”РѕРєСѓРјРµРЅС‚ | РџСѓС‚СЊ | РћРїРёСЃР°РЅРёРµ |
+| Документ | Путь | Описание |
 | --- | --- | --- |
-| РўРµС…РЅРёС‡РµСЃРєРѕРµ Р·Р°РґР°РЅРёРµ | `TECHNICAL_SPEC.md` | РћРїРёСЃР°РЅРёРµ С†РµР»РµРІРѕРіРѕ С„СѓРЅРєС†РёРѕРЅР°Р»Р° 3D-РєРѕРјРїРѕРЅРѕРІРєРё Рё СЂР°СЃС‡РµС‚РѕРІ |
-| РћРїРёСЃР°РЅРёРµ РїСЂРѕРµРєС‚Р° | `.ai-factory/DESCRIPTION.md` | РЎРІРѕРґРєР° СЃС‚РµРєР°, С„СѓРЅРєС†РёР№, РїР°С‚С‚РµСЂРЅРѕРІ Рё С‚СЂРµР±РѕРІР°РЅРёР№ |
-| РђСЂС…РёС‚РµРєС‚СѓСЂР° | `.ai-factory/ARCHITECTURE.md` | РџСЂР°РІРёР»Р° РјРѕРґСѓР»СЊРЅРѕР№ Р°СЂС…РёС‚РµРєС‚СѓСЂС‹ РґР»СЏ TypeScript-РєРѕРґР° |
-| Р‘Р°Р·РѕРІС‹Рµ РїСЂР°РІРёР»Р° | `.ai-factory/rules/base.md` | Р’С‹СЏРІР»РµРЅРЅС‹Рµ СЃРѕРіР»Р°С€РµРЅРёСЏ РїСЂРѕРµРєС‚Р° |
+| Техническое задание | `TECHNICAL_SPEC.md` | Описание целевого функционала 3D-компоновки и расчетов |
+| Docker workflow | `docs/docker.md` | Команды разработки, проверок и VPS smoke через Docker |
+| Описание проекта | `.ai-factory/DESCRIPTION.md` | Сводка стека, функций, паттернов и требований |
+| Архитектура | `.ai-factory/ARCHITECTURE.md` | Правила модульной архитектуры для TypeScript-кода |
+| Базовые правила | `.ai-factory/rules/base.md` | Выявленные соглашения проекта |
 
 ## AI Context Files
 
-| Р¤Р°Р№Р» | РќР°Р·РЅР°С‡РµРЅРёРµ |
+| Файл | Назначение |
 | --- | --- |
-| `AGENTS.md` | Р‘С‹СЃС‚СЂР°СЏ РєР°СЂС‚Р° РїСЂРѕРµРєС‚Р° РґР»СЏ AI-Р°РіРµРЅС‚РѕРІ |
-| `.ai-factory/DESCRIPTION.md` | РџСЂРѕРµРєС‚РЅРѕРµ РѕРїРёСЃР°РЅРёРµ Рё СЃС‚РµРє |
-| `.ai-factory/ARCHITECTURE.md` | РђСЂС…РёС‚РµРєС‚СѓСЂРЅС‹Рµ РїСЂР°РІРёР»Р° Рё РіСЂР°РЅРёС†С‹ РјРѕРґСѓР»РµР№ |
-| `.ai-factory/rules/base.md` | Р‘Р°Р·РѕРІС‹Рµ СЃРѕРіР»Р°С€РµРЅРёСЏ РїРѕ РєРѕРґСѓ |
-| `.ai-factory/config.yaml` | РќР°СЃС‚СЂРѕР№РєРё AI Factory |
+| `AGENTS.md` | Быстрая карта проекта для AI-агентов |
+| `.ai-factory/DESCRIPTION.md` | Проектное описание и стек |
+| `.ai-factory/ARCHITECTURE.md` | Архитектурные правила и границы модулей |
+| `.ai-factory/rules/base.md` | Базовые соглашения по коду |
+| `.ai-factory/config.yaml` | Настройки AI Factory |
 
-## РџСЂР°РІРёР»Р° РґР»СЏ Р°РіРµРЅС‚РѕРІ
+## Docker workflow
 
-- РќРµ РѕР±СЉРµРґРёРЅСЏР№С‚Рµ РЅРµР·Р°РІРёСЃРёРјС‹Рµ shell-РєРѕРјР°РЅРґС‹ С‡РµСЂРµР· `&&`, `;` РёР»Рё pipeline, РµСЃР»Рё С€Р°РіРё РјРѕР¶РЅРѕ РІС‹РїРѕР»РЅРёС‚СЊ Рё РїСЂРѕРІРµСЂРёС‚СЊ РѕС‚РґРµР»СЊРЅРѕ.
-  - РќРµРІРµСЂРЅРѕ: `git checkout main && git pull`
-  - Р’РµСЂРЅРѕ: СЃРЅР°С‡Р°Р»Р° `git checkout main`, Р·Р°С‚РµРј `git pull origin main`
-- Р Р°СЃС‡РµС‚РЅР°СЏ РіРµРѕРјРµС‚СЂРёСЏ РґРѕР»Р¶РЅР° РѕСЃС‚Р°РІР°С‚СЊСЃСЏ РІ С‡РёСЃС‚С‹С… TypeScript-РјРѕРґСѓР»СЏС… Р±РµР· DOM/canvas/browser side effects.
-- UI/appState РѕС‚РІРµС‡Р°РµС‚ Р·Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёР№ РІРІРѕРґ, clamp/round, `lastEdited` Рё С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ; geometry РїРѕР»СѓС‡Р°РµС‚ СѓР¶Рµ РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ.
-- Canvas, SVG, CSV, table Рё metrics РґРѕР»Р¶РЅС‹ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РѕР±С‰РёР№ `ProfileSnapshot`, Р° РЅРµ РїРµСЂРµСЃС‡РёС‚С‹РІР°С‚СЊ РіРµРѕРјРµС‚СЂРёСЋ СЃР°РјРѕСЃС‚РѕСЏС‚РµР»СЊРЅРѕ.
-- РџСЂРё РёР·РјРµРЅРµРЅРёРё С„РѕСЂРјСѓР»С‹ РёР»Рё РєРѕРѕСЂРґРёРЅР°С‚РЅРѕР№ СЃРёСЃС‚РµРјС‹ РѕР±РЅРѕРІР»СЏР№С‚Рµ Vitest-СЂРµРіСЂРµСЃСЃРёРё Рё fixture РїРѕ `formula.xlsx`.
+Docker является предпочтительным окружением для дальнейшей разработки агентом и VPS smoke checks.
+
+- Разработка: `docker compose up app`
+- Тесты: `docker compose run --rm app npm run test`
+- Сборка: `docker compose run --rm app npm run build`
+- Проверка кодировки: `docker compose run --rm app npm run check:encoding`
+- Production smoke: `docker compose -f compose.yml -f compose.production.yml up -d`
+
+## Правила для агентов
+
+- Не объединяйте независимые shell-команды через `&&`, `;` или pipeline, если шаги можно выполнить и проверить отдельно.
+  - Неверно: `git checkout main && git pull`
+  - Верно: сначала `git checkout main`, затем `git pull origin main`
+- Расчетная геометрия должна оставаться в чистых TypeScript-модулях без DOM/canvas/browser side effects.
+- UI/appState отвечает за пользовательский ввод, clamp/round, `lastEdited` и форматирование; geometry получает уже нормализованное состояние.
+- Canvas, SVG, CSV, table и metrics должны использовать общий `ProfileSnapshot`, а не пересчитывать геометрию самостоятельно.
+- При изменении формулы или координатной системы обновляйте Vitest-регрессии и fixture по `formula.xlsx`.
