@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Обвод дирижабля</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Обвод дирижабля</h1>
+          <div class="formula-line">
+            y = +/- 0.972 D sqrt((x/L)(1 - x/L)(1 - 0.5 x/L))
+          </div>
+        </div>
+        <dl class="metrics" aria-label="Расчётные параметры">
+          <div>
+            <dt>Макс. ордината</dt>
+            <dd id="max-radius">0.000</dd>
+          </div>
+          <div>
+            <dt>Полная высота</dt>
+            <dd id="max-height">0.000</dd>
+          </div>
+          <div>
+            <dt>x max</dt>
+            <dd id="max-x">0.000</dd>
+          </div>
+        </dl>
+      </header>
+
+      <section class="workbench" aria-label="Построение обводов">
+        <aside class="control-panel">
+          <form id="controls" class="control-grid">
+            <label>
+              <span>Длина L</span>
+              <input id="length" type="number" min="0.1" step="0.1" value="6" />
+            </label>
+            <label>
+              <span>Удлинение λ = L / D</span>
+              <input id="slenderness" type="number" min="0.1" step="0.1" value="3" />
+            </label>
+            <label>
+              <span>Диаметр D</span>
+              <input id="diameter" type="number" min="0.01" step="0.01" value="2" />
+            </label>
+            <label>
+              <span>Станции</span>
+              <input id="stations" type="number" min="8" max="80" step="1" value="20" />
+            </label>
+            <label class="toggle-row">
+              <input id="show-grid" type="checkbox" checked />
+              <span>Сетка</span>
+            </label>
+            <label class="toggle-row">
+              <input id="show-points" type="checkbox" checked />
+              <span>Точки станций</span>
+            </label>
+          </form>
+
+          <div class="source-block">
+            <div class="source-title">Из таблицы</div>
+            <div>D = L / λ</div>
+            <div>верх: y(x)</div>
+            <div>низ: -y(x)</div>
+          </div>
+
+          <div class="actions">
+            <button id="download-svg" type="button">Скачать SVG</button>
+            <button id="download-csv" type="button">CSV</button>
+            <button id="reset" type="button">Сброс</button>
+          </div>
+        </aside>
+
+        <section class="drawing-panel">
+          <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+        </section>
+      </section>
+
+      <section class="data-band" aria-label="Координаты">
+        <div class="data-header">
+          <h2>Координаты станций</h2>
+          <span id="point-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>N</th>
+                <th>x</th>
+                <th>y верх</th>
+                <th>y низ</th>
+              </tr>
+            </thead>
+            <tbody id="coordinate-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

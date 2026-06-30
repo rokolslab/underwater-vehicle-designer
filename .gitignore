@@ -1,0 +1,9 @@
+.agents/
+.codex-work/
+node_modules/
+dist/
+build/
+
+.DS_Store
+Thumbs.db
+.ai-factory.json
