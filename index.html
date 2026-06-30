@@ -28,6 +28,14 @@
             <dt>x max</dt>
             <dd id="max-x">0.000</dd>
           </div>
+          <div>
+            <dt>Объём корпуса</dt>
+            <dd id="hull-volume">0.0000</dd>
+          </div>
+          <div>
+            <dt>x ЦВ корпуса</dt>
+            <dd id="hull-center-x">0.0000</dd>
+          </div>
         </dl>
       </header>
 
@@ -49,6 +57,10 @@
             <label>
               <span>Станции</span>
               <input id="stations" type="number" min="8" max="80" step="1" value="20" />
+            </label>
+            <label>
+              <span>x ЦВ корпуса, м</span>
+              <input id="hull-center-input" type="number" step="0.0001" value="0" readonly />
             </label>
             <label class="toggle-row">
               <input id="show-grid" type="checkbox" checked />

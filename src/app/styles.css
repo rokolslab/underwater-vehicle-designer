@@ -139,6 +139,13 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.control-grid input[readonly] {
+  border-color: rgba(190, 18, 60, 0.42);
+  background: #fff7f8;
+  color: var(--rose);
+  font-weight: 700;
+}
+
 .control-grid input:focus {
   outline: 2px solid rgba(15, 118, 110, 0.22);
   border-color: var(--teal);

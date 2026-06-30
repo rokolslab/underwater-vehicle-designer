@@ -1,5 +1,6 @@
 import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
+import { calculateHullCenterOfBuoyancy } from "../modules/balance/center-of-buoyancy";
 import { makeProfileSnapshot } from "../modules/geometry/profile";
 import { renderCanvasProfile } from "../modules/rendering/canvas2d";
 import { buildCsv } from "../modules/persistence/csv";
@@ -9,6 +10,7 @@ import { renderMetrics } from "../modules/ui/metrics";
 import { renderTable } from "../modules/ui/table";
 import type { ControlElements } from "../modules/ui/controls";
 import type { ProfileSnapshot } from "../modules/geometry/model";
+import { formatInput } from "../shared/format";
 import { logger } from "../shared/logger";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
@@ -31,10 +33,13 @@ const inputs: ControlElements = {
 const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
+const hullCenterInput = requiredElement("#hull-center-input", HTMLInputElement);
 const metrics = {
   maxRadius: requiredElement("#max-radius", HTMLElement),
   maxHeight: requiredElement("#max-height", HTMLElement),
   maxX: requiredElement("#max-x", HTMLElement),
+  hullVolume: requiredElement("#hull-volume", HTMLElement),
+  hullCenterX: requiredElement("#hull-center-x", HTMLElement),
 };
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
@@ -47,9 +52,27 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   logger.debug("profile update started", { source });
   const state = appState.readState(source);
   currentSnapshot = makeProfileSnapshot(state);
-  renderCanvasProfile(canvas, currentSnapshot);
+  const hullBuoyancy = calculateHullCenterOfBuoyancy(state);
+
+  if (hullBuoyancy.isValid) {
+    logger.debug("hull buoyancy calculated", {
+      length: state.length,
+      diameter: state.diameter,
+      volume: hullBuoyancy.displacedVolume,
+      centerX: hullBuoyancy.center.x,
+    });
+  } else {
+    logger.warn("hull buoyancy calculation invalid", {
+      length: state.length,
+      diameter: state.diameter,
+      reason: hullBuoyancy.reason,
+    });
+  }
+
+  hullCenterInput.value = hullBuoyancy.isValid ? formatInput(hullBuoyancy.center.x) : "0";
+  renderCanvasProfile(canvas, currentSnapshot, hullBuoyancy);
   renderTable(tableBody, pointCountEl, currentSnapshot);
-  renderMetrics(metrics, currentSnapshot);
+  renderMetrics(metrics, currentSnapshot, hullBuoyancy);
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));

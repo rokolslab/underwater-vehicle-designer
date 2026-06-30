@@ -2,11 +2,12 @@ import { uniqueSorted } from "../../shared/math";
 import type { ProfileExtents, ProfileSnapshot, ProfileState, SmoothPoint, StationPoint } from "./model";
 
 const smoothSamples = 320;
+export const PROFILE_RADIUS_FACTOR = 0.972;
 
 export function radiusAt(x: number, length: number, diameter: number): number {
   const t = x / length;
   const body = t * (1 - t) * (1 - 0.5 * t);
-  return 0.972 * diameter * Math.sqrt(Math.max(0, body));
+  return PROFILE_RADIUS_FACTOR * diameter * Math.sqrt(Math.max(0, body));
 }
 
 export function makeStationPoints(length: number, diameter: number, stations: number): StationPoint[] {

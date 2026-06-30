@@ -1,3 +1,4 @@
+import type { HullBuoyancyResult } from "../balance/model";
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -74,7 +75,53 @@ function drawGrid(
   context.restore();
 }
 
-export function renderCanvasProfile(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): void {
+function drawCenterOfBuoyancy(
+  context: CanvasRenderingContext2D,
+  scale: CanvasScale,
+  hullBuoyancy: HullBuoyancyResult | undefined,
+): void {
+  if (!hullBuoyancy?.isValid) return;
+
+  const x = scale.mapX(hullBuoyancy.center.x);
+  const y = scale.mapY(0);
+  const top = scale.mapY(scale.yLimit * 0.82);
+  const bottom = scale.mapY(-scale.yLimit * 0.82);
+
+  context.save();
+  context.strokeStyle = "#be123c";
+  context.fillStyle = "#be123c";
+  context.lineWidth = 2.4;
+  context.setLineDash([5, 5]);
+  context.beginPath();
+  context.moveTo(x, top);
+  context.lineTo(x, bottom);
+  context.stroke();
+
+  context.setLineDash([]);
+  context.beginPath();
+  context.arc(x, y, 7, 0, Math.PI * 2);
+  context.fill();
+  context.strokeStyle = "#ffffff";
+  context.lineWidth = 1.5;
+  context.stroke();
+
+  context.font = "700 13px Segoe UI, Arial, sans-serif";
+  const label = "ЦВ";
+  const labelX = x + 10;
+  const labelY = y - 12;
+  const labelWidth = context.measureText(label).width + 10;
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  context.fillRect(labelX - 5, labelY - 14, labelWidth, 18);
+  context.fillStyle = "#be123c";
+  context.fillText(label, labelX, labelY);
+  context.restore();
+}
+
+export function renderCanvasProfile(
+  canvas: HTMLCanvasElement,
+  snapshot: ProfileSnapshot,
+  hullBuoyancy?: HullBuoyancyResult,
+): void {
   resizeCanvas(canvas);
   const context = canvas.getContext("2d");
   if (!context) {
@@ -134,6 +181,8 @@ export function renderCanvasProfile(canvas: HTMLCanvasElement, snapshot: Profile
       }
     });
   }
+
+  drawCenterOfBuoyancy(context, scale, hullBuoyancy);
 
   context.fillStyle = "#17212b";
   context.font = "600 13px Segoe UI, Arial, sans-serif";
