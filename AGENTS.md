@@ -10,7 +10,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 
 - **Язык:** TypeScript
 - **Интерфейс:** HTML, CSS через Vite entrypoint
-- **Графика:** Canvas 2D
+- **Графика:** Canvas 2D, Three.js
 - **Сборка:** Vite
 - **Тесты:** Vitest
 - **Экспорт:** SVG, CSV

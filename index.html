@@ -29,11 +29,11 @@
             <dd id="max-x">0.000</dd>
           </div>
           <div>
-            <dt>&#1055;&#1086;&#1083;&#1085;&#1072;&#1103; &#1076;&#1083;&#1080;&#1085;&#1072;</dt>
+            <dt>Полная длина</dt>
             <dd id="total-length">0.0000</dd>
           </div>
           <div>
-            <dt>&#1062;&#1042;&#1050;</dt>
+            <dt>ЦВК</dt>
             <dd id="cylindrical-insert-length-metric">0.0000</dd>
           </div>
         </dl>
@@ -59,7 +59,7 @@
               <input id="stations" type="number" min="8" max="80" step="1" value="20" />
             </label>
             <label>
-              <span>&#1062;&#1042;&#1050;, &#1084;</span>
+              <span>ЦВК, м</span>
               <input id="cylindrical-insert-length" type="number" min="0" step="0.1" value="0" />
             </label>
             <label class="toggle-row">
@@ -75,7 +75,7 @@
           <div class="source-block">
             <div class="source-title">Из таблицы</div>
             <div>D = L / λ</div>
-            <div>&#1062;&#1042;&#1050; = Lcyl</div>
+            <div>ЦВК = Lcyl</div>
             <div>верх: y(x)</div>
             <div>низ: -y(x)</div>
           </div>
@@ -87,8 +87,14 @@
           </div>
         </aside>
 
-        <section class="drawing-panel">
-          <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+        <section class="visualization-panels">
+          <section class="drawing-panel" aria-label="2D-проекция корпуса">
+            <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+          </section>
+          <section class="scene3d-panel" aria-label="3D-представление корпуса">
+            <div class="panel-title">3D корпус</div>
+            <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
+          </section>
         </section>
       </section>
 

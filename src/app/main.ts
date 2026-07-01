@@ -2,6 +2,7 @@ import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
 import { makeProfileSnapshot } from "../modules/geometry/profile";
 import { renderCanvasProfile } from "../modules/rendering/canvas2d";
+import { createHullScene3d } from "../modules/rendering/scene3d";
 import { buildCsv } from "../modules/persistence/csv";
 import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
@@ -30,6 +31,7 @@ const inputs: ControlElements = {
 };
 
 const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
+const scene3dContainer = requiredElement("#hull-scene-3d", HTMLElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
 const metrics = {
@@ -44,6 +46,7 @@ const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
 const resetButton = requiredElement("#reset", HTMLButtonElement);
 
 const appState = createAppStateController(inputs);
+const hullScene3d = createHullScene3d(scene3dContainer);
 let currentSnapshot: ProfileSnapshot;
 
 function update(source: LastEdited = appState.getLastEdited()): void {
@@ -60,6 +63,7 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   renderCanvasProfile(canvas, currentSnapshot);
   renderTable(tableBody, pointCountEl, currentSnapshot);
   renderMetrics(metrics, currentSnapshot);
+  hullScene3d.render(currentSnapshot);
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
@@ -70,6 +74,7 @@ inputs.stations.addEventListener("input", () => update(appState.getLastEdited())
 inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()));
 inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
 window.addEventListener("resize", () => update(appState.getLastEdited()));
+window.addEventListener("beforeunload", () => hullScene3d.dispose());
 
 downloadSvgButton.addEventListener("click", () => {
   download("airship-profile.svg", "image/svg+xml;charset=utf-8", buildSvg(currentSnapshot));
