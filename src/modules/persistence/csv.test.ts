@@ -8,6 +8,7 @@ describe("csv export", () => {
       length: 6,
       slenderness: 3,
       diameter: 2,
+      cylindricalInsertLength: 0,
       stations: 20,
       showGrid: true,
       showPoints: true,
@@ -20,5 +21,21 @@ describe("csv export", () => {
     expect(rows).toHaveLength(24);
     expect(rows[1]).toBe("1;0;0;0");
     expect(rows.at(-1)).toBe("23;6;0;0");
+  });
+
+  it("exports station coordinates over total length when insert is present", () => {
+    const snapshot = makeProfileSnapshot({
+      length: 6,
+      slenderness: 3,
+      diameter: 2,
+      cylindricalInsertLength: 2,
+      stations: 20,
+      showGrid: true,
+      showPoints: true,
+    });
+
+    const rows = buildCsv(snapshot).split("\n");
+
+    expect(rows.at(-1)).toBe("23;8;0;0");
   });
 });

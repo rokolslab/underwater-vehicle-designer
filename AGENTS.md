@@ -16,10 +16,15 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 - **Экспорт:** SVG, CSV
 - **Docker:** dev/prod контейнеры для разработки и VPS smoke checks
 
+## Термины проекта
+
+- **ЦВК** — цилиндрическая вставка корпуса: прямой участок постоянного максимального сечения, задаваемый длиной в метрах.
+- **ЦВ** — центр величины: расчетная точка баланса по вытесненному объему; не используйте `ЦВ` как сокращение для цилиндрической вставки.
+
 ## Следующие целевые расширения
 
 - **3D-графика:** Three.js
-- **Геометрия:** цилиндрическая вставка корпуса
+- **Геометрия:** ЦВК, цилиндрическая вставка корпуса
 - **Компоновка:** оборудование внутри корпуса
 - **Баланс:** ЦТ, ЦВ, крен и дифферент
 - **Проектные данные:** JSON import/export
@@ -41,7 +46,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 │   │   └── styles.css        # Основные стили приложения
 │   ├── modules/
 │   │   ├── geometry/         # Чистая расчетная геометрия и ProfileSnapshot
-│   │   ├── balance/          # Расчет ЦВ корпуса и будущие расчеты баланса
+│   │   ├── balance/          # Расчеты ЦВ и будущие расчеты баланса
 │   │   ├── rendering/        # Canvas 2D rendering
 │   │   ├── persistence/      # CSV/SVG/download
 │   │   └── ui/               # Controls, table, metrics
@@ -69,7 +74,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 | `src/app/main.ts` | Инициализация DOM, сборка snapshot, canvas/table/metrics/export orchestration |
 | `src/app/appState.ts` | Нормализация пользовательского ввода, связь `D = L / lambda`, `lastEdited` |
 | `src/modules/geometry/profile.ts` | Формула радиуса, станции, smooth points, extents, `ProfileSnapshot` |
-| `src/modules/balance/center-of-buoyancy.ts` | Аналитический расчет объема и ЦВ геометрического корпуса |
+| `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
 | `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
 | `src/modules/persistence/svg.ts` | SVG export текущего профиля |
 | `src/modules/persistence/csv.ts` | CSV export координат станций |

@@ -1,4 +1,3 @@
-import type { HullBuoyancyResult } from "../balance/model";
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -23,14 +22,21 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
   const ratio = window.devicePixelRatio || 1;
   const width = canvas.width / ratio;
   const height = canvas.height / ratio;
+  const totalLength = snapshot.extents.totalLength;
   const yLimit = Math.max(snapshot.extents.maxRadius * 1.24, snapshot.state.diameter * 0.08, 0.1);
   const padding = { left: 54, right: 28, top: 30, bottom: 48 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
-  const scale = Math.min(innerW / snapshot.state.length, innerH / (2 * yLimit));
-  const drawingW = snapshot.state.length * scale;
+  const scale = Math.min(innerW / totalLength, innerH / (2 * yLimit));
+  const drawingW = totalLength * scale;
   const originX = padding.left + (innerW - drawingW) / 2;
   const originY = padding.top + innerH / 2;
+  logger.debug("canvas scale created", {
+    totalLength,
+    cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
+    yLimit,
+    scale,
+  });
 
   return {
     mapX: (x) => originX + x * scale,
@@ -41,11 +47,7 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
   };
 }
 
-function drawGrid(
-  context: CanvasRenderingContext2D,
-  scale: CanvasScale,
-  length: number,
-): void {
+function drawGrid(context: CanvasRenderingContext2D, scale: CanvasScale, totalLength: number): void {
   context.save();
   context.strokeStyle = "#e2e8e1";
   context.lineWidth = 1;
@@ -53,7 +55,7 @@ function drawGrid(
   context.font = "12px Segoe UI, Arial, sans-serif";
 
   for (let index = 0; index <= 10; index += 1) {
-    const x = (length * index) / 10;
+    const x = (totalLength * index) / 10;
     const px = scale.mapX(x);
     context.beginPath();
     context.moveTo(px, 26);
@@ -75,53 +77,7 @@ function drawGrid(
   context.restore();
 }
 
-function drawCenterOfBuoyancy(
-  context: CanvasRenderingContext2D,
-  scale: CanvasScale,
-  hullBuoyancy: HullBuoyancyResult | undefined,
-): void {
-  if (!hullBuoyancy?.isValid) return;
-
-  const x = scale.mapX(hullBuoyancy.center.x);
-  const y = scale.mapY(0);
-  const top = scale.mapY(scale.yLimit * 0.82);
-  const bottom = scale.mapY(-scale.yLimit * 0.82);
-
-  context.save();
-  context.strokeStyle = "#be123c";
-  context.fillStyle = "#be123c";
-  context.lineWidth = 2.4;
-  context.setLineDash([5, 5]);
-  context.beginPath();
-  context.moveTo(x, top);
-  context.lineTo(x, bottom);
-  context.stroke();
-
-  context.setLineDash([]);
-  context.beginPath();
-  context.arc(x, y, 7, 0, Math.PI * 2);
-  context.fill();
-  context.strokeStyle = "#ffffff";
-  context.lineWidth = 1.5;
-  context.stroke();
-
-  context.font = "700 13px Segoe UI, Arial, sans-serif";
-  const label = "ЦВ";
-  const labelX = x + 10;
-  const labelY = y - 12;
-  const labelWidth = context.measureText(label).width + 10;
-  context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  context.fillRect(labelX - 5, labelY - 14, labelWidth, 18);
-  context.fillStyle = "#be123c";
-  context.fillText(label, labelX, labelY);
-  context.restore();
-}
-
-export function renderCanvasProfile(
-  canvas: HTMLCanvasElement,
-  snapshot: ProfileSnapshot,
-  hullBuoyancy?: HullBuoyancyResult,
-): void {
+export function renderCanvasProfile(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): void {
   resizeCanvas(canvas);
   const context = canvas.getContext("2d");
   if (!context) {
@@ -131,13 +87,14 @@ export function renderCanvasProfile(
 
   const ratio = window.devicePixelRatio || 1;
   const scale = createScale(canvas, snapshot);
+  const totalLength = snapshot.extents.totalLength;
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, scale.width, scale.height);
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, scale.width, scale.height);
 
   if (snapshot.state.showGrid) {
-    drawGrid(context, scale, snapshot.state.length);
+    drawGrid(context, scale, totalLength);
   }
 
   context.save();
@@ -146,7 +103,7 @@ export function renderCanvasProfile(
   context.setLineDash([8, 6]);
   context.beginPath();
   context.moveTo(scale.mapX(0), scale.mapY(0));
-  context.lineTo(scale.mapX(snapshot.state.length), scale.mapY(0));
+  context.lineTo(scale.mapX(totalLength), scale.mapY(0));
   context.stroke();
   context.restore();
 
@@ -182,11 +139,9 @@ export function renderCanvasProfile(
     });
   }
 
-  drawCenterOfBuoyancy(context, scale, hullBuoyancy);
-
   context.fillStyle = "#17212b";
   context.font = "600 13px Segoe UI, Arial, sans-serif";
-  context.fillText("L", scale.mapX(snapshot.state.length) - 8, scale.mapY(0) - 10);
-  context.fillText("x", scale.mapX(snapshot.state.length) + 10, scale.mapY(0) + 4);
+  context.fillText("L", scale.mapX(totalLength) - 8, scale.mapY(0) - 10);
+  context.fillText("x", scale.mapX(totalLength) + 10, scale.mapY(0) + 4);
   context.fillText("y", scale.mapX(0) - 22, scale.mapY(scale.yLimit) + 4);
 }

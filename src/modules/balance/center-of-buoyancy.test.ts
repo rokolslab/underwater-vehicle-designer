@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateHullCenterOfBuoyancy } from "./center-of-buoyancy";
 
-describe("hull center of buoyancy", () => {
+describe("legacy hull center of buoyancy", () => {
   it("calculates displaced volume and center for the current formula", () => {
     const result = calculateHullCenterOfBuoyancy({ length: 6, diameter: 2 });
 

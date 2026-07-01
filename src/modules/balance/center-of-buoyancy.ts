@@ -16,6 +16,7 @@ function isPositiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
+/** @deprecated Legacy internal hull-volume calculation. Do not use for ЦВК geometry. */
 export function calculateHullCenterOfBuoyancy(input: HullBuoyancyInput): HullBuoyancyResult {
   if (!isPositiveFinite(input.length)) {
     return invalidResult("length must be a positive finite number");

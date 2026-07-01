@@ -8,6 +8,7 @@ describe("svg export", () => {
       length: 6,
       slenderness: 3,
       diameter: 2,
+      cylindricalInsertLength: 0,
       stations: 20,
       showGrid: true,
       showPoints: true,
@@ -20,5 +21,22 @@ describe("svg export", () => {
     expect(svg).toContain("<line");
     expect(svg.match(/<circle/g)).toHaveLength(46);
     expect(svg).toContain('viewBox="-0.240000');
+  });
+
+  it("uses total profile length in the viewBox when insert is present", () => {
+    const snapshot = makeProfileSnapshot({
+      length: 6,
+      slenderness: 3,
+      diameter: 2,
+      cylindricalInsertLength: 2,
+      stations: 20,
+      showGrid: true,
+      showPoints: true,
+    });
+
+    const svg = buildSvg(snapshot);
+
+    expect(svg).toContain('viewBox="-0.320000');
+    expect(svg).toContain('x2="8.000000"');
   });
 });

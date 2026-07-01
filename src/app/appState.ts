@@ -9,6 +9,7 @@ export type LastEdited = "slenderness" | "diameter";
 const defaults = {
   length: 6,
   slenderness: 3,
+  cylindricalInsertLength: 0,
   stations: 20,
 };
 
@@ -26,6 +27,11 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     const length = clampNumber(inputs.length.value, defaults.length, 0.1);
     let slenderness = clampNumber(inputs.slenderness.value, defaults.slenderness, 0.1);
     let diameter = clampNumber(inputs.diameter.value, length / slenderness, 0.01);
+    const cylindricalInsertLength = clampNumber(
+      inputs.cylindricalInsertLength.value,
+      defaults.cylindricalInsertLength,
+      0,
+    );
 
     if (lastEdited === "diameter") {
       slenderness = length / diameter;
@@ -37,12 +43,14 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
 
     const stations = Math.round(clampNumber(inputs.stations.value, defaults.stations, 8, 80));
     writeNumericInput(inputs.length, length);
+    writeNumericInput(inputs.cylindricalInsertLength, cylindricalInsertLength);
     writeIntegerInput(inputs.stations, stations);
 
     const state = {
       length,
       slenderness,
       diameter,
+      cylindricalInsertLength,
       stations,
       showGrid: inputs.showGrid.checked,
       showPoints: inputs.showPoints.checked,
@@ -55,6 +63,7 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     logger.debug("app state reset");
     inputs.length.value = String(defaults.length);
     inputs.slenderness.value = String(defaults.slenderness);
+    inputs.cylindricalInsertLength.value = String(defaults.cylindricalInsertLength);
     inputs.stations.value = String(defaults.stations);
     inputs.showGrid.checked = true;
     inputs.showPoints.checked = true;
