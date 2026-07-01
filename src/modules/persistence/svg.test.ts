@@ -23,7 +23,7 @@ describe("svg export", () => {
     expect(svg).toContain('viewBox="-0.240000');
   });
 
-  it("uses total profile length in the viewBox when insert is present", () => {
+  it("keeps the declared total profile length in the viewBox when insert is present", () => {
     const snapshot = makeProfileSnapshot({
       length: 6,
       slenderness: 3,
@@ -36,7 +36,7 @@ describe("svg export", () => {
 
     const svg = buildSvg(snapshot);
 
-    expect(svg).toContain('viewBox="-0.320000');
-    expect(svg).toContain('x2="8.000000"');
+    expect(svg).toContain('viewBox="-0.240000');
+    expect(svg).toContain('x2="6.000000"');
   });
 });

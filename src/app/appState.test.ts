@@ -61,6 +61,18 @@ describe("app state", () => {
     expect(controls.cylindricalInsertLength.value).toBe("0");
   });
 
+  it("clamps cylindrical insert length to half of the total length", () => {
+    const controls = makeControls();
+    controls.length.value = "6";
+    controls.cylindricalInsertLength.value = "4";
+
+    const state = createAppStateController(controls).readState("slenderness");
+
+    expect(state.cylindricalInsertLength).toBe(3);
+    expect(controls.cylindricalInsertLength.value).toBe("3");
+    expect(controls.cylindricalInsertLength.max).toBe("3");
+  });
+
   it("clamps stations and resets toggles", () => {
     const controls = makeControls();
     controls.length.value = "bad";
@@ -73,6 +85,7 @@ describe("app state", () => {
     const state = controller.readState("slenderness");
     expect(state.length).toBe(6);
     expect(state.cylindricalInsertLength).toBe(2);
+    expect(controls.cylindricalInsertLength.max).toBe("3");
     expect(state.stations).toBe(80);
 
     const reset = controller.reset();

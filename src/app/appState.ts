@@ -27,11 +27,25 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     const length = clampNumber(inputs.length.value, defaults.length, 0.1);
     let slenderness = clampNumber(inputs.slenderness.value, defaults.slenderness, 0.1);
     let diameter = clampNumber(inputs.diameter.value, length / slenderness, 0.01);
+    const maxCylindricalInsertLength = length / 2;
+    const requestedCylindricalInsertLength = Number(inputs.cylindricalInsertLength.value);
     const cylindricalInsertLength = clampNumber(
       inputs.cylindricalInsertLength.value,
       defaults.cylindricalInsertLength,
       0,
+      maxCylindricalInsertLength,
     );
+
+    if (
+      Number.isFinite(requestedCylindricalInsertLength) &&
+      requestedCylindricalInsertLength !== cylindricalInsertLength
+    ) {
+      logger.warn("[FIX] cylindrical insert length clamped", {
+        requested: requestedCylindricalInsertLength,
+        normalized: cylindricalInsertLength,
+        max: maxCylindricalInsertLength,
+      });
+    }
 
     if (lastEdited === "diameter") {
       slenderness = length / diameter;
@@ -43,6 +57,7 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
 
     const stations = Math.round(clampNumber(inputs.stations.value, defaults.stations, 8, 80));
     writeNumericInput(inputs.length, length);
+    inputs.cylindricalInsertLength.max = String(maxCylindricalInsertLength);
     writeNumericInput(inputs.cylindricalInsertLength, cylindricalInsertLength);
     writeIntegerInput(inputs.stations, stations);
 

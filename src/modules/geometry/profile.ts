@@ -8,8 +8,12 @@ export function maxRadiusX(length: number): number {
   return length * (1 - Math.sqrt(3) / 3);
 }
 
-export function totalProfileLength(length: number, cylindricalInsertLength = 0): number {
-  return length + Math.max(0, cylindricalInsertLength);
+export function totalProfileLength(length: number, _cylindricalInsertLength = 0): number {
+  return length;
+}
+
+function normalizeCylindricalInsertLength(length: number, cylindricalInsertLength: number): number {
+  return Math.min(Math.max(0, cylindricalInsertLength), length / 2);
 }
 
 export function radiusAt(x: number, length: number, diameter: number): number {
@@ -21,11 +25,13 @@ export function radiusAt(x: number, length: number, diameter: number): number {
 function sourceXAt(x: number, length: number, cylindricalInsertLength: number): number {
   if (cylindricalInsertLength <= 0) return x;
 
-  const insertStart = maxRadiusX(length);
-  const insertEnd = insertStart + cylindricalInsertLength;
+  const normalizedInsertLength = normalizeCylindricalInsertLength(length, cylindricalInsertLength);
+  const sourceLength = length - normalizedInsertLength;
+  const insertStart = maxRadiusX(sourceLength);
+  const insertEnd = insertStart + normalizedInsertLength;
   if (x <= insertStart) return x;
   if (x <= insertEnd) return insertStart;
-  return x - cylindricalInsertLength;
+  return x - normalizedInsertLength;
 }
 
 export function profileRadiusAt(
@@ -34,7 +40,9 @@ export function profileRadiusAt(
   diameter: number,
   cylindricalInsertLength = 0,
 ): number {
-  return radiusAt(sourceXAt(x, length, cylindricalInsertLength), length, diameter);
+  const normalizedInsertLength = normalizeCylindricalInsertLength(length, cylindricalInsertLength);
+  const sourceLength = length - normalizedInsertLength;
+  return radiusAt(sourceXAt(x, length, normalizedInsertLength), sourceLength, diameter);
 }
 
 export function makeStationPoints(

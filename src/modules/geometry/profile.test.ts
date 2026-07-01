@@ -42,26 +42,28 @@ describe("profile geometry", () => {
     const length = 6;
     const diameter = 2;
     const cylindricalInsertLength = 2;
-    const insertStart = maxRadiusX(length);
+    const sourceLength = length - cylindricalInsertLength;
+    const insertStart = maxRadiusX(sourceLength);
     const insertEnd = insertStart + cylindricalInsertLength;
-    const maxRadius = radiusAt(insertStart, length, diameter);
+    const maxRadius = radiusAt(insertStart, sourceLength, diameter);
 
-    expect(totalProfileLength(length, cylindricalInsertLength)).toBe(8);
+    expect(totalProfileLength(length, cylindricalInsertLength)).toBe(6);
     expect(profileRadiusAt(insertStart + 1, length, diameter, cylindricalInsertLength)).toBeCloseTo(maxRadius, 12);
     expect(profileRadiusAt(insertEnd, length, diameter, cylindricalInsertLength)).toBeCloseTo(maxRadius, 12);
     expect(profileRadiusAt(insertEnd + 0.3, length, diameter, cylindricalInsertLength)).toBeCloseTo(
-      radiusAt(insertStart + 0.3, length, diameter),
+      radiusAt(insertStart + 0.3, sourceLength, diameter),
       12,
     );
+    expect(profileRadiusAt(length, length, diameter, cylindricalInsertLength)).toBe(0);
   });
 
   it("uses total profile length for station points when insert is present", () => {
     const points = makeStationPoints(6, 2, 20, 2);
 
     expect(points[0].x).toBe(0);
-    expect(points[1].x).toBeCloseTo(0.2, 12);
-    expect(points.at(-2)?.x).toBeCloseTo(7.8, 12);
-    expect(points.at(-1)?.x).toBe(8);
+    expect(points[1].x).toBeCloseTo(0.15, 12);
+    expect(points.at(-2)?.x).toBeCloseTo(5.85, 12);
+    expect(points.at(-1)?.x).toBe(6);
   });
 
   it("creates a shared immutable profile snapshot", () => {
@@ -77,7 +79,7 @@ describe("profile geometry", () => {
 
     expect(snapshot.state.diameter).toBe(2);
     expect(snapshot.state.cylindricalInsertLength).toBe(2);
-    expect(snapshot.extents.totalLength).toBe(8);
+    expect(snapshot.extents.totalLength).toBe(6);
     expect(snapshot.smoothPoints).toHaveLength(321);
     expect(snapshot.stationPoints).toHaveLength(23);
     expect(Object.isFrozen(snapshot)).toBe(true);
