@@ -4,46 +4,84 @@
 
 ## Обзор проекта
 
-Airship — браузерный инженерный инструмент для построения обводов корпуса и будущего 3D-размещения оборудования. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
+Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D-обводов корпуса дирижабля или подводного аппарата. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, таблицу координат станций и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
 
 ## Текущий стек
 
-- **Язык:** JavaScript в браузере
-- **Интерфейс:** HTML, CSS
-- **Графика:** Canvas 2D
-- **Сборка:** отсутствует
-- **Тесты:** отсутствуют
-
-## Целевой стек
-
 - **Язык:** TypeScript
+- **Интерфейс:** HTML, CSS через Vite entrypoint
+- **Графика:** Canvas 2D, Three.js
 - **Сборка:** Vite
-- **3D-графика:** Three.js
 - **Тесты:** Vitest
+- **Экспорт:** SVG, CSV
+- **Docker:** dev/prod контейнеры для разработки и VPS smoke checks
+
+## Термины проекта
+
+- **ЦВК** — цилиндрическая вставка корпуса: прямой участок постоянного максимального сечения, задаваемый длиной в метрах.
+- **ЦВ** — центр величины: расчетная точка баланса по вытесненному объему; не используйте `ЦВ` как сокращение для цилиндрической вставки.
+
+## Следующие целевые расширения
+
+- **3D-графика:** Three.js
+- **Геометрия:** ЦВК, цилиндрическая вставка корпуса
+- **Компоновка:** оборудование внутри корпуса
+- **Баланс:** ЦТ, ЦВ, крен и дифферент
+- **Проектные данные:** JSON import/export
 
 ## Структура проекта
 
 ```text
 .
-├── .agents/              # Локальные AI Factory skills
-├── .codex/               # Локальная конфигурация Codex, если появится
-├── .ai-factory/          # Контекст AI Factory для планов, правил и архитектуры
-├── index.html            # Текущая HTML-страница приложения
-├── styles.css            # Стили текущего интерфейса
-├── script.js             # Расчеты, canvas-отрисовка, экспорт SVG/CSV
-├── TECHNICAL_SPEC.md     # Техническое задание на следующую версию
-├── formula.xls           # Табличный источник/регрессия расчетов
-└── formula.xlsx          # Табличный источник/регрессия расчетов
+├── .agents/                  # Локальные AI Factory skills
+├── .codex/                   # Локальная конфигурация Codex, если появится
+├── .ai-factory/              # Контекст AI Factory: планы, правила, архитектура
+├── docker/
+│   └── nginx/                # Конфигурация nginx для production container
+├── docs/                     # Документация по разработке и эксплуатации
+├── src/
+│   ├── app/
+│   │   ├── main.ts           # Vite entrypoint и UI orchestration
+│   │   ├── appState.ts       # Нормализация ввода, lastEdited, reset
+│   │   └── styles.css        # Основные стили приложения
+│   ├── modules/
+│   │   ├── geometry/         # Чистая расчетная геометрия и ProfileSnapshot
+│   │   ├── balance/          # Расчеты ЦВ и будущие расчеты баланса
+│   │   ├── rendering/        # Canvas 2D rendering
+│   │   ├── persistence/      # CSV/SVG/download
+│   │   └── ui/               # Controls, table, metrics
+│   └── shared/               # Общие helpers: math, format, logger
+├── tests/fixtures/           # Эталонные данные, включая fixture по formula.xlsx
+├── index.html                # Vite HTML shell
+├── package.json              # npm scripts и dev dependencies
+├── package-lock.json         # Зафиксированные версии toolchain
+├── tsconfig.json             # TypeScript strict config
+├── vite.config.ts            # Vite/Vitest config
+├── Dockerfile                # Multi-stage dev/build/production image
+├── compose.yml               # Базовая Docker Compose конфигурация
+├── compose.override.yml      # Development override для Vite dev server
+├── compose.production.yml    # Hardened production overlay для VPS
+├── TECHNICAL_SPEC.md         # Техническое задание на следующие версии
+├── formula.xls               # Табличный источник/регрессия расчетов
+└── formula.xlsx              # Табличный источник/регрессия расчетов
 ```
 
 ## Ключевые точки входа
 
 | Файл | Назначение |
 | --- | --- |
-| `index.html` | Разметка текущего статического приложения |
-| `script.js` | Расчет обводов, генерация станций, отрисовка canvas, экспорт |
-| `styles.css` | Макет и визуальные стили |
-| `TECHNICAL_SPEC.md` | Требования к переходу на Vite + TypeScript + Three.js |
+| `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
+| `src/app/main.ts` | Инициализация DOM, сборка snapshot, canvas/table/metrics/export orchestration |
+| `src/app/appState.ts` | Нормализация пользовательского ввода, связь `D = L / lambda`, `lastEdited` |
+| `src/modules/geometry/profile.ts` | Формула радиуса, станции, smooth points, extents, `ProfileSnapshot` |
+| `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
+| `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
+| `src/modules/persistence/svg.ts` | SVG export текущего профиля |
+| `src/modules/persistence/csv.ts` | CSV export координат станций |
+| `scripts/check-encoding.mjs` | Проверка UTF-8 и ключевых русских UI-строк |
+| `Dockerfile` | Сборка dev/build/production образов |
+| `compose.override.yml` | Docker-окружение разработки на `127.0.0.1:5173` |
+| `compose.production.yml` | Production smoke/deploy overlay для VPS |
 | `formula.xlsx` | Эталонные данные для регрессии формулы |
 
 ## Документация
@@ -51,8 +89,9 @@ Airship — браузерный инженерный инструмент дл�
 | Документ | Путь | Описание |
 | --- | --- | --- |
 | Техническое задание | `TECHNICAL_SPEC.md` | Описание целевого функционала 3D-компоновки и расчетов |
+| Docker workflow | `docs/docker.md` | Команды разработки, проверок и VPS smoke через Docker |
 | Описание проекта | `.ai-factory/DESCRIPTION.md` | Сводка стека, функций, паттернов и требований |
-| Архитектура | `.ai-factory/ARCHITECTURE.md` | Правила модульной архитектуры для будущего TypeScript-кода |
+| Архитектура | `.ai-factory/ARCHITECTURE.md` | Правила модульной архитектуры для TypeScript-кода |
 | Базовые правила | `.ai-factory/rules/base.md` | Выявленные соглашения проекта |
 
 ## AI Context Files
@@ -65,10 +104,23 @@ Airship — браузерный инженерный инструмент дл�
 | `.ai-factory/rules/base.md` | Базовые соглашения по коду |
 | `.ai-factory/config.yaml` | Настройки AI Factory |
 
+## Docker workflow
+
+Docker является предпочтительным окружением для дальнейшей разработки агентом и VPS smoke checks.
+
+- Разработка: `docker compose up app`
+- Тесты: `docker compose run --rm app npm run test`
+- Сборка: `docker compose run --rm app npm run build`
+- Проверка кодировки: `docker compose run --rm app npm run check:encoding`
+- Production smoke: `docker compose -f compose.yml -f compose.production.yml up -d`
+
 ## Правила для агентов
 
 - Не объединяйте независимые shell-команды через `&&`, `;` или pipeline, если шаги можно выполнить и проверить отдельно.
   - Неверно: `git checkout main && git pull`
   - Верно: сначала `git checkout main`, затем `git pull origin main`
-- В рамках `$aif` не меняйте прикладной код: этот этап настраивает контекст, правила и архитектурные ориентиры.
-- При реализации следующего этапа сначала создайте Vite + TypeScript-структуру и перенесите расчетные функции в чистые модули с тестами.
+- Расчетная геометрия должна оставаться в чистых TypeScript-модулях без DOM/canvas/browser side effects.
+- UI/appState отвечает за пользовательский ввод, clamp/round, `lastEdited` и форматирование; geometry получает уже нормализованное состояние.
+- Canvas, SVG, CSV, table и metrics должны использовать общий `ProfileSnapshot`, а не пересчитывать геометрию самостоятельно.
+- Производные инженерные расчеты вроде ЦВ держите в `balance`, а не в `geometry` или UI.
+- При изменении формулы или координатной системы обновляйте Vitest-регрессии и fixture по `formula.xlsx`.

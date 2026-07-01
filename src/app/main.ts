@@ -1,0 +1,100 @@
+import "./styles.css";
+import { createAppStateController, type LastEdited } from "./appState";
+import { makeProfileSnapshot } from "../modules/geometry/profile";
+import { renderCanvasProfile } from "../modules/rendering/canvas2d";
+import { createHullScene3d } from "../modules/rendering/scene3d";
+import { buildCsv } from "../modules/persistence/csv";
+import { download } from "../modules/persistence/download";
+import { buildSvg } from "../modules/persistence/svg";
+import { renderMetrics } from "../modules/ui/metrics";
+import { renderTable } from "../modules/ui/table";
+import type { ControlElements } from "../modules/ui/controls";
+import type { ProfileSnapshot } from "../modules/geometry/model";
+import { logger } from "../shared/logger";
+
+function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
+  const element = document.querySelector(selector);
+  if (!(element instanceof type)) {
+    throw new Error(`Required element not found: ${selector}`);
+  }
+  return element;
+}
+
+const inputs: ControlElements = {
+  length: requiredElement("#length", HTMLInputElement),
+  slenderness: requiredElement("#slenderness", HTMLInputElement),
+  diameter: requiredElement("#diameter", HTMLInputElement),
+  cylindricalInsertLength: requiredElement("#cylindrical-insert-length", HTMLInputElement),
+  stations: requiredElement("#stations", HTMLInputElement),
+  showGrid: requiredElement("#show-grid", HTMLInputElement),
+  showPoints: requiredElement("#show-points", HTMLInputElement),
+};
+
+const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
+const scene3dContainer = requiredElement("#hull-scene-3d", HTMLElement);
+const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
+const pointCountEl = requiredElement("#point-count", HTMLElement);
+const metrics = {
+  maxRadius: requiredElement("#max-radius", HTMLElement),
+  maxHeight: requiredElement("#max-height", HTMLElement),
+  maxX: requiredElement("#max-x", HTMLElement),
+  totalLength: requiredElement("#total-length", HTMLElement),
+  cylindricalInsertLength: requiredElement("#cylindrical-insert-length-metric", HTMLElement),
+};
+const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
+const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
+const resetButton = requiredElement("#reset", HTMLButtonElement);
+
+const appState = createAppStateController(inputs);
+const hullScene3d = createHullScene3d(scene3dContainer);
+let currentSnapshot: ProfileSnapshot;
+
+function update(source: LastEdited = appState.getLastEdited()): void {
+  logger.debug("profile update started", { source });
+  const state = appState.readState(source);
+  currentSnapshot = makeProfileSnapshot(state);
+  logger.debug("profile snapshot created", {
+    length: state.length,
+    cylindricalInsertLength: state.cylindricalInsertLength,
+    totalLength: currentSnapshot.extents.totalLength,
+    stations: state.stations,
+  });
+
+  renderCanvasProfile(canvas, currentSnapshot);
+  renderTable(tableBody, pointCountEl, currentSnapshot);
+  renderMetrics(metrics, currentSnapshot);
+  hullScene3d.render(currentSnapshot);
+}
+
+inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.slenderness.addEventListener("input", () => update("slenderness"));
+inputs.diameter.addEventListener("input", () => update("diameter"));
+inputs.cylindricalInsertLength.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.stations.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()));
+inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
+window.addEventListener("resize", () => update(appState.getLastEdited()));
+window.addEventListener("beforeunload", () => hullScene3d.dispose());
+
+downloadSvgButton.addEventListener("click", () => {
+  download("airship-profile.svg", "image/svg+xml;charset=utf-8", buildSvg(currentSnapshot));
+});
+
+downloadCsvButton.addEventListener("click", () => {
+  download("airship-profile.csv", "text/csv;charset=utf-8", buildCsv(currentSnapshot));
+});
+
+resetButton.addEventListener("click", () => {
+  appState.reset();
+  update("slenderness");
+});
+
+try {
+  logger.info("application started");
+  update("slenderness");
+} catch (error) {
+  logger.error("application initialization failed", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  throw error;
+}

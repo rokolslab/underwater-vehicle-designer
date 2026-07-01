@@ -1,0 +1,23 @@
+{
+  "name": "underwater-vehicle-designer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check:encoding": "node scripts/check-encoding.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/three": "^0.185.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "three": "^0.185.0"
+  }
+}

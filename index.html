@@ -4,8 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Обвод дирижабля</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script src="script.js" defer></script>
+    <script type="module" src="/src/app/main.ts"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -29,6 +28,14 @@
             <dt>x max</dt>
             <dd id="max-x">0.000</dd>
           </div>
+          <div>
+            <dt>Полная длина</dt>
+            <dd id="total-length">0.0000</dd>
+          </div>
+          <div>
+            <dt>ЦВК</dt>
+            <dd id="cylindrical-insert-length-metric">0.0000</dd>
+          </div>
         </dl>
       </header>
 
@@ -51,6 +58,10 @@
               <span>Станции</span>
               <input id="stations" type="number" min="8" max="80" step="1" value="20" />
             </label>
+            <label>
+              <span>ЦВК, м</span>
+              <input id="cylindrical-insert-length" type="number" min="0" max="3" step="0.1" value="0" />
+            </label>
             <label class="toggle-row">
               <input id="show-grid" type="checkbox" checked />
               <span>Сетка</span>
@@ -64,6 +75,7 @@
           <div class="source-block">
             <div class="source-title">Из таблицы</div>
             <div>D = L / λ</div>
+            <div>ЦВК = Lcyl</div>
             <div>верх: y(x)</div>
             <div>низ: -y(x)</div>
           </div>
@@ -75,8 +87,14 @@
           </div>
         </aside>
 
-        <section class="drawing-panel">
-          <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+        <section class="visualization-panels">
+          <section class="drawing-panel" aria-label="2D-проекция корпуса">
+            <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+          </section>
+          <section class="scene3d-panel" aria-label="3D-представление корпуса">
+            <div class="panel-title">3D корпус</div>
+            <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
+          </section>
         </section>
       </section>
 
