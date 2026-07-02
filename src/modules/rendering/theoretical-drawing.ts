@@ -1,4 +1,4 @@
-import type { TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 
@@ -19,7 +19,6 @@ interface DrawingLayout {
 
 interface ProjectionScale {
   readonly unit: number;
-  readonly yLimit: number;
   readonly profileOriginX: number;
   readonly profileOriginY: number;
   readonly halfBreadthOriginX: number;
@@ -34,6 +33,7 @@ const line = "#d7ded5";
 const strongLine = "#9aa99c";
 const hull = "#0f766e";
 const amber = "#c47a13";
+const sectionCurve = "rgba(23, 33, 43, 0.34)";
 const forwardSection = "rgba(15, 118, 110, 0.42)";
 const aftSection = "rgba(37, 99, 235, 0.34)";
 const minimumLength = 0.1;
@@ -51,17 +51,21 @@ function resizeCanvas(canvas: HTMLCanvasElement): { width: number; height: numbe
 
 function makeLayout(width: number, height: number): DrawingLayout {
   const margin = 24;
-  const bodyWidth = Math.min(260, Math.max(188, width * 0.28));
-  const leftWidth = Math.max(280, width - bodyWidth - margin * 3);
-  const profileHeight = Math.max(170, height * 0.36);
-  const halfBreadthHeight = Math.max(128, height * 0.25);
+  const topY = 56;
+  const bottomMargin = 30;
+  const rowGap = 42;
+  const bodyWidth = Math.min(260, Math.max(188, width * 0.24));
+  const leftWidth = Math.max(300, width - bodyWidth - margin * 3);
+  const availableHeight = Math.max(360, height - topY - bottomMargin);
+  const profileHeight = Math.max(180, Math.min(260, availableHeight * 0.48));
+  const halfBreadthHeight = Math.max(128, availableHeight - profileHeight - rowGap);
 
   return Object.freeze({
     width,
     height,
-    profile: Object.freeze({ x: margin + 46, y: 56, width: leftWidth - 46, height: profileHeight }),
-    halfBreadth: Object.freeze({ x: margin + 46, y: 86 + profileHeight, width: leftWidth - 46, height: halfBreadthHeight }),
-    bodyPlan: Object.freeze({ x: margin * 2 + leftWidth, y: 56, width: bodyWidth, height: profileHeight + halfBreadthHeight + 30 }),
+    profile: Object.freeze({ x: margin + 46, y: topY, width: leftWidth - 46, height: profileHeight }),
+    halfBreadth: Object.freeze({ x: margin + 46, y: topY + profileHeight + rowGap, width: leftWidth - 46, height: halfBreadthHeight }),
+    bodyPlan: Object.freeze({ x: margin * 2 + leftWidth, y: topY, width: bodyWidth, height: profileHeight }),
   });
 }
 
@@ -84,7 +88,6 @@ function makeProjectionScale(layout: DrawingLayout, drawing: TheoreticalDrawing)
 
   return Object.freeze({
     unit,
-    yLimit,
     profileOriginX: layout.profile.x + (layout.profile.width - drawingWidth) / 2,
     profileOriginY: layout.profile.y + layout.profile.height / 2,
     halfBreadthOriginX: layout.halfBreadth.x + (layout.halfBreadth.width - drawingWidth) / 2,
@@ -121,6 +124,58 @@ function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {
   context.strokeStyle = line;
   context.lineWidth = 1;
   context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+}
+
+function drawPolyline(
+  context: CanvasRenderingContext2D,
+  points: readonly { readonly x: number; readonly y: number }[],
+  mapX: (x: number) => number,
+  mapY: (y: number) => number,
+): void {
+  if (points.length < 2) return;
+
+  context.beginPath();
+  points.forEach((point, index) => {
+    const x = mapX(point.x);
+    const y = mapY(point.y);
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.stroke();
+}
+
+function drawProfileSectionCurves(
+  context: CanvasRenderingContext2D,
+  curves: readonly TheoreticalCurve[],
+  mapX: (x: number) => number,
+  mapY: (y: number) => number,
+): void {
+  context.save();
+  context.strokeStyle = sectionCurve;
+  context.lineWidth = 1;
+  for (const curve of curves) {
+    drawPolyline(context, curve.points, mapX, mapY);
+    drawPolyline(
+      context,
+      curve.points.map((point) => ({ x: point.x, y: -point.y })),
+      mapX,
+      mapY,
+    );
+  }
+  context.restore();
+}
+
+function drawHalfBreadthSectionCurves(
+  context: CanvasRenderingContext2D,
+  curves: readonly TheoreticalCurve[],
+  mapX: (x: number) => number,
+  mapY: (y: number) => number,
+): void {
+  context.save();
+  context.strokeStyle = sectionCurve;
+  context.lineWidth = 1;
+  for (const curve of curves) drawPolyline(context, curve.points, mapX, mapY);
+  context.restore();
 }
 
 function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
@@ -175,6 +230,8 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.stroke();
   context.restore();
 
+  drawProfileSectionCurves(context, drawing.profileButtockCurves, mapX, mapY);
+
   context.save();
   context.fillStyle = muted;
   context.font = "11px Segoe UI, Arial, sans-serif";
@@ -219,17 +276,12 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.stroke();
   context.restore();
 
+  drawHalfBreadthSectionCurves(context, drawing.halfBreadthWaterlineCurves, mapX, mapY);
+
   context.save();
   context.strokeStyle = hull;
   context.lineWidth = 2;
-  context.beginPath();
-  drawing.halfBreadthPoints.forEach((point, index) => {
-    const x = mapX(point.x);
-    const y = mapY(point.y);
-    if (index === 0) context.moveTo(x, y);
-    else context.lineTo(x, y);
-  });
-  context.stroke();
+  drawPolyline(context, drawing.halfBreadthPoints, mapX, mapY);
   context.restore();
 
   context.save();
@@ -351,6 +403,8 @@ export function renderTheoreticalDrawing(canvas: HTMLCanvasElement, drawing: The
     height,
     scale: scale.unit,
     sectionCount: drawing.sections.length,
+    profileButtockCurveCount: drawing.profileButtockCurves.length,
+    halfBreadthWaterlineCurveCount: drawing.halfBreadthWaterlineCurves.length,
     forwardSectionCount: drawing.forwardSections.length,
     aftSectionCount: drawing.aftSections.length,
     midshipSectionCount: drawing.midshipSections.length,

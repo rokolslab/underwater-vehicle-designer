@@ -1,5 +1,5 @@
 import type { SmoothPoint } from "../geometry/model";
-import type { TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 
 interface Rect {
   readonly x: number;
@@ -20,9 +20,9 @@ interface ProjectionScale {
 
 const width = 1200;
 const height = 720;
-const profileRect: Rect = Object.freeze({ x: 90, y: 82, width: 760, height: 220 });
-const halfBreadthRect: Rect = Object.freeze({ x: 90, y: 372, width: 760, height: 150 });
-const bodyPlanRect: Rect = Object.freeze({ x: 900, y: 82, width: 250, height: 440 });
+const profileRect: Rect = Object.freeze({ x: 90, y: 82, width: 760, height: 240 });
+const halfBreadthRect: Rect = Object.freeze({ x: 90, y: 382, width: 760, height: 170 });
+const bodyPlanRect: Rect = Object.freeze({ x: 900, y: 82, width: 250, height: 240 });
 const minimumLength = 0.1;
 const minimumRadius = 0.1;
 
@@ -72,6 +72,29 @@ function halfBreadthMaps(scale: ProjectionScale): { mapX: (value: number) => num
   };
 }
 
+function profileCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value: number) => number, mapY: (value: number) => number): string {
+  return curves
+    .flatMap((curve) => [
+      svgPath(curve.points, mapX, mapY),
+      svgPath(
+        curve.points.map((point) => ({ x: point.x, y: -point.y })),
+        mapX,
+        mapY,
+      ),
+    ])
+    .filter((path) => path.length > 0)
+    .map((path) => `<path d="${path}" class="section-curve" />`)
+    .join("\n    ");
+}
+
+function halfBreadthCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value: number) => number, mapY: (value: number) => number): string {
+  return curves
+    .map((curve) => svgPath(curve.points, mapX, mapY))
+    .filter((path) => path.length > 0)
+    .map((path) => `<path d="${path}" class="section-curve" />`)
+    .join("\n    ");
+}
+
 function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
   const { mapX, mapY } = profileMaps(scale);
   const top = svgPath(drawing.profilePoints, mapX, mapY);
@@ -82,6 +105,7 @@ function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): str
   const waterlines = drawing.waterlines
     .map((line) => `<line x1="${profileRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${profileRect.x + profileRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
     .join("\n    ");
+  const internalCurves = profileCurvePaths(drawing.profileButtockCurves, mapX, mapY);
 
   return `<g>
     <text x="${profileRect.x}" y="${profileRect.y - 16}" class="panel-title">Бок</text>
@@ -90,6 +114,7 @@ function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): str
     ${waterlines}
     <line x1="${mapX(0).toFixed(2)}" y1="${mapY(0).toFixed(2)}" x2="${mapX(drawing.totalLength).toFixed(2)}" y2="${mapY(0).toFixed(2)}" class="axis" />
     <path d="${top} ${bottom} Z" class="hull-fill" />
+    ${internalCurves}
   </g>`;
 }
 
@@ -102,6 +127,7 @@ function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale):
     .map((line) => `<line x1="${halfBreadthRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${halfBreadthRect.x + halfBreadthRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
     .join("\n    ");
   const path = svgPath(drawing.halfBreadthPoints, mapX, mapY);
+  const internalCurves = halfBreadthCurvePaths(drawing.halfBreadthWaterlineCurves, mapX, mapY);
 
   return `<g>
     <text x="${halfBreadthRect.x}" y="${halfBreadthRect.y - 16}" class="panel-title">Полуширота</text>
@@ -109,6 +135,7 @@ function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale):
     ${stations}
     ${buttocks}
     <line x1="${mapX(0).toFixed(2)}" y1="${mapY(0).toFixed(2)}" x2="${mapX(drawing.totalLength).toFixed(2)}" y2="${mapY(0).toFixed(2)}" class="axis" />
+    ${internalCurves}
     <path d="${path}" class="hull-line" />
   </g>`;
 }
@@ -180,6 +207,7 @@ export function buildTheoreticalDrawingSvg(drawing: TheoreticalDrawing): string 
     .axis { stroke: #c47a13; stroke-width: 1.4; stroke-dasharray: 8 6; }
     .hull-fill { fill: rgba(15, 118, 110, 0.08); stroke: #0f766e; stroke-width: 2; }
     .hull-line { fill: none; stroke: #0f766e; stroke-width: 2; }
+    .section-curve { fill: none; stroke: rgba(23, 33, 43, 0.34); stroke-width: 1; }
     .section-forward { fill: none; stroke: rgba(15, 118, 110, 0.42); stroke-width: 1.2; }
     .section-aft { fill: none; stroke: rgba(37, 99, 235, 0.34); stroke-width: 1.2; }
     .section-midship { fill: none; stroke: #0f766e; stroke-width: 2; }

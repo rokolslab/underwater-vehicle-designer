@@ -51,6 +51,27 @@ describe("theoretical drawing geometry", () => {
     expect(drawing.forwardSections.length + drawing.aftSections.length + drawing.midshipSections.length).toBe(drawing.sections.length);
   });
 
+  it("creates internal section curves for profile and half-breadth views", () => {
+    const snapshot = makeProfileSnapshot(baseState);
+    const drawing = makeTheoreticalDrawing(snapshot);
+
+    expect(drawing.profileButtockCurves).toHaveLength(3);
+    expect(drawing.halfBreadthWaterlineCurves).toHaveLength(3);
+    for (const curve of [...drawing.profileButtockCurves, ...drawing.halfBreadthWaterlineCurves]) {
+      expect(curve.value).toBeGreaterThan(0);
+      expect(curve.value).toBeLessThan(drawing.maxRadius);
+      expect(curve.points.length).toBeGreaterThan(2);
+      expect(curve.points.every((point) => point.y >= 0 && point.y <= drawing.maxRadius)).toBe(true);
+
+      const sourcePoint = snapshot.smoothPoints.find((point) => point.x === curve.points[Math.floor(curve.points.length / 2)].x);
+      expect(sourcePoint).toBeDefined();
+      if (sourcePoint) {
+        const expected = Math.sqrt(Math.max(0, sourcePoint.y * sourcePoint.y - curve.value * curve.value));
+        expect(curve.points[Math.floor(curve.points.length / 2)].y).toBeCloseTo(expected, 12);
+      }
+    }
+  });
+
   it("creates symmetric waterlines and positive buttocks", () => {
     const drawing = makeTheoreticalDrawing(makeProfileSnapshot(baseState));
 

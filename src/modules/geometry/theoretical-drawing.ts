@@ -5,6 +5,12 @@ export interface TheoreticalGridLine {
   readonly label: string;
 }
 
+export interface TheoreticalCurve {
+  readonly value: number;
+  readonly label: string;
+  readonly points: readonly SmoothPoint[];
+}
+
 export type TheoreticalBodySectionSide = "forward" | "aft" | "midship";
 
 export interface TheoreticalSection {
@@ -22,6 +28,8 @@ export interface TheoreticalDrawing {
   readonly midshipX: number;
   readonly profilePoints: readonly SmoothPoint[];
   readonly halfBreadthPoints: readonly SmoothPoint[];
+  readonly profileButtockCurves: readonly TheoreticalCurve[];
+  readonly halfBreadthWaterlineCurves: readonly TheoreticalCurve[];
   readonly sections: readonly TheoreticalSection[];
   readonly forwardSections: readonly TheoreticalSection[];
   readonly aftSections: readonly TheoreticalSection[];
@@ -65,10 +73,42 @@ function classifyBodyPlanSide(x: number, midshipX: number, totalLength: number):
   return x < midshipX ? "forward" : "aft";
 }
 
+function makeOffsetCurve(points: readonly SmoothPoint[], offset: number): readonly SmoothPoint[] {
+  const tolerance = 1e-9;
+  return Object.freeze(
+    points
+      .filter((point) => point.y + tolerance >= offset)
+      .map((point) =>
+        Object.freeze({
+          x: point.x,
+          y: Math.sqrt(Math.max(0, point.y * point.y - offset * offset)),
+        }),
+      ),
+  );
+}
+
+function makeSectionCurves(lines: readonly TheoreticalGridLine[], points: readonly SmoothPoint[], maxRadius: number): readonly TheoreticalCurve[] {
+  const tolerance = Math.max(maxRadius, 1) * 1e-9;
+  return Object.freeze(
+    lines
+      .filter((line) => line.value > tolerance && line.value < maxRadius - tolerance)
+      .map((line) =>
+        Object.freeze({
+          value: line.value,
+          label: line.label,
+          points: makeOffsetCurve(points, line.value),
+        }),
+      )
+      .filter((curve) => curve.points.length >= 2),
+  );
+}
+
 export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDrawing {
   const totalLength = snapshot.extents.totalLength;
   const maxRadius = snapshot.extents.maxRadius;
   const midshipX = totalLength / 2;
+  const waterlines = makeSymmetricGrid(maxRadius);
+  const buttocks = makePositiveGrid(maxRadius);
   const sections = snapshot.stationPoints.map((point, index) =>
     Object.freeze({
       index: index + 1,
@@ -77,6 +117,7 @@ export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDr
       side: classifyBodyPlanSide(point.x, midshipX, totalLength),
     }),
   );
+  const halfBreadthPoints = Object.freeze(snapshot.smoothPoints.map((point) => Object.freeze({ x: point.x, y: point.y })));
 
   return Object.freeze({
     title: "Теоретический чертеж корпуса",
@@ -85,12 +126,18 @@ export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDr
     maxHeight: snapshot.extents.maxHeight,
     midshipX,
     profilePoints: Object.freeze([...snapshot.smoothPoints]),
-    halfBreadthPoints: Object.freeze(snapshot.smoothPoints.map((point) => Object.freeze({ x: point.x, y: point.y }))),
+    halfBreadthPoints,
+    profileButtockCurves: makeSectionCurves(buttocks, snapshot.smoothPoints, maxRadius),
+    halfBreadthWaterlineCurves: makeSectionCurves(
+      waterlines.filter((line) => line.value >= 0),
+      snapshot.smoothPoints,
+      maxRadius,
+    ),
     sections: Object.freeze(sections),
     forwardSections: Object.freeze(sections.filter((section) => section.side === "forward")),
     aftSections: Object.freeze(sections.filter((section) => section.side === "aft")),
     midshipSections: Object.freeze(sections.filter((section) => section.side === "midship")),
-    waterlines: makeSymmetricGrid(maxRadius),
-    buttocks: makePositiveGrid(maxRadius),
+    waterlines,
+    buttocks,
   });
 }
