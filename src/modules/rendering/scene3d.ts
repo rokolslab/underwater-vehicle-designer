@@ -1,10 +1,14 @@
 import * as THREE from "three";
 import type { ProfileSnapshot } from "../geometry/model";
+import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
 import { buildHullMeshData } from "./mesh";
+import { createEquipmentMesh, equipmentSignature } from "./equipment3d";
+import type { Scene3dSection, Scene3dSettings } from "./model";
+import { defaultScene3dSettings } from "./viewSettings";
 
 export interface HullScene3d {
-  readonly render: (snapshot: ProfileSnapshot) => void;
+  readonly render: (snapshot: ProfileSnapshot, equipment?: readonly EquipmentItem[], settings?: Scene3dSettings) => void;
   readonly resize: () => void;
   readonly dispose: () => void;
 }
@@ -30,6 +34,9 @@ interface MeshSignature {
 
 const initialRotationX = -0.34;
 const initialRotationY = 0.62;
+const solidBodyOpacity = 0.9;
+const xrayWireOpacity = 0.44;
+const solidWireOpacity = 0.28;
 
 function meshSignature(snapshot: ProfileSnapshot): MeshSignature {
   return {
@@ -102,6 +109,56 @@ function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, sn
   });
 }
 
+function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
+  if (section.type === "disabled") return [];
+
+  if (section.type === "crossSectionX") {
+    const centeredX = section.x - totalLength / 2;
+    return [new THREE.Plane(new THREE.Vector3(-1, 0, 0), centeredX)];
+  }
+
+  if (section.plane === "xy") {
+    return [new THREE.Plane(new THREE.Vector3(0, 0, -1), section.offset)];
+  }
+
+  return [new THREE.Plane(new THREE.Vector3(0, -1, 0), section.offset)];
+}
+
+function applyViewSettings(
+  renderer: THREE.WebGLRenderer | null,
+  bodyMaterial: THREE.MeshStandardMaterial,
+  wireMaterial: THREE.LineBasicMaterial,
+  settings: Scene3dSettings,
+  totalLength: number,
+): void {
+  const clippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
+  if (renderer) renderer.localClippingEnabled = clippingPlanes.length > 0;
+
+  bodyMaterial.clippingPlanes = clippingPlanes;
+  wireMaterial.clippingPlanes = clippingPlanes;
+
+  if (settings.mode === "solid") {
+    bodyMaterial.transparent = true;
+    bodyMaterial.opacity = solidBodyOpacity;
+    bodyMaterial.depthWrite = true;
+    wireMaterial.opacity = solidWireOpacity;
+  } else {
+    bodyMaterial.transparent = true;
+    bodyMaterial.opacity = settings.hullOpacity;
+    bodyMaterial.depthWrite = false;
+    wireMaterial.opacity = xrayWireOpacity;
+  }
+
+  bodyMaterial.needsUpdate = true;
+  wireMaterial.needsUpdate = true;
+  logger.debug("3d view settings applied", {
+    mode: settings.mode,
+    opacity: bodyMaterial.opacity,
+    depthWrite: bodyMaterial.depthWrite,
+    clippingPlanes: clippingPlanes.length,
+  });
+}
+
 export function createHullScene3d(container: HTMLElement): HullScene3d {
   const renderer = createRenderer(container);
   const scene = new THREE.Scene();
@@ -111,10 +168,20 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     metalness: 0.08,
     roughness: 0.42,
     transparent: true,
-    opacity: 0.9,
+    opacity: solidBodyOpacity,
+    depthWrite: true,
   });
-  const wireMaterial = new THREE.LineBasicMaterial({ color: 0x134e4a, transparent: true, opacity: 0.28 });
+  const wireMaterial = new THREE.LineBasicMaterial({ color: 0x134e4a, transparent: true, opacity: solidWireOpacity });
+  const equipmentMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2563eb,
+    metalness: 0.04,
+    roughness: 0.36,
+    transparent: false,
+    opacity: 1,
+    depthWrite: true,
+  });
   const hullGroup = new THREE.Group();
+  const equipmentGroup = new THREE.Group();
   const viewState: ViewState = {
     target: new THREE.Vector3(),
     rotationX: initialRotationX,
@@ -126,9 +193,11 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   };
   let currentHull: THREE.Object3D | null = null;
   let currentSignature: MeshSignature | null = null;
+  let currentEquipmentSignature: string | null = null;
 
   scene.background = new THREE.Color(0xffffff);
   scene.add(hullGroup);
+  scene.add(equipmentGroup);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa99c, 1.6));
 
   const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -167,38 +236,83 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       currentSignature = null;
     }
   }
-
-  function replaceHull(snapshot: ProfileSnapshot): void {
-    disposeCurrentHull();
-
-    const geometry = createGeometry(snapshot);
-    const body = new THREE.Mesh(geometry, bodyMaterial);
-    const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), wireMaterial);
-    const group = new THREE.Group();
-    group.add(body);
-    group.add(wire);
-    group.rotation.x = viewState.rotationX;
-    group.rotation.y = viewState.rotationY;
-    currentHull = group;
-    currentSignature = meshSignature(snapshot);
-    hullGroup.add(group);
-    frameSnapshot(camera, viewState, snapshot);
-    logger.debug("3d hull mesh replaced", {
-      points: snapshot.smoothPoints.length,
-      totalLength: snapshot.extents.totalLength,
-      cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
+  function disposeEquipmentMeshes(): void {
+    equipmentGroup.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+      }
     });
+    equipmentGroup.clear();
+    currentEquipmentSignature = null;
   }
 
-  function render(snapshot: ProfileSnapshot): void {
-    if (!renderer) return;
-    const nextSignature = meshSignature(snapshot);
-    if (isSameSignature(currentSignature, nextSignature)) {
-      resize();
-      return;
+  function replaceEquipment(items: readonly EquipmentItem[], snapshot: ProfileSnapshot): void {
+    try {
+      disposeEquipmentMeshes();
+      for (const item of items) {
+        equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterial));
+      }
+      equipmentGroup.rotation.x = viewState.rotationX;
+      equipmentGroup.rotation.y = viewState.rotationY;
+      currentEquipmentSignature = equipmentSignature(items);
+      logger.debug("3d equipment meshes replaced", { count: items.length, signature: currentEquipmentSignature });
+    } catch (error) {
+      logger.error("3d equipment mesh replacement failed", {
+        count: items.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
+  }
 
-    replaceHull(snapshot);
+  function replaceHull(snapshot: ProfileSnapshot): void {
+    try {
+      disposeCurrentHull();
+
+      const geometry = createGeometry(snapshot);
+      const body = new THREE.Mesh(geometry, bodyMaterial);
+      const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), wireMaterial);
+      const group = new THREE.Group();
+      group.add(body);
+      group.add(wire);
+      group.rotation.x = viewState.rotationX;
+      group.rotation.y = viewState.rotationY;
+      currentHull = group;
+      currentSignature = meshSignature(snapshot);
+      hullGroup.add(group);
+      frameSnapshot(camera, viewState, snapshot);
+      logger.debug("3d hull mesh replaced", {
+        points: snapshot.smoothPoints.length,
+        totalLength: snapshot.extents.totalLength,
+        cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
+      });
+    } catch (error) {
+      logger.error("3d hull geometry replacement failed", {
+        mode: "replaceHull",
+        totalLength: snapshot.extents.totalLength,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  function render(
+    snapshot: ProfileSnapshot,
+    equipment: readonly EquipmentItem[] = [],
+    settings: Scene3dSettings = defaultScene3dSettings,
+  ): void {
+    if (!renderer) return;
+    applyViewSettings(renderer, bodyMaterial, wireMaterial, settings, snapshot.extents.totalLength);
+    const nextSignature = meshSignature(snapshot);
+    if (!isSameSignature(currentSignature, nextSignature)) {
+      replaceHull(snapshot);
+      replaceEquipment(equipment, snapshot);
+    } else {
+      const nextEquipmentSignature = equipmentSignature(equipment);
+      if (currentEquipmentSignature !== nextEquipmentSignature) {
+        replaceEquipment(equipment, snapshot);
+      }
+    }
     resize();
   }
 
@@ -219,6 +333,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     viewState.rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, viewState.rotationX + dy * 0.008));
     currentHull.rotation.x = viewState.rotationX;
     currentHull.rotation.y = viewState.rotationY;
+    equipmentGroup.rotation.x = viewState.rotationX;
+    equipmentGroup.rotation.y = viewState.rotationY;
     draw();
   }
 
@@ -252,8 +368,10 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     container.removeEventListener("pointercancel", onPointerUp);
     container.removeEventListener("wheel", onWheel);
     disposeCurrentHull();
+    disposeEquipmentMeshes();
     bodyMaterial.dispose();
     wireMaterial.dispose();
+    equipmentMaterial.dispose();
     renderer?.dispose();
     renderer?.domElement.remove();
     logger.debug("3d scene disposed");
