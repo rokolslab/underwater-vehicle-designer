@@ -116,7 +116,7 @@ function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, sn
   });
 }
 
-function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
+export function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
   if (section.type === "disabled") return [];
 
   if (section.type === "crossSectionX") {
@@ -131,19 +131,18 @@ function clippingPlanesForSection(section: Scene3dSection, totalLength: number):
   return [new THREE.Plane(new THREE.Vector3(0, -1, 0), section.offset)];
 }
 
+export function transformClippingPlanesToWorld(
+  localPlanes: readonly THREE.Plane[],
+  matrixWorld: THREE.Matrix4,
+): THREE.Plane[] {
+  return localPlanes.map((plane) => plane.clone().applyMatrix4(matrixWorld));
+}
+
 function applyViewSettings(
-  renderer: THREE.WebGLRenderer | null,
   bodyMaterial: THREE.MeshStandardMaterial,
   wireMaterial: THREE.LineBasicMaterial,
   settings: Scene3dSettings,
-  totalLength: number,
 ): void {
-  const clippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
-  if (renderer) renderer.localClippingEnabled = clippingPlanes.length > 0;
-
-  bodyMaterial.clippingPlanes = clippingPlanes;
-  wireMaterial.clippingPlanes = clippingPlanes;
-
   if (settings.mode === "solid") {
     bodyMaterial.transparent = true;
     bodyMaterial.opacity = solidBodyOpacity;
@@ -162,7 +161,6 @@ function applyViewSettings(
     mode: settings.mode,
     opacity: bodyMaterial.opacity,
     depthWrite: bodyMaterial.depthWrite,
-    clippingPlanes: clippingPlanes.length,
   });
 }
 
@@ -199,6 +197,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   let currentHull: THREE.Object3D | null = null;
   let currentSignature: MeshSignature | null = null;
   let currentEquipmentSignature: string | null = null;
+  let localClippingPlanes: THREE.Plane[] = [];
+  let worldClippingPlanes: THREE.Plane[] = [];
 
   scene.background = new THREE.Color(0xffffff);
   scene.add(hullGroup);
@@ -251,6 +251,33 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentEquipmentSignature = null;
   }
 
+  function updateWorldClippingPlanes(): void {
+    if (worldClippingPlanes.length === 0) return;
+    currentHull?.updateMatrixWorld(true);
+    const matrixWorld = currentHull?.matrixWorld ?? new THREE.Matrix4();
+    const transformedPlanes = transformClippingPlanesToWorld(localClippingPlanes, matrixWorld);
+
+    for (let index = 0; index < transformedPlanes.length; index += 1) {
+      worldClippingPlanes[index].copy(transformedPlanes[index]);
+    }
+
+    logger.debug("[FIX] 3d clipping planes transformed", {
+      count: worldClippingPlanes.length,
+      rotationX: currentHull?.rotation.x ?? null,
+      rotationY: currentHull?.rotation.y ?? null,
+    });
+  }
+
+  function updateClippingPlanes(settings: Scene3dSettings, totalLength: number): void {
+    localClippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
+    worldClippingPlanes = localClippingPlanes.map((plane) => plane.clone());
+    if (renderer) renderer.localClippingEnabled = worldClippingPlanes.length > 0;
+    bodyMaterial.clippingPlanes = worldClippingPlanes;
+    wireMaterial.clippingPlanes = worldClippingPlanes;
+    bodyMaterial.needsUpdate = true;
+    wireMaterial.needsUpdate = true;
+    updateWorldClippingPlanes();
+  }
   function replaceEquipment(
     items: readonly EquipmentItem[],
     snapshot: ProfileSnapshot,
@@ -308,6 +335,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       currentHull = group;
       currentSignature = meshSignature(snapshot);
       hullGroup.add(group);
+      updateWorldClippingPlanes();
       frameSnapshot(camera, viewState, snapshot);
       logger.debug("3d hull mesh replaced", {
         points: snapshot.smoothPoints.length,
@@ -331,7 +359,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     report?: EquipmentConstraintReport,
   ): void {
     if (!renderer) return;
-    applyViewSettings(renderer, bodyMaterial, wireMaterial, settings, snapshot.extents.totalLength);
+    applyViewSettings(bodyMaterial, wireMaterial, settings);
+    updateClippingPlanes(settings, snapshot.extents.totalLength);
     const nextSignature = meshSignature(snapshot);
     if (!isSameSignature(currentSignature, nextSignature)) {
       replaceHull(snapshot);
@@ -364,6 +393,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentHull.rotation.y = viewState.rotationY;
     equipmentGroup.rotation.x = viewState.rotationX;
     equipmentGroup.rotation.y = viewState.rotationY;
+    updateWorldClippingPlanes();
     draw();
   }
 
