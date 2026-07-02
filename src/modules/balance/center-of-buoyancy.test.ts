@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/profile";
 import { calculateHullCenterOfBuoyancy } from "./center-of-buoyancy";
 
 describe("legacy hull center of buoyancy", () => {
@@ -6,7 +7,7 @@ describe("legacy hull center of buoyancy", () => {
     const result = calculateHullCenterOfBuoyancy({ length: 6, diameter: 2 });
 
     expect(result.isValid).toBe(true);
-    expect(result.displacedVolume).toBeCloseTo((Math.PI * (0.972 * 2) ** 2 * 6) / 8, 12);
+    expect(result.displacedVolume).toBeCloseTo((Math.PI * (PROFILE_RADIUS_NORMALIZATION * 2) ** 2 * 6) / 8, 12);
     expect(result.center.x).toBeCloseTo(2.8, 12);
     expect(result.center.y).toBe(0);
     expect(result.center.z).toBe(0);

@@ -12,7 +12,7 @@
         <div>
           <h1>Обвод подводного аппарата</h1>
           <div class="formula-line">
-            y = +/- 0.972 D sqrt((x/L)(1 - x/L)(1 - 0.5 x/L))
+            y = +/- D/2 sqrt(f(x/L) / fmax), f(t)=t(1-t)(1-0.5t)
           </div>
         </div>
         <dl class="metrics" aria-label="Расчётные параметры">
@@ -47,7 +47,7 @@
               <input id="slenderness" type="number" min="0.1" step="0.1" value="3" />
             </label>
             <label>
-              <span>Параметр D</span>
+              <span>Диаметр D</span>
               <input id="diameter" type="number" min="0.01" step="0.01" value="2" />
             </label>
             <label>

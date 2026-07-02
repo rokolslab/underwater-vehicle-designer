@@ -12,6 +12,12 @@ import {
 } from "./profile";
 
 describe("profile geometry", () => {
+  it("treats diameter as the physical maximum hull height", () => {
+    const diameter = 2;
+    const x = maxRadiusX(6);
+
+    expect(radiusAt(x, 6, diameter)).toBeCloseTo(diameter / 2, 12);
+  });
   it("matches formula fixture radii", () => {
     for (const point of formulaFixture.points) {
       expect(radiusAt(point.x, formulaFixture.length, formulaFixture.diameter)).toBeCloseTo(point.radius, 12);

@@ -1,7 +1,7 @@
-# План реализации: синхронизировать AI Factory git settings
+# План реализации: нормализовать D как физический диаметр корпуса
 
 Branch: master
-Created: 2026-06-30
+Created: 2026-07-02
 
 ## Настройки
 - Testing: yes
@@ -9,36 +9,23 @@ Created: 2026-06-30
 - Docs: no
 
 ## Roadmap Linkage
-Milestone: "none"
-Rationale: Служебная синхронизация AI Factory workflow с уже созданным git-репозиторием; продуктовые вехи roadmap не меняются.
+Milestone: "Добавить импорт/экспорт проекта"
+Rationale: Перед фиксацией JSON-формата нужно стабилизировать семантику базовых параметров корпуса, особенно `diameter`.
 
 ## Контекст
 
-В проекте уже инициализирован git-репозиторий, текущая ветка называется `master`, remote не настроен. В `.ai-factory/config.yaml` сейчас сохранено `git.enabled: false` и `git.base_branch: main`, из-за чего AI Factory продолжает работать как в no-git режиме. Нужно привести настройки в соответствие с фактическим состоянием репозитория и не включать автоматическое создание веток до появления remote.
+Сейчас пользователь вводит `D = 2`, но фактическая максимальная высота корпуса равна примерно `1.7056`, потому что формула радиуса использует `0.972 * D * sqrt(...)` без нормировки на максимум базовой функции. Нужно сделать `diameter` пользовательским физическим максимальным диаметром корпуса: при `diameter = 2` `snapshot.extents.maxHeight` должен быть равен `2`, а `maxRadius` — `1`.
 
 ## Задачи
 
-### Фаза 1: Обновление конфигурации
-- [x] Task 1: Обновить `.ai-factory/config.yaml`: выставить `git.enabled: true`, заменить `git.base_branch: main` на `git.base_branch: master`, оставить `git.create_branches: false`.
-  - Ожидаемое поведение: AI Factory skills распознают проект как git-aware, но не пытаются создавать feature branches или делать `git pull origin master`.
-  - Logging requirements: для этой конфигурационной правки отдельный runtime logging не нужен; в итоговом выводе явно зафиксировать старые и новые значения ключей.
-  - Зависимости: нет.
+### Фаза 1: Расчетная геометрия
+- [x] Task 1: Нормализовать `radiusAt`/`profileRadiusAt` в `src/modules/geometry/profile.ts`, чтобы `diameter` означал фактическую максимальную высоту корпуса. Добавить/сохранить `logger` не требуется: модуль остается чистым расчетным кодом без side effects.
 
-### Фаза 2: Проверка согласованности
-- [x] Task 2: Проверить фактическое состояние git после изменения конфигурации.
-  - Команды: `git branch --show-current`, `git remote -v`, `git status --short`.
-  - Ожидаемое поведение: ветка `master`, remote отсутствует или пустой, рабочее дерево содержит только ожидаемое изменение `.ai-factory/config.yaml` и этот fast-план.
-  - Logging requirements: сохранить в итоговом выводе краткий summary результатов команд и отдельно отметить, почему `create_branches` остается `false`.
-  - Зависимости: Task 1.
+### Фаза 2: Зависимые расчеты и UI
+- [x] Task 2: Обновить зависимые расчеты и пользовательские тексты: legacy `src/modules/balance/center-of-buoyancy.ts`, подпись поля `diameter` в `index.html`, пояснение формулы в верхней строке. Logging: использовать существующий `logger` только в app/UI-слое, новые расчетные logs не добавлять.
 
-### Фаза 3: Quality gate
-- [x] Task 3: Запустить encoding gate и базовую проверку плана.
-  - Команды: `node scripts/check-encoding.mjs`, затем `$aif-verify` после реализации.
-  - Ожидаемое поведение: UTF-8 проверка проходит без warnings/errors; verify не находит блокирующих расхождений между планом и изменением.
-  - Logging requirements: в итоговом выводе привести pass/fail статус проверок и перечислить любые warnings.
-  - Зависимости: Task 2.
+### Фаза 3: Регрессии
+- [x] Task 3: Обновить fixture `tests/fixtures/formula-profile.json` и тесты `src/modules/geometry/profile.test.ts`, `src/modules/balance/center-of-buoyancy.test.ts`, при необходимости соседние тесты, чтобы явно проверять физический диаметр. Logging: тесты не логируют.
 
-## Commit Plan
-
-Один commit после выполнения всех задач:
-- `chore: sync ai factory git settings`
+### Фаза 4: Контекст и проверка
+- [x] Task 4: Обновить AI context/docs только в части фактической смены семантики `diameter` и терминологии подводного аппарата; прогнать `npm run test`, `npm run build`, `npm run check:encoding`. Logging: сохранить результаты команд в итоговом ответе.

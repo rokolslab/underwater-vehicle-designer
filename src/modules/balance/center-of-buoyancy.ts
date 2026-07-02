@@ -1,4 +1,4 @@
-import { PROFILE_RADIUS_FACTOR } from "../geometry/profile";
+import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/profile";
 import type { HullBuoyancyInput, HullBuoyancyResult, Vector3 } from "./model";
 
 const zeroCenter: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
@@ -26,7 +26,7 @@ export function calculateHullCenterOfBuoyancy(input: HullBuoyancyInput): HullBuo
     return invalidResult("diameter must be a positive finite number");
   }
 
-  const radiusScale = PROFILE_RADIUS_FACTOR * input.diameter;
+  const radiusScale = PROFILE_RADIUS_NORMALIZATION * input.diameter;
   const displacedVolume = (Math.PI * radiusScale * radiusScale * input.length) / 8;
   const center = Object.freeze({
     x: (7 * input.length) / 15,

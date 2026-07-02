@@ -2,10 +2,12 @@ import { uniqueSorted } from "../../shared/math";
 import type { ProfileExtents, ProfileSnapshot, ProfileState, SmoothPoint, StationPoint } from "./model";
 
 const smoothSamples = 320;
-export const PROFILE_RADIUS_FACTOR = 0.972;
+const maxRadiusPositionRatio = 1 - Math.sqrt(3) / 3;
+const maxRadiusBody = maxRadiusPositionRatio * (1 - maxRadiusPositionRatio) * (1 - 0.5 * maxRadiusPositionRatio);
+export const PROFILE_RADIUS_NORMALIZATION = 1 / (2 * Math.sqrt(maxRadiusBody));
 
 export function maxRadiusX(length: number): number {
-  return length * (1 - Math.sqrt(3) / 3);
+  return length * maxRadiusPositionRatio;
 }
 
 export function totalProfileLength(length: number, _cylindricalInsertLength = 0): number {
@@ -19,7 +21,7 @@ function normalizeCylindricalInsertLength(length: number, cylindricalInsertLengt
 export function radiusAt(x: number, length: number, diameter: number): number {
   const t = x / length;
   const body = t * (1 - t) * (1 - 0.5 * t);
-  return PROFILE_RADIUS_FACTOR * diameter * Math.sqrt(Math.max(0, body));
+  return diameter * PROFILE_RADIUS_NORMALIZATION * Math.sqrt(Math.max(0, body));
 }
 
 function sourceXAt(x: number, length: number, cylindricalInsertLength: number): number {
