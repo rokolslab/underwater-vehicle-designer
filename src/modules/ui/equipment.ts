@@ -1,3 +1,5 @@
+import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
+import { equipmentIssues, equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem, EquipmentShape } from "../equipment/model";
 import type { EquipmentUpdate } from "../equipment/placement";
 import { logger } from "../../shared/logger";
@@ -8,6 +10,17 @@ function escapeHtml(value: string): string {
 
 function option(value: string, label: string, selected: boolean): string {
   return `<option value="${value}"${selected ? " selected" : ""}>${label}</option>`;
+}
+
+function statusLabel(status: EquipmentConstraintStatus): string {
+  if (status === "outsideHull") return "Вне корпуса";
+  if (status === "intersects") return "Пересечение";
+  if (status === "invalidEquipment") return "Ошибка данных";
+  return "OK";
+}
+
+function statusClass(status: EquipmentConstraintStatus): string {
+  return `equipment-row--${status}`;
 }
 
 function dimensionFields(item: EquipmentItem): string {
@@ -34,9 +47,24 @@ function dimensionFields(item: EquipmentItem): string {
   `;
 }
 
-function renderItem(item: EquipmentItem): string {
+function renderIssueList(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
+  const issues = equipmentIssues(report, item.id);
+  if (issues.length === 0) return "";
+
+  return `<div class="equipment-issues" aria-label="Equipment warnings">${issues
+    .map((issue) => `<span>${escapeHtml(issue.message)}</span>`)
+    .join("")}</div>`;
+}
+
+function renderStatus(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
+  const status = equipmentStatus(report, item.id);
+  return `<div class="equipment-status equipment-status--${status}">${statusLabel(status)}</div>`;
+}
+
+function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
+  const status = equipmentStatus(report, item.id);
   return `
-    <div class="equipment-row" data-equipment-id="${escapeHtml(item.id)}">
+    <div class="equipment-row ${statusClass(status)}" data-equipment-id="${escapeHtml(item.id)}">
       <label><span>Имя</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Shape</span>
@@ -59,17 +87,29 @@ function renderItem(item: EquipmentItem): string {
         </select>
       </label>
       ${dimensionFields(item)}
+      ${renderStatus(item, report)}
       <button class="equipment-delete" data-action="delete-equipment" type="button" aria-label="Удалить ${escapeHtml(item.name)}">×</button>
+      ${renderIssueList(item, report)}
     </div>
   `;
 }
 
-export function renderEquipmentEditor(container: HTMLElement, items: readonly EquipmentItem[]): void {
-  logger.debug("equipment editor render started", { count: items.length });
+function renderSummary(report: EquipmentConstraintReport | undefined): string {
+  const issueCount = report?.issues.length ?? 0;
+  if (issueCount === 0) return "";
+  return `<div class="equipment-warning-summary">Проблемы компоновки: ${issueCount}. Проверьте строки с предупреждениями.</div>`;
+}
+
+export function renderEquipmentEditor(
+  container: HTMLElement,
+  items: readonly EquipmentItem[],
+  report?: EquipmentConstraintReport,
+): void {
+  logger.debug("equipment editor render started", { count: items.length, issueCount: report?.issues.length ?? 0 });
   container.innerHTML = items.length
-    ? items.map(renderItem).join("")
+    ? `${renderSummary(report)}${items.map((item) => renderItem(item, report)).join("")}`
     : '<div class="equipment-empty">Список пуст</div>';
-  logger.debug("equipment editor render completed", { count: items.length });
+  logger.debug("equipment editor render completed", { count: items.length, issueCount: report?.issues.length ?? 0 });
 }
 
 export function equipmentIdFromEvent(event: Event): string | null {

@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
+import { equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 
 export interface EquipmentTransform {
@@ -14,7 +16,14 @@ export interface EquipmentTransform {
   };
 }
 
-export function equipmentSignature(items: readonly EquipmentItem[]): string {
+const materialColorByStatus: Record<EquipmentConstraintStatus, number> = {
+  ok: 0x2563eb,
+  outsideHull: 0xbe123c,
+  intersects: 0xc47a13,
+  invalidEquipment: 0x7f1d1d,
+};
+
+export function equipmentSignature(items: readonly EquipmentItem[], report?: EquipmentConstraintReport): string {
   return items
     .map((item) =>
       JSON.stringify({
@@ -24,6 +33,7 @@ export function equipmentSignature(items: readonly EquipmentItem[]): string {
         position: item.position,
         orientation: item.orientation,
         dimensions: item.dimensions,
+        status: equipmentStatus(report, item.id),
       }),
     )
     .join("|");
@@ -43,6 +53,17 @@ export function equipmentSceneTransform(item: EquipmentItem, totalLength: number
       z: item.position.z,
     }),
     rotation: Object.freeze(rotation),
+  });
+}
+
+export function createEquipmentMaterial(status: EquipmentConstraintStatus): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: materialColorByStatus[status],
+    metalness: 0.04,
+    roughness: 0.36,
+    transparent: false,
+    opacity: 1,
+    depthWrite: true,
   });
 }
 

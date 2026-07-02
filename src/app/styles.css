@@ -361,6 +361,64 @@ h2 {
   font-size: 0.76rem;
 }
 
+.equipment-row--outsideHull,
+.equipment-row--invalidEquipment {
+  border-color: rgba(190, 18, 60, 0.52);
+  background: #fff7f8;
+}
+
+.equipment-row--intersects {
+  border-color: rgba(196, 122, 19, 0.58);
+  background: #fffaf0;
+}
+
+.equipment-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.equipment-status--outsideHull,
+.equipment-status--invalidEquipment {
+  border-color: rgba(190, 18, 60, 0.48);
+  color: var(--rose);
+  background: #fff1f2;
+}
+
+.equipment-status--intersects {
+  border-color: rgba(196, 122, 19, 0.52);
+  color: #9a5b00;
+  background: #fff7df;
+}
+
+.equipment-issues {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  color: var(--rose);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.equipment-warning-summary {
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 122, 19, 0.48);
+  border-radius: 8px;
+  color: #7c4a03;
+  background: #fff7df;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .equipment-row input,
 .equipment-row select {
   width: 100%;

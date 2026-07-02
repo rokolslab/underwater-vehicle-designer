@@ -1,6 +1,7 @@
 import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
 import { makeProjectState, type ProjectState } from "./projectState";
+import { evaluateEquipmentConstraints, type EquipmentConstraintReport } from "../modules/equipment/constraints";
 import { addEquipmentItem, deleteEquipmentItem, updateEquipmentItem } from "../modules/equipment/placement";
 import type { EquipmentItem } from "../modules/equipment/model";
 import { makeProfileSnapshot } from "../modules/geometry/profile";
@@ -66,16 +67,30 @@ const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
 let equipmentItems: readonly EquipmentItem[] = [];
 let currentSnapshot: ProfileSnapshot;
+let currentConstraintReport: EquipmentConstraintReport | undefined;
 let currentProjectState: ProjectState;
 
 function renderEquipment(): void {
-  renderEquipmentEditor(equipmentList, equipmentItems);
+  renderEquipmentEditor(equipmentList, equipmentItems, currentConstraintReport);
 }
 
 function update(source: LastEdited = appState.getLastEdited()): void {
   logger.debug("profile update started", { source, equipmentCount: equipmentItems.length });
   const profile = appState.readState(source);
   currentSnapshot = makeProfileSnapshot(profile);
+
+  try {
+    currentConstraintReport = evaluateEquipmentConstraints(currentSnapshot, equipmentItems);
+  } catch (error) {
+    currentConstraintReport = undefined;
+    logger.error("equipment constraints evaluation failed", {
+      equipmentCount: equipmentItems.length,
+      length: profile.length,
+      cylindricalInsertLength: profile.cylindricalInsertLength,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   updateScene3dControlBounds(scene3dControls, currentSnapshot.extents.totalLength, currentSnapshot.extents.maxRadius);
   const scene3dSettings = normalizeScene3dSettings(readScene3dControls(scene3dControls), {
     totalLength: currentSnapshot.extents.totalLength,
@@ -89,12 +104,15 @@ function update(source: LastEdited = appState.getLastEdited()): void {
     stations: profile.stations,
     equipmentCount: currentProjectState.equipment.length,
     scene3dMode: currentProjectState.scene3dSettings.mode,
+    constraintIssueCount: currentConstraintReport?.issues.length ?? 0,
+    invalidEquipmentCount: currentConstraintReport?.issues.filter((issue) => issue.reason === "invalidEquipment").length ?? 0,
   });
 
-  renderCanvasProfile(canvas, currentSnapshot);
+  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderEquipment();
   renderTable(tableBody, pointCountEl, currentSnapshot);
   renderMetrics(metrics, currentSnapshot);
-  hullScene3d.render(currentSnapshot, currentProjectState.equipment, currentProjectState.scene3dSettings);
+  hullScene3d.render(currentSnapshot, currentProjectState.equipment, currentProjectState.scene3dSettings, currentConstraintReport);
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
@@ -106,7 +124,7 @@ inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()
 inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
 bindScene3dControls(scene3dControls, () => update(appState.getLastEdited()));
 window.addEventListener("resize", () => {
-  renderCanvasProfile(canvas, currentSnapshot);
+  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
   hullScene3d.resize();
 });
 window.addEventListener("beforeunload", () => hullScene3d.dispose());
@@ -114,7 +132,6 @@ window.addEventListener("beforeunload", () => hullScene3d.dispose());
 addEquipmentButton.addEventListener("click", () => {
   equipmentItems = addEquipmentItem(equipmentItems);
   logger.info("equipment added by user", { count: equipmentItems.length });
-  renderEquipment();
   update(appState.getLastEdited());
 });
 
@@ -124,7 +141,6 @@ equipmentList.addEventListener("click", (event) => {
   if (!id) return;
   equipmentItems = deleteEquipmentItem(equipmentItems, id);
   logger.info("equipment deleted by user", { id, count: equipmentItems.length });
-  renderEquipment();
   update(appState.getLastEdited());
 });
 
@@ -141,9 +157,6 @@ equipmentList.addEventListener("change", (event) => {
     logger.debug("[FIX] equipment shape change uses default dimensions", { id, previousShape, nextShape });
   }
   equipmentItems = updateEquipmentItem(equipmentItems, id, readEquipmentUpdate(row, { includeDimensions: !isShapeChange }));
-  if (previousShape !== equipmentItems.find((item) => item.id === id)?.shape) {
-    renderEquipment();
-  }
   update(appState.getLastEdited());
 });
 
@@ -169,13 +182,11 @@ downloadCsvButton.addEventListener("click", () => {
 resetButton.addEventListener("click", () => {
   appState.reset();
   equipmentItems = [];
-  renderEquipment();
   update("slenderness");
 });
 
 try {
   logger.info("application started");
-  renderEquipment();
   update("slenderness");
 } catch (error) {
   logger.error("application initialization failed", {

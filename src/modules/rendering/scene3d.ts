@@ -1,14 +1,21 @@
 import * as THREE from "three";
 import type { ProfileSnapshot } from "../geometry/model";
+import type { EquipmentConstraintReport } from "../equipment/constraints";
+import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
 import { buildHullMeshData } from "./mesh";
-import { createEquipmentMesh, equipmentSignature } from "./equipment3d";
+import { createEquipmentMaterial, createEquipmentMesh, equipmentSignature } from "./equipment3d";
 import type { Scene3dSection, Scene3dSettings } from "./model";
 import { defaultScene3dSettings } from "./viewSettings";
 
 export interface HullScene3d {
-  readonly render: (snapshot: ProfileSnapshot, equipment?: readonly EquipmentItem[], settings?: Scene3dSettings) => void;
+  readonly render: (
+    snapshot: ProfileSnapshot,
+    equipment?: readonly EquipmentItem[],
+    settings?: Scene3dSettings,
+    report?: EquipmentConstraintReport,
+  ) => void;
   readonly resize: () => void;
   readonly dispose: () => void;
 }
@@ -172,14 +179,12 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     depthWrite: true,
   });
   const wireMaterial = new THREE.LineBasicMaterial({ color: 0x134e4a, transparent: true, opacity: solidWireOpacity });
-  const equipmentMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2563eb,
-    metalness: 0.04,
-    roughness: 0.36,
-    transparent: false,
-    opacity: 1,
-    depthWrite: true,
-  });
+  const equipmentMaterials = {
+    ok: createEquipmentMaterial("ok"),
+    outsideHull: createEquipmentMaterial("outsideHull"),
+    intersects: createEquipmentMaterial("intersects"),
+    invalidEquipment: createEquipmentMaterial("invalidEquipment"),
+  };
   const hullGroup = new THREE.Group();
   const equipmentGroup = new THREE.Group();
   const viewState: ViewState = {
@@ -246,16 +251,40 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentEquipmentSignature = null;
   }
 
-  function replaceEquipment(items: readonly EquipmentItem[], snapshot: ProfileSnapshot): void {
+  function replaceEquipment(
+    items: readonly EquipmentItem[],
+    snapshot: ProfileSnapshot,
+    report: EquipmentConstraintReport | undefined,
+  ): void {
     try {
       disposeEquipmentMeshes();
+      const equipmentIds = new Set(items.map((item) => item.id));
+      for (const id of report?.statusById.keys() ?? []) {
+        if (!equipmentIds.has(id)) logger.warn("3d status map references missing equipment", { id });
+      }
+
       for (const item of items) {
-        equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterial));
+        try {
+          const status = equipmentStatus(report, item.id);
+          equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterials[status]));
+        } catch (error) {
+          logger.error("3d equipment mesh creation failed", {
+            id: item.id,
+            shape: item.shape,
+            status: equipmentStatus(report, item.id),
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
       }
       equipmentGroup.rotation.x = viewState.rotationX;
       equipmentGroup.rotation.y = viewState.rotationY;
-      currentEquipmentSignature = equipmentSignature(items);
-      logger.debug("3d equipment meshes replaced", { count: items.length, signature: currentEquipmentSignature });
+      currentEquipmentSignature = equipmentSignature(items, report);
+      logger.debug("3d equipment meshes replaced", {
+        count: items.length,
+        signature: currentEquipmentSignature,
+        statusSummary: equipmentStatusSummary(report),
+      });
     } catch (error) {
       logger.error("3d equipment mesh replacement failed", {
         count: items.length,
@@ -264,7 +293,6 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       throw error;
     }
   }
-
   function replaceHull(snapshot: ProfileSnapshot): void {
     try {
       disposeCurrentHull();
@@ -300,17 +328,18 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     snapshot: ProfileSnapshot,
     equipment: readonly EquipmentItem[] = [],
     settings: Scene3dSettings = defaultScene3dSettings,
+    report?: EquipmentConstraintReport,
   ): void {
     if (!renderer) return;
     applyViewSettings(renderer, bodyMaterial, wireMaterial, settings, snapshot.extents.totalLength);
     const nextSignature = meshSignature(snapshot);
     if (!isSameSignature(currentSignature, nextSignature)) {
       replaceHull(snapshot);
-      replaceEquipment(equipment, snapshot);
+      replaceEquipment(equipment, snapshot, report);
     } else {
-      const nextEquipmentSignature = equipmentSignature(equipment);
+      const nextEquipmentSignature = equipmentSignature(equipment, report);
       if (currentEquipmentSignature !== nextEquipmentSignature) {
-        replaceEquipment(equipment, snapshot);
+        replaceEquipment(equipment, snapshot, report);
       }
     }
     resize();
@@ -371,7 +400,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     disposeEquipmentMeshes();
     bodyMaterial.dispose();
     wireMaterial.dispose();
-    equipmentMaterial.dispose();
+    Object.values(equipmentMaterials).forEach((material) => material.dispose());
     renderer?.dispose();
     renderer?.domElement.remove();
     logger.debug("3d scene disposed");
