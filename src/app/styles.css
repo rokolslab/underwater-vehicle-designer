@@ -107,6 +107,7 @@ h1 {
 .control-panel,
 .drawing-panel,
 .scene3d-panel,
+.theoretical-drawing-band,
 .equipment-band,
 .balance-band,
 .data-band {
@@ -375,6 +376,21 @@ h2 {
   cursor: pointer;
 }
 
+.theoretical-drawing-band {
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.theoretical-drawing-band canvas {
+  display: block;
+  width: calc(100% - 24px);
+  height: 560px;
+  margin: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
 .equipment-band {
   margin-bottom: 20px;
   overflow: hidden;
@@ -577,9 +593,17 @@ tbody tr:hover {
   .scene3d {
     min-height: 396px;
   }
+
+  .theoretical-drawing-band canvas {
+    height: 480px;
+  }
 }
 
 @media (max-width: 560px) {
+  .theoretical-drawing-band canvas {
+    height: 420px;
+  }
+
   .metrics,
   .scene3d-controls,
   .equipment-row {

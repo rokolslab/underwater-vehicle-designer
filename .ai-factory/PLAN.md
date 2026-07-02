@@ -1,4 +1,4 @@
-# План реализации: нормализовать D как физический диаметр корпуса
+# План реализации: модуль теоретического чертежа
 
 Branch: master
 Created: 2026-07-02
@@ -6,26 +6,31 @@ Created: 2026-07-02
 ## Настройки
 - Testing: yes
 - Logging: standard
-- Docs: no
+- Docs: yes
 
 ## Roadmap Linkage
-Milestone: "Добавить импорт/экспорт проекта"
-Rationale: Перед фиксацией JSON-формата нужно стабилизировать семантику базовых параметров корпуса, особенно `diameter`.
+Milestone: "3D-графика и инженерная визуализация"
+Rationale: Теоретический чертеж является инженерным 2D-представлением корпуса и должен использовать ту же расчетную геометрию, что canvas/SVG/3D.
 
 ## Контекст
 
-Сейчас пользователь вводит `D = 2`, но фактическая максимальная высота корпуса равна примерно `1.7056`, потому что формула радиуса использует `0.972 * D * sqrt(...)` без нормировки на максимум базовой функции. Нужно сделать `diameter` пользовательским физическим максимальным диаметром корпуса: при `diameter = 2` `snapshot.extents.maxHeight` должен быть равен `2`, а `maxRadius` — `1`.
+Нужно добавить отдельный модуль "Теоретический чертеж" для подводного аппарата. Это не декоративный профиль, а инженерный вид с согласованными проекциями: продольный профиль, план/полуширота для осесимметричного корпуса, поперечные сечения по точкам, сетка, оси и размерные подписи. Данные должны строиться из `ProfileSnapshot`, без повторного расчета геометрии в UI.
 
 ## Задачи
 
-### Фаза 1: Расчетная геометрия
-- [x] Task 1: Нормализовать `radiusAt`/`profileRadiusAt` в `src/modules/geometry/profile.ts`, чтобы `diameter` означал фактическую максимальную высоту корпуса. Добавить/сохранить `logger` не требуется: модуль остается чистым расчетным кодом без side effects.
+### Фаза 1: Данные чертежа
+- [x] Task 1: Создать чистый расчетный модуль `src/modules/geometry/theoretical-drawing.ts`, который строит данные чертежа из `ProfileSnapshot`: профильные точки, сечения по точкам, ватерлинии, батоксы/полушироты и метаданные масштаба. Logging: не добавлять logs в чистый geometry-модуль.
+- [x] Task 2: Добавить Vitest-регрессии `src/modules/geometry/theoretical-drawing.test.ts` на согласованность с `ProfileSnapshot`, радиусы сечений и симметричные линии сетки. Logging: тесты не логируют.
 
-### Фаза 2: Зависимые расчеты и UI
-- [x] Task 2: Обновить зависимые расчеты и пользовательские тексты: legacy `src/modules/balance/center-of-buoyancy.ts`, подпись поля `diameter` в `index.html`, пояснение формулы в верхней строке. Logging: использовать существующий `logger` только в app/UI-слое, новые расчетные logs не добавлять.
+### Фаза 2: Рендеринг и экспорт
+- [x] Task 3: Добавить canvas-renderer `src/modules/rendering/theoretical-drawing.ts` для теоретического чертежа с тремя зонами: профиль, план/полуширота и поперечные сечения. Logging: использовать `logger.debug` для размеров canvas и количества сечений, `logger.warn` только при недоступном canvas context.
+- [x] Task 4: Добавить SVG export `src/modules/persistence/theoretical-drawing-svg.ts`, использующий те же данные чертежа. Logging: не добавлять logs в persistence builder.
 
-### Фаза 3: Регрессии
-- [x] Task 3: Обновить fixture `tests/fixtures/formula-profile.json` и тесты `src/modules/geometry/profile.test.ts`, `src/modules/balance/center-of-buoyancy.test.ts`, при необходимости соседние тесты, чтобы явно проверять физический диаметр. Logging: тесты не логируют.
+### Фаза 3: UI и контекст
+- [x] Task 5: Интегрировать секцию "Теоретический чертеж" в `index.html`, `src/app/main.ts` и `src/app/styles.css`: отдельный canvas, кнопка экспорта SVG, адаптивная высота, обновление при изменении параметров. Logging: `logger.info` при экспорте чертежа и `logger.debug` при обновлении чертежа.
+- [x] Task 6: Обновить `AGENTS.md`, `.ai-factory/DESCRIPTION.md`, `.ai-factory/ARCHITECTURE.md` только в части нового модуля/entrypoint; прогнать `npm run test`, `npm run build`, `npm run check:encoding` и browser smoke. Logging: сохранить результаты проверок в итоговом ответе.
 
-### Фаза 4: Контекст и проверка
-- [x] Task 4: Обновить AI context/docs только в части фактической смены семантики `diameter` и терминологии подводного аппарата; прогнать `npm run test`, `npm run build`, `npm run check:encoding`. Logging: сохранить результаты команд в итоговом ответе.
+## Commit Plan
+
+Один commit после выполнения всех задач:
+- `feat(rendering): add theoretical hull drawing module`

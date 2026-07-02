@@ -7,12 +7,15 @@ import { evaluateEquipmentConstraints, type EquipmentConstraintReport } from "..
 import { addEquipmentItem, deleteEquipmentItem, updateEquipmentItem } from "../modules/equipment/placement";
 import type { EquipmentItem } from "../modules/equipment/model";
 import { makeProfileSnapshot } from "../modules/geometry/profile";
+import { makeTheoreticalDrawing, type TheoreticalDrawing } from "../modules/geometry/theoretical-drawing";
 import { renderCanvasProfile } from "../modules/rendering/canvas2d";
+import { renderTheoreticalDrawing } from "../modules/rendering/theoretical-drawing";
 import { createHullScene3d } from "../modules/rendering/scene3d";
 import { normalizeScene3dSettings } from "../modules/rendering/viewSettings";
 import { buildCsv } from "../modules/persistence/csv";
 import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
+import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
 import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, readEquipmentUpdate } from "../modules/ui/equipment";
 import { renderBalanceMetrics, renderMetrics } from "../modules/ui/metrics";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, type Scene3dControlElements } from "../modules/ui/scene3dControls";
@@ -61,6 +64,7 @@ const scene3dControls: Scene3dControlElements = {
 };
 
 const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
+const theoreticalDrawingCanvas = requiredElement("#theoretical-drawing-canvas", HTMLCanvasElement);
 const scene3dContainer = requiredElement("#hull-scene-3d", HTMLElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
@@ -86,12 +90,14 @@ const balanceMetrics = {
 };
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
+const downloadTheoreticalDrawingSvgButton = requiredElement("#download-theoretical-drawing-svg", HTMLButtonElement);
 const resetButton = requiredElement("#reset", HTMLButtonElement);
 
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
 let equipmentItems: readonly EquipmentItem[] = [];
 let currentSnapshot: ProfileSnapshot;
+let currentTheoreticalDrawing: TheoreticalDrawing;
 let currentConstraintReport: EquipmentConstraintReport | undefined;
 let currentBalanceResult: EquipmentBalanceResult;
 let currentProjectState: ProjectState;
@@ -134,6 +140,8 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   logger.debug("profile update started", { source, equipmentCount: equipmentItems.length });
   const profile = appState.readState(source);
   currentSnapshot = makeProfileSnapshot(profile);
+  currentTheoreticalDrawing = makeTheoreticalDrawing(currentSnapshot);
+  logger.debug("theoretical drawing data updated", { sectionCount: currentTheoreticalDrawing.sections.length });
 
   try {
     currentConstraintReport = evaluateEquipmentConstraints(currentSnapshot, equipmentItems);
@@ -186,6 +194,7 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   });
 
   renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
   renderEquipment();
   renderTable(tableBody, pointCountEl, currentSnapshot);
   renderMetrics(metrics, currentSnapshot);
@@ -204,6 +213,7 @@ waterDensityInput.addEventListener("input", () => update(appState.getLastEdited(
 bindScene3dControls(scene3dControls, () => update(appState.getLastEdited()));
 window.addEventListener("resize", () => {
   renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
   hullScene3d.resize();
 });
 window.addEventListener("beforeunload", () => hullScene3d.dispose());
@@ -256,6 +266,11 @@ downloadSvgButton.addEventListener("click", () => {
 
 downloadCsvButton.addEventListener("click", () => {
   download("underwater-vehicle-profile.csv", "text/csv;charset=utf-8", buildCsv(currentSnapshot));
+});
+
+downloadTheoreticalDrawingSvgButton.addEventListener("click", () => {
+  logger.info("theoretical drawing exported", { sectionCount: currentTheoreticalDrawing.sections.length });
+  download("underwater-vehicle-theoretical-drawing.svg", "image/svg+xml;charset=utf-8", buildTheoreticalDrawingSvg(currentTheoreticalDrawing));
 });
 
 resetButton.addEventListener("click", () => {

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const requiredIds = [
   "profile-canvas",
+  "theoretical-drawing-canvas",
+  "download-theoretical-drawing-svg",
   "hull-scene-3d",
   "water-density",
   "balance-total-mass",
