@@ -1,4 +1,4 @@
-﻿import "./styles.css";
+import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
 import { makeProjectState, type ProjectState } from "./projectState";
 import { calculateEquipmentBalance, DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../modules/balance/equipment-balance";
@@ -70,7 +70,6 @@ const waterDensityInput = requiredElement("#water-density", HTMLInputElement);
 const metrics = {
   maxRadius: requiredElement("#max-radius", HTMLElement),
   maxHeight: requiredElement("#max-height", HTMLElement),
-  maxX: requiredElement("#max-x", HTMLElement),
   totalLength: requiredElement("#total-length", HTMLElement),
   cylindricalInsertLength: requiredElement("#cylindrical-insert-length-metric", HTMLElement),
 };
@@ -97,8 +96,38 @@ let currentConstraintReport: EquipmentConstraintReport | undefined;
 let currentBalanceResult: EquipmentBalanceResult;
 let currentProjectState: ProjectState;
 
+function focusedEquipmentField(): { id: string; field: string; selectionStart: number | null; selectionEnd: number | null } | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLInputElement || active instanceof HTMLSelectElement)) return null;
+  const row = active.closest<HTMLElement>("[data-equipment-id]");
+  const field = active.dataset.field;
+  if (!row?.dataset.equipmentId || !field) return null;
+
+  return {
+    id: row.dataset.equipmentId,
+    field,
+    selectionStart: active instanceof HTMLInputElement ? active.selectionStart : null,
+    selectionEnd: active instanceof HTMLInputElement ? active.selectionEnd : null,
+  };
+}
+
+function restoreEquipmentFocus(focusState: ReturnType<typeof focusedEquipmentField>): void {
+  if (!focusState) return;
+  const selector = `[data-equipment-id="${CSS.escape(focusState.id)}"] [data-field="${CSS.escape(focusState.field)}"]`;
+  const nextActive = equipmentList.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+  if (!nextActive) return;
+
+  nextActive.focus({ preventScroll: true });
+  if (nextActive instanceof HTMLInputElement && nextActive.type === "text" && focusState.selectionStart !== null) {
+    nextActive.setSelectionRange(focusState.selectionStart, focusState.selectionEnd ?? focusState.selectionStart);
+  }
+  logger.debug("[FIX] equipment editor focus restored after render", { id: focusState.id, field: focusState.field });
+}
+
 function renderEquipment(): void {
+  const focusState = focusedEquipmentField();
   renderEquipmentEditor(equipmentList, equipmentItems, currentConstraintReport);
+  restoreEquipmentFocus(focusState);
 }
 
 function update(source: LastEdited = appState.getLastEdited()): void {
@@ -222,11 +251,11 @@ equipmentList.addEventListener("input", (event) => {
 });
 
 downloadSvgButton.addEventListener("click", () => {
-  download("airship-profile.svg", "image/svg+xml;charset=utf-8", buildSvg(currentSnapshot));
+  download("underwater-vehicle-profile.svg", "image/svg+xml;charset=utf-8", buildSvg(currentSnapshot));
 });
 
 downloadCsvButton.addEventListener("click", () => {
-  download("airship-profile.csv", "text/csv;charset=utf-8", buildCsv(currentSnapshot));
+  download("underwater-vehicle-profile.csv", "text/csv;charset=utf-8", buildCsv(currentSnapshot));
 });
 
 resetButton.addEventListener("click", () => {

@@ -1,4 +1,4 @@
-﻿import {
+import {
   equipmentCenter,
   equipmentDisplacedVolume,
   validateEquipmentItem,
@@ -74,7 +74,7 @@ function accumulateEquipment(items: readonly EquipmentItem[], warnings: BalanceW
   for (const item of items) {
     const validation = validateEquipmentItem(item);
     if (!validation.isValid) {
-      warnings.push(warning("invalidEquipment", validation.reason ?? "Equipment data is invalid.", item.id));
+      warnings.push(warning("invalidEquipment", validation.reason ?? "Данные оборудования некорректны.", item.id));
       continue;
     }
 

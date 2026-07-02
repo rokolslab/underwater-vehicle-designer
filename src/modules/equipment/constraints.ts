@@ -195,7 +195,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
   const extents = itemAxisExtents(item);
   if (!extents) {
     return Object.freeze([
-      makeIssue(item.id, "invalidEquipment", "Equipment dimensions cannot be evaluated for containment."),
+      makeIssue(item.id, "invalidEquipment", "Невозможно проверить габариты оборудования внутри корпуса."),
     ]);
   }
 
@@ -214,7 +214,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
       totalLength,
     });
     issues.push(
-      makeIssue(item.id, "outsideLength", `Equipment extends outside hull length: ${minX.toFixed(2)}..${maxX.toFixed(2)} m.`),
+      makeIssue(item.id, "outsideLength", `Оборудование выходит за длину корпуса: ${minX.toFixed(2)}..${maxX.toFixed(2)} м.`),
     );
   }
 
@@ -243,7 +243,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
         makeIssue(
           item.id,
           "outsideHull",
-          `Equipment radius ${requiredRadius.toFixed(2)} m exceeds hull radius ${hullRadius.toFixed(2)} m at x=${x.toFixed(2)} m.`,
+          `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при x=${x.toFixed(2)} м.`,
         ),
       );
       break;
@@ -305,8 +305,8 @@ function evaluateIntersections(items: readonly EquipmentItem[]): readonly Equipm
 
       const method = first.shape === "sphere" && second.shape === "sphere" ? "sphere-distance" : "conservative-aabb";
       logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, method });
-      issues.push(makeIssue(first.id, "intersects", `Intersects with equipment ${second.id}.`, second.id));
-      issues.push(makeIssue(second.id, "intersects", `Intersects with equipment ${first.id}.`, first.id));
+      issues.push(makeIssue(first.id, "intersects", `Пересекается с оборудованием ${second.id}.`, second.id));
+      issues.push(makeIssue(second.id, "intersects", `Пересекается с оборудованием ${first.id}.`, first.id));
     }
   }
 
@@ -353,7 +353,7 @@ export function evaluateEquipmentConstraints(
         shape: item.shape,
         reason: validation.reason,
       });
-      issues.push(makeIssue(item.id, "invalidEquipment", validation.reason ?? "Equipment data is invalid."));
+      issues.push(makeIssue(item.id, "invalidEquipment", validation.reason ?? "Данные оборудования некорректны."));
       continue;
     }
 

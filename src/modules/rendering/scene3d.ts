@@ -39,8 +39,8 @@ interface MeshSignature {
   readonly smoothPointCount: number;
 }
 
-const initialRotationX = -0.34;
-const initialRotationY = 0.62;
+const initialRotationX = -Math.atan(1 / Math.sqrt(2));
+const initialRotationY = Math.PI / 4;
 const solidBodyOpacity = 0.9;
 const xrayWireOpacity = 0.44;
 const solidWireOpacity = 0.28;
@@ -103,15 +103,19 @@ function updateCamera(camera: THREE.PerspectiveCamera, viewState: ViewState): vo
 }
 
 function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, snapshot: ProfileSnapshot): void {
-  const radius = Math.max(snapshot.extents.totalLength, snapshot.extents.maxRadius * 2, 1);
+  const boundingRadius = Math.hypot(snapshot.extents.totalLength / 2, snapshot.extents.maxRadius);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(camera.aspect, 0.1));
+  const limitingFov = Math.max(0.1, Math.min(verticalFov, horizontalFov));
   viewState.target.set(0, 0, 0);
-  viewState.distance = Math.max(radius * 1.35, 2);
+  viewState.distance = Math.max((boundingRadius / Math.sin(limitingFov / 2)) * 1.12, 2);
   camera.near = Math.max(0.01, viewState.distance / 100);
   camera.far = viewState.distance * 20;
   updateCamera(camera, viewState);
-  logger.debug("3d camera framed", {
+  logger.debug("[FIX] 3d camera framed to full hull", {
     totalLength: snapshot.extents.totalLength,
     maxRadius: snapshot.extents.maxRadius,
+    aspect: camera.aspect,
     distance: viewState.distance,
   });
 }
@@ -198,6 +202,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   let currentSignature: MeshSignature | null = null;
   let currentEquipmentSignature: string | null = null;
   let localClippingPlanes: THREE.Plane[] = [];
+  let framedSnapshot: ProfileSnapshot | null = null;
   let worldClippingPlanes: THREE.Plane[] = [];
 
   scene.background = new THREE.Color(0xffffff);
@@ -224,7 +229,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     const height = Math.max(1, container.clientHeight);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    updateCamera(camera, viewState);
+    if (framedSnapshot) frameSnapshot(camera, viewState, framedSnapshot);
+    else updateCamera(camera, viewState);
     draw();
     logger.debug("3d scene resized", { width, height });
   }
@@ -336,6 +342,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       currentSignature = meshSignature(snapshot);
       hullGroup.add(group);
       updateWorldClippingPlanes();
+      framedSnapshot = snapshot;
       frameSnapshot(camera, viewState, snapshot);
       logger.debug("3d hull mesh replaced", {
         points: snapshot.smoothPoints.length,

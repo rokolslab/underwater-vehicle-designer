@@ -3,30 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Обвод дирижабля</title>
+    <title>Обвод подводного аппарата</title>
     <script type="module" src="/src/app/main.ts"></script>
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <h1>Обвод дирижабля</h1>
+          <h1>Обвод подводного аппарата</h1>
           <div class="formula-line">
             y = +/- 0.972 D sqrt((x/L)(1 - x/L)(1 - 0.5 x/L))
           </div>
         </div>
         <dl class="metrics" aria-label="Расчётные параметры">
           <div>
-            <dt>Макс. ордината</dt>
+            <dt>Макс. полу-высота</dt>
             <dd id="max-radius">0.000</dd>
           </div>
           <div>
-            <dt>Полная высота</dt>
+            <dt>Макс. высота корпуса</dt>
             <dd id="max-height">0.000</dd>
-          </div>
-          <div>
-            <dt>x макс.</dt>
-            <dd id="max-x">0.000</dd>
           </div>
           <div>
             <dt>Полная длина</dt>
@@ -51,11 +47,11 @@
               <input id="slenderness" type="number" min="0.1" step="0.1" value="3" />
             </label>
             <label>
-              <span>Диаметр D</span>
+              <span>Параметр D</span>
               <input id="diameter" type="number" min="0.01" step="0.01" value="2" />
             </label>
             <label>
-              <span>Станции</span>
+              <span>Точек обвода</span>
               <input id="stations" type="number" min="8" max="80" step="1" value="20" />
             </label>
             <label>
@@ -72,18 +68,9 @@
             </label>
             <label class="toggle-row">
               <input id="show-points" type="checkbox" checked />
-              <span>Точки станций</span>
+              <span>Точки обвода</span>
             </label>
           </form>
-
-          <div class="source-block">
-            <div class="source-title">Из таблицы</div>
-            <div>D = L / λ</div>
-            <div>ЦВК = Lцил</div>
-            <div>верх: y(x)</div>
-            <div>низ: -y(x)</div>
-          </div>
-
           <div class="actions">
             <button id="download-svg" type="button">Скачать SVG</button>
             <button id="download-csv" type="button">Скачать CSV</button>
@@ -93,7 +80,7 @@
 
         <section class="visualization-panels">
           <section class="drawing-panel" aria-label="2D-проекция корпуса">
-            <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
+            <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата"></canvas>
           </section>
           <section class="scene3d-panel" aria-label="3D-представление корпуса">
             <div class="scene3d-header">
@@ -191,23 +178,28 @@
       </section>
 
       <section class="data-band" aria-label="Координаты">
-        <div class="data-header">
-          <h2>Координаты станций</h2>
-          <span id="point-count"></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>x</th>
-                <th>y верх</th>
-                <th>y низ</th>
-              </tr>
-            </thead>
-            <tbody id="coordinate-rows"></tbody>
-          </table>
-        </div>
+        <details class="coordinate-details">
+          <summary class="data-header">
+            <h2>Координаты точек</h2>
+            <span class="coordinate-summary">
+              <span id="point-count"></span>
+              <span class="coordinate-summary-action">Показать</span>
+            </span>
+          </summary>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>x</th>
+                  <th>y верх</th>
+                  <th>y низ</th>
+                </tr>
+              </thead>
+              <tbody id="coordinate-rows"></tbody>
+            </table>
+          </div>
+        </details>
       </section>
     </main>
   </body>

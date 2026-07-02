@@ -52,10 +52,10 @@ const mojibakeTokens = [
 const mojibakePattern = new RegExp(mojibakeTokens.join("|"), "u");
 
 const expectedStrings = [
-  { file: "index.html", value: "Обвод дирижабля" },
+  { file: "index.html", value: "Обвод подводного аппарата" },
   { file: "index.html", value: "Расчётные параметры" },
   { file: "index.html", value: "Скачать SVG" },
-  { file: "index.html", value: "Координаты станций" },
+  { file: "index.html", value: "Координаты точек" },
   { file: "src/modules/ui/table.ts", value: "точек" },
 ];
 

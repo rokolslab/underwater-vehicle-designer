@@ -71,7 +71,7 @@ h1 {
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(108px, 1fr));
+  grid-template-columns: repeat(2, minmax(132px, 1fr));
   gap: 10px;
 }
 
@@ -122,19 +122,21 @@ h1 {
 
 .control-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .control-grid label {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 8px;
+  align-items: center;
   color: var(--muted);
   font-size: 0.86rem;
 }
 
 .control-grid input[type="number"] {
-  width: 100%;
-  height: 42px;
+  width: 112px;
+  height: 36px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 0 10px;
@@ -157,6 +159,7 @@ h1 {
 
 .toggle-row {
   grid-template-columns: 18px 1fr;
+  justify-content: start;
   align-items: center;
   color: var(--ink);
 }
@@ -227,7 +230,7 @@ h1 {
 .scene3d-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .panel-title {
@@ -242,7 +245,7 @@ h1 {
 
 .scene3d-controls {
   display: grid;
-  grid-template-columns: minmax(88px, 0.9fr) minmax(130px, 1.1fr) minmax(98px, 1fr) minmax(72px, 0.7fr) minmax(96px, 0.9fr) minmax(84px, 0.8fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   align-items: end;
 }
@@ -309,7 +312,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
 }
@@ -321,6 +324,46 @@ h2 {
 #point-count {
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.coordinate-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.coordinate-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.coordinate-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.coordinate-summary-action {
+  min-height: 32px;
+  border: 1px solid var(--teal);
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: var(--teal);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.coordinate-details[open] .coordinate-summary-action {
+  border-color: var(--line-strong);
+  background: #fbfcfb;
+  color: var(--ink);
+  font-size: 0;
+}
+
+.coordinate-details[open] .coordinate-summary-action::before {
+  content: "Скрыть";
+  font-size: 0.82rem;
 }
 .compact-action {
   min-height: 34px;
@@ -345,7 +388,8 @@ h2 {
 
 .equipment-row {
   display: grid;
-  grid-template-columns: minmax(130px, 1.2fr) minmax(96px, 0.8fr) repeat(7, minmax(76px, 0.7fr)) 38px;
+  grid-template-columns: 150px 104px 84px repeat(3, 72px) 72px repeat(3, 72px) 96px 38px;
+  min-width: max-content;
   gap: 8px;
   align-items: end;
   padding: 10px;
@@ -424,7 +468,7 @@ h2 {
 .equipment-row select {
   width: 100%;
   min-width: 0;
-  height: 34px;
+  height: 32px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 0 8px;
