@@ -108,6 +108,7 @@ h1 {
 .drawing-panel,
 .scene3d-panel,
 .equipment-band,
+.balance-band,
 .data-band {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -550,3 +551,61 @@ tbody tr:hover {
     flex: 1 1 120px;
   }
 }
+
+.balance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.balance-grid div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.balance-grid dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.balance-grid dd {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  font-size: 0.96rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-warning-summary {
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 122, 19, 0.48);
+  border-radius: 8px;
+  color: #7c4a03;
+  background: #fff7df;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.balance-warning-summary--ok {
+  border-color: rgba(15, 118, 110, 0.38);
+  color: var(--teal);
+  background: #edf8f5;
+}
+
+@media (max-width: 900px) {
+  .balance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .balance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

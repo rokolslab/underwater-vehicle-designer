@@ -16,7 +16,7 @@ function statusLabel(status: EquipmentConstraintStatus): string {
   if (status === "outsideHull") return "Вне корпуса";
   if (status === "intersects") return "Пересечение";
   if (status === "invalidEquipment") return "Ошибка данных";
-  return "OK";
+  return "Норма";
 }
 
 function statusClass(status: EquipmentConstraintStatus): string {
@@ -26,24 +26,24 @@ function statusClass(status: EquipmentConstraintStatus): string {
 function dimensionFields(item: EquipmentItem): string {
   if (item.shape === "sphere") {
     return `
-      <label><span>R</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
-      <label class="is-hidden"><span>L</span><input data-field="length" type="number" min="0.001" step="0.01" value="" /></label>
-      <label class="is-hidden"><span>W</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
+      <label><span>Р</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
+      <label class="is-hidden"><span>Дл.</span><input data-field="length" type="number" min="0.001" step="0.01" value="" /></label>
+      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
     `;
   }
 
   if (item.shape === "cylinder") {
     return `
-      <label><span>R</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
-      <label><span>L</span><input data-field="length" type="number" min="0.001" step="0.01" value="${item.dimensions.length}" /></label>
-      <label class="is-hidden"><span>W</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
+      <label><span>Р</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
+      <label><span>Дл.</span><input data-field="length" type="number" min="0.001" step="0.01" value="${item.dimensions.length}" /></label>
+      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
     `;
   }
 
   return `
-    <label><span>W</span><input data-field="width" type="number" min="0.001" step="0.01" value="${item.dimensions.width}" /></label>
-    <label><span>H</span><input data-field="height" type="number" min="0.001" step="0.01" value="${item.dimensions.height}" /></label>
-    <label><span>D</span><input data-field="depth" type="number" min="0.001" step="0.01" value="${item.dimensions.depth}" /></label>
+    <label><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="${item.dimensions.width}" /></label>
+    <label><span>В</span><input data-field="height" type="number" min="0.001" step="0.01" value="${item.dimensions.height}" /></label>
+    <label><span>Гл.</span><input data-field="depth" type="number" min="0.001" step="0.01" value="${item.dimensions.depth}" /></label>
   `;
 }
 
@@ -51,7 +51,7 @@ function renderIssueList(item: EquipmentItem, report: EquipmentConstraintReport 
   const issues = equipmentIssues(report, item.id);
   if (issues.length === 0) return "";
 
-  return `<div class="equipment-issues" aria-label="Equipment warnings">${issues
+  return `<div class="equipment-issues" aria-label="Предупреждения по оборудованию">${issues
     .map((issue) => `<span>${escapeHtml(issue.message)}</span>`)
     .join("")}</div>`;
 }
@@ -67,11 +67,11 @@ function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | und
     <div class="equipment-row ${statusClass(status)}" data-equipment-id="${escapeHtml(item.id)}">
       <label><span>Имя</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
-        <span>Shape</span>
+        <span>Форма</span>
         <select data-field="shape">
-          ${option("sphere", "Sphere", item.shape === "sphere")}
-          ${option("cylinder", "Cylinder", item.shape === "cylinder")}
-          ${option("box", "Box", item.shape === "box")}
+          ${option("sphere", "Сфера", item.shape === "sphere")}
+          ${option("cylinder", "Цилиндр", item.shape === "cylinder")}
+          ${option("box", "Блок", item.shape === "box")}
         </select>
       </label>
       <label><span>Масса</span><input data-field="massKg" type="number" min="0.001" step="0.1" value="${item.massKg}" /></label>

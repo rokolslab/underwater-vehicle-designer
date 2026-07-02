@@ -1,0 +1,171 @@
+﻿import {
+  equipmentCenter,
+  equipmentDisplacedVolume,
+  validateEquipmentItem,
+  type EquipmentItem,
+} from "../equipment/model";
+import { logger } from "../../shared/logger";
+import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult, Vector3 } from "./model";
+
+export const DEFAULT_WATER_DENSITY_KG_PER_M3 = 1025;
+export const DEFAULT_GRAVITY_M_PER_S2 = 9.80665;
+
+const zeroVector: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
+
+interface Accumulator {
+  readonly totalMassKg: number;
+  readonly displacedVolumeM3: number;
+  readonly weightedMassCenter: Vector3;
+  readonly weightedVolumeCenter: Vector3;
+}
+
+function isPositiveFinite(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function warning(code: BalanceWarningCode, message: string, equipmentId?: string): BalanceWarning {
+  const item = Object.freeze({ code, message, ...(equipmentId ? { equipmentId } : {}) });
+  logger.warn("equipment balance warning", { code, equipmentId });
+  return item;
+}
+
+function addWeightedVector(current: Vector3, center: Vector3, weight: number): Vector3 {
+  return Object.freeze({
+    x: current.x + center.x * weight,
+    y: current.y + center.y * weight,
+    z: current.z + center.z * weight,
+  });
+}
+
+function divideVector(vector: Vector3, divisor: number): Vector3 {
+  if (!isPositiveFinite(divisor)) return zeroVector;
+  return Object.freeze({ x: vector.x / divisor, y: vector.y / divisor, z: vector.z / divisor });
+}
+
+function momentArm(centerOfBuoyancy: Vector3, centerOfGravity: Vector3): Vector3 {
+  return Object.freeze({
+    x: centerOfBuoyancy.x - centerOfGravity.x,
+    y: centerOfBuoyancy.y - centerOfGravity.y,
+    z: centerOfBuoyancy.z - centerOfGravity.z,
+  });
+}
+
+function emptyResult(warnings: readonly BalanceWarning[]): EquipmentBalanceResult {
+  return Object.freeze({
+    isValid: false,
+    totalMassKg: 0,
+    displacedVolumeM3: 0,
+    weightN: 0,
+    buoyancyForceN: 0,
+    netBuoyancyN: 0,
+    centerOfGravity: zeroVector,
+    centerOfBuoyancy: zeroVector,
+    momentArm: zeroVector,
+    warnings: Object.freeze([...warnings]),
+  });
+}
+
+function accumulateEquipment(items: readonly EquipmentItem[], warnings: BalanceWarning[]): Accumulator {
+  let totalMassKg = 0;
+  let displacedVolumeM3 = 0;
+  let weightedMassCenter: Vector3 = zeroVector;
+  let weightedVolumeCenter: Vector3 = zeroVector;
+
+  for (const item of items) {
+    const validation = validateEquipmentItem(item);
+    if (!validation.isValid) {
+      warnings.push(warning("invalidEquipment", validation.reason ?? "Equipment data is invalid.", item.id));
+      continue;
+    }
+
+    const center = equipmentCenter(item);
+    const volume = equipmentDisplacedVolume(item);
+    totalMassKg += item.massKg;
+    displacedVolumeM3 += volume;
+    weightedMassCenter = addWeightedVector(weightedMassCenter, center, item.massKg);
+    weightedVolumeCenter = addWeightedVector(weightedVolumeCenter, center, volume);
+  }
+
+  return Object.freeze({ totalMassKg, displacedVolumeM3, weightedMassCenter, weightedVolumeCenter });
+}
+
+export function calculateEquipmentBalance(input: EquipmentBalanceInput): EquipmentBalanceResult {
+  const waterDensityKgPerM3 = input.waterDensityKgPerM3 ?? DEFAULT_WATER_DENSITY_KG_PER_M3;
+  const gravityMPerS2 = input.gravityMPerS2 ?? DEFAULT_GRAVITY_M_PER_S2;
+  const warnings: BalanceWarning[] = [];
+
+  logger.debug("equipment balance calculation started", {
+    equipmentCount: input.equipment.length,
+    waterDensityKgPerM3,
+    gravityMPerS2,
+  });
+
+  if (input.equipment.length === 0) {
+    warnings.push(warning("emptyEquipment", "No equipment is available for balance calculation."));
+  }
+
+  if (!isPositiveFinite(waterDensityKgPerM3)) {
+    warnings.push(warning("invalidWaterDensity", "Water density must be a positive finite number."));
+  }
+
+  if (!isPositiveFinite(gravityMPerS2)) {
+    warnings.push(warning("invalidGravity", "Gravity must be a positive finite number."));
+  }
+
+  const accumulator = accumulateEquipment(input.equipment, warnings);
+  if (
+    input.equipment.length === 0 ||
+    !isPositiveFinite(waterDensityKgPerM3) ||
+    !isPositiveFinite(gravityMPerS2) ||
+    !isPositiveFinite(accumulator.totalMassKg) ||
+    !isPositiveFinite(accumulator.displacedVolumeM3)
+  ) {
+    logger.debug("equipment balance calculation completed", {
+      equipmentCount: input.equipment.length,
+      totalMassKg: accumulator.totalMassKg,
+      displacedVolumeM3: accumulator.displacedVolumeM3,
+      warningCount: warnings.length,
+    });
+    return emptyResult(warnings);
+  }
+
+  const centerOfGravity = divideVector(accumulator.weightedMassCenter, accumulator.totalMassKg);
+  const centerOfBuoyancy = divideVector(accumulator.weightedVolumeCenter, accumulator.displacedVolumeM3);
+  const weightN = accumulator.totalMassKg * gravityMPerS2;
+  const buoyancyForceN = accumulator.displacedVolumeM3 * waterDensityKgPerM3 * gravityMPerS2;
+  const netBuoyancyN = buoyancyForceN - weightN;
+  const arm = momentArm(centerOfBuoyancy, centerOfGravity);
+
+  if (netBuoyancyN <= 0) {
+    warnings.push(warning("nonPositiveBuoyancy", "Net buoyancy is zero or negative."));
+  }
+
+  if (centerOfBuoyancy.z <= centerOfGravity.z) {
+    warnings.push(warning("unstableVerticalCenters", "Center of buoyancy is not above center of gravity."));
+  }
+
+  const result = Object.freeze({
+    isValid: !warnings.some((item) =>
+      item.code === "emptyEquipment" || item.code === "invalidEquipment" || item.code === "invalidWaterDensity" || item.code === "invalidGravity",
+    ),
+    totalMassKg: accumulator.totalMassKg,
+    displacedVolumeM3: accumulator.displacedVolumeM3,
+    weightN,
+    buoyancyForceN,
+    netBuoyancyN,
+    centerOfGravity,
+    centerOfBuoyancy,
+    momentArm: arm,
+    warnings: Object.freeze([...warnings]),
+  });
+
+  logger.debug("equipment balance calculation completed", {
+    equipmentCount: input.equipment.length,
+    totalMassKg: result.totalMassKg,
+    displacedVolumeM3: result.displacedVolumeM3,
+    netBuoyancyN: result.netBuoyancyN,
+    warningCount: result.warnings.length,
+  });
+
+  return result;
+}

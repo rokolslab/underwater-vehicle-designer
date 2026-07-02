@@ -40,6 +40,7 @@ Airship — клиентский веб-инструмент для постро
 - 3D-корпус как тело вращения на Three.js с режимами `solid`, `x-ray`, `cutaway`, регулируемой прозрачностью и clipping-сечениями.
 - Базовая модель оборудования: шар, цилиндр и box с массой, координатами, размерами, ориентацией по главным осям, расчетом геометрического объема и центра.
 - Проверки компоновки оборудования: status report `ok`/`outsideHull`/`intersects`/`invalidEquipment`, предупреждения в редакторе, 2D overlay и 3D-подсветка проблемных meshes. Планируемые функции: JSON import/export и расчет баланса.
+- Equipment balance calculation: CG, CB, total mass, displaced volume, weight, buoyancy, net buoyancy and moment arm.
 
 ## Выявленные паттерны
 
