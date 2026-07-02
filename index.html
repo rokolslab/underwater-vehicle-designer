@@ -92,10 +92,57 @@
             <canvas id="profile-canvas" aria-label="Теоретический обвод дирижабля"></canvas>
           </section>
           <section class="scene3d-panel" aria-label="3D-представление корпуса">
-            <div class="panel-title">3D корпус</div>
+            <div class="scene3d-header">
+              <div class="panel-title">3D корпус</div>
+              <div class="scene3d-controls" aria-label="Настройки 3D">
+                <label>
+                  <span>Режим</span>
+                  <select id="scene3d-mode">
+                    <option value="solid">Solid</option>
+                    <option value="x-ray">X-Ray</option>
+                    <option value="cutaway">Cutaway</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Прозрачность</span>
+                  <input id="scene3d-opacity" type="range" min="0.12" max="0.45" step="0.01" value="0.28" />
+                </label>
+                <label>
+                  <span>Сечение</span>
+                  <select id="scene3d-section-type">
+                    <option value="disabled">Нет</option>
+                    <option value="crossSectionX">X</option>
+                    <option value="longitudinalPlane">Плоскость</option>
+                  </select>
+                </label>
+                <label>
+                  <span>X</span>
+                  <input id="scene3d-section-x" type="number" min="0" step="0.1" value="3" />
+                </label>
+                <label>
+                  <span>Плоскость</span>
+                  <select id="scene3d-section-plane">
+                    <option value="xy">XY</option>
+                    <option value="xz">XZ</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Смещение</span>
+                  <input id="scene3d-section-offset" type="number" step="0.1" value="0" />
+                </label>
+              </div>
+            </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
           </section>
         </section>
+      </section>
+
+      <section class="equipment-band" aria-label="Оборудование">
+        <div class="data-header">
+          <h2>Оборудование</h2>
+          <button id="add-equipment" class="compact-action" type="button">Добавить</button>
+        </div>
+        <div id="equipment-list" class="equipment-list"></div>
       </section>
 
       <section class="data-band" aria-label="Координаты">

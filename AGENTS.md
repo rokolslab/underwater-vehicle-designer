@@ -4,7 +4,7 @@
 
 ## Обзор проекта
 
-Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D-обводов корпуса дирижабля или подводного аппарата. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, таблицу координат станций и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
+Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса дирижабля или подводного аппарата и базовой компоновки оборудования. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, Three.js-просмотр, таблицу координат станций, список оборудования и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
 
 ## Текущий стек
 
@@ -25,7 +25,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 
 - **3D-графика:** Three.js
 - **Геометрия:** ЦВК, цилиндрическая вставка корпуса
-- **Компоновка:** оборудование внутри корпуса
+- **Компоновка:** расширенные проверки оборудования внутри корпуса
 - **Баланс:** ЦТ, ЦВ, крен и дифферент
 - **Проектные данные:** JSON import/export
 
@@ -42,14 +42,16 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 ├── src/
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint и UI orchestration
-│   │   ├── appState.ts       # Нормализация ввода, lastEdited, reset
+│   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
+│   │   ├── projectState.ts    # App-layer aggregate: profile, equipment, scene3dSettings
 │   │   └── styles.css        # Основные стили приложения
 │   ├── modules/
 │   │   ├── geometry/         # Чистая расчетная геометрия и ProfileSnapshot
+│   │   ├── equipment/        # Модель оборудования и операции размещения
 │   │   ├── balance/          # Расчеты ЦВ и будущие расчеты баланса
-│   │   ├── rendering/        # Canvas 2D rendering
+│   │   ├── rendering/        # Canvas 2D, Three.js, mesh/equipment/view settings
 │   │   ├── persistence/      # CSV/SVG/download
-│   │   └── ui/               # Controls, table, metrics
+│   │   └── ui/               # Controls, equipment editor, table, metrics
 │   └── shared/               # Общие helpers: math, format, logger
 ├── tests/fixtures/           # Эталонные данные, включая fixture по formula.xlsx
 ├── index.html                # Vite HTML shell
@@ -71,11 +73,17 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 | Файл | Назначение |
 | --- | --- |
 | `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
-| `src/app/main.ts` | Инициализация DOM, сборка snapshot, canvas/table/metrics/export orchestration |
-| `src/app/appState.ts` | Нормализация пользовательского ввода, связь `D = L / lambda`, `lastEdited` |
+| `src/app/main.ts` | Инициализация DOM, сборка ProjectState, canvas/table/metrics/3D/export orchestration |
+| `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `D = L / lambda`, `lastEdited` |
+| `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings` |
 | `src/modules/geometry/profile.ts` | Формула радиуса, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
+| `src/modules/equipment/model.ts` | Типы оборудования, объем, центр и displaced-volume helpers |
+| `src/modules/equipment/placement.ts` | Создание, update/delete/rename и нормализация equipment list |
 | `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
+| `src/modules/rendering/scene3d.ts` | Three.js-сцена корпуса, X-Ray/Cutaway, clipping и equipment meshes |
+| `src/modules/rendering/viewSettings.ts` | Нормализация 3D-режима, прозрачности и сечений |
+| `src/modules/rendering/equipment3d.ts` | 3D signature/transform helpers и mesh factory для оборудования |
 | `src/modules/persistence/svg.ts` | SVG export текущего профиля |
 | `src/modules/persistence/csv.ts` | CSV export координат станций |
 | `scripts/check-encoding.mjs` | Проверка UTF-8 и ключевых русских UI-строк |
