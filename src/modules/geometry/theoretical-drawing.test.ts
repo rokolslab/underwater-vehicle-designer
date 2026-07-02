@@ -21,6 +21,7 @@ describe("theoretical drawing geometry", () => {
     expect(drawing.totalLength).toBe(snapshot.extents.totalLength);
     expect(drawing.maxRadius).toBe(snapshot.extents.maxRadius);
     expect(drawing.maxHeight).toBe(snapshot.extents.maxHeight);
+    expect(drawing.midshipX).toBe(snapshot.extents.totalLength / 2);
     expect(drawing.profilePoints).toHaveLength(snapshot.smoothPoints.length);
     expect(drawing.halfBreadthPoints).toHaveLength(snapshot.smoothPoints.length);
   });
@@ -36,6 +37,18 @@ describe("theoretical drawing geometry", () => {
       expect(section.x).toBeCloseTo(station.x, 12);
       expect(section.radius).toBeCloseTo(station.yTop, 12);
     });
+  });
+
+  it("splits body-plan sections around midship", () => {
+    const drawing = makeTheoreticalDrawing(makeProfileSnapshot(baseState));
+
+    expect(drawing.forwardSections.length).toBeGreaterThan(0);
+    expect(drawing.aftSections.length).toBeGreaterThan(0);
+    expect(drawing.midshipSections.length).toBe(1);
+    expect(drawing.forwardSections.every((section) => section.side === "forward" && section.x < drawing.midshipX)).toBe(true);
+    expect(drawing.aftSections.every((section) => section.side === "aft" && section.x > drawing.midshipX)).toBe(true);
+    expect(drawing.midshipSections.every((section) => section.side === "midship" && section.x === drawing.midshipX)).toBe(true);
+    expect(drawing.forwardSections.length + drawing.aftSections.length + drawing.midshipSections.length).toBe(drawing.sections.length);
   });
 
   it("creates symmetric waterlines and positive buttocks", () => {

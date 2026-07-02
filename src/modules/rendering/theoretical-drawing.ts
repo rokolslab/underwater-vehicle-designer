@@ -1,4 +1,4 @@
-import type { TheoreticalDrawing } from "../geometry/theoretical-drawing";
+import type { TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 
@@ -17,12 +17,27 @@ interface DrawingLayout {
   readonly bodyPlan: Rect;
 }
 
+interface ProjectionScale {
+  readonly unit: number;
+  readonly yLimit: number;
+  readonly profileOriginX: number;
+  readonly profileOriginY: number;
+  readonly halfBreadthOriginX: number;
+  readonly halfBreadthOriginY: number;
+  readonly bodyCenterX: number;
+  readonly bodyCenterY: number;
+}
+
 const ink = "#17212b";
 const muted = "#62717f";
 const line = "#d7ded5";
 const strongLine = "#9aa99c";
 const hull = "#0f766e";
 const amber = "#c47a13";
+const forwardSection = "rgba(15, 118, 110, 0.42)";
+const aftSection = "rgba(37, 99, 235, 0.34)";
+const minimumLength = 0.1;
+const minimumRadius = 0.1;
 
 function resizeCanvas(canvas: HTMLCanvasElement): { width: number; height: number; ratio: number } {
   const rect = canvas.getBoundingClientRect();
@@ -47,6 +62,35 @@ function makeLayout(width: number, height: number): DrawingLayout {
     profile: Object.freeze({ x: margin + 46, y: 56, width: leftWidth - 46, height: profileHeight }),
     halfBreadth: Object.freeze({ x: margin + 46, y: 86 + profileHeight, width: leftWidth - 46, height: halfBreadthHeight }),
     bodyPlan: Object.freeze({ x: margin * 2 + leftWidth, y: 56, width: bodyWidth, height: profileHeight + halfBreadthHeight + 30 }),
+  });
+}
+
+function makeProjectionScale(layout: DrawingLayout, drawing: TheoreticalDrawing): ProjectionScale {
+  const totalLength = Math.max(drawing.totalLength, minimumLength);
+  const maxRadius = Math.max(drawing.maxRadius, minimumRadius);
+  const yLimit = Math.max(drawing.maxRadius * 1.12, minimumRadius);
+  const bodyRadiusLimit = Math.max(4, Math.min(layout.bodyPlan.width / 2 - 18, layout.bodyPlan.height / 2 - 18));
+  const unit = Math.max(
+    1e-6,
+    Math.min(
+      layout.profile.width / totalLength,
+      layout.profile.height / (2 * yLimit),
+      layout.halfBreadth.width / totalLength,
+      (layout.halfBreadth.height - 22) / maxRadius,
+      bodyRadiusLimit / maxRadius,
+    ),
+  );
+  const drawingWidth = drawing.totalLength * unit;
+
+  return Object.freeze({
+    unit,
+    yLimit,
+    profileOriginX: layout.profile.x + (layout.profile.width - drawingWidth) / 2,
+    profileOriginY: layout.profile.y + layout.profile.height / 2,
+    halfBreadthOriginX: layout.halfBreadth.x + (layout.halfBreadth.width - drawingWidth) / 2,
+    halfBreadthOriginY: layout.halfBreadth.y + layout.halfBreadth.height - 16,
+    bodyCenterX: layout.bodyPlan.x + layout.bodyPlan.width / 2,
+    bodyCenterY: layout.bodyPlan.y + layout.bodyPlan.height / 2,
   });
 }
 
@@ -79,17 +123,12 @@ function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {
   context.strokeRect(rect.x, rect.y, rect.width, rect.height);
 }
 
-function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing): void {
-  const yLimit = Math.max(drawing.maxRadius * 1.12, 0.1);
-  const scale = Math.min(rect.width / drawing.totalLength, rect.height / (2 * yLimit));
-  const drawingWidth = drawing.totalLength * scale;
-  const originX = rect.x + (rect.width - drawingWidth) / 2;
-  const originY = rect.y + rect.height / 2;
-  const mapX = (x: number) => originX + x * scale;
-  const mapY = (y: number) => originY - y * scale;
+function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
+  const mapX = (x: number) => scale.profileOriginX + x * scale.unit;
+  const mapY = (y: number) => scale.profileOriginY - y * scale.unit;
 
   strokeRect(context, rect);
-  drawText(context, "Профиль", rect.x, rect.y - 10, 700);
+  drawText(context, "Бок", rect.x, rect.y - 10, 700);
 
   context.save();
   context.strokeStyle = line;
@@ -145,16 +184,12 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.restore();
 }
 
-function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing): void {
-  const scale = Math.min(rect.width / drawing.totalLength, (rect.height - 22) / Math.max(drawing.maxRadius, 0.1));
-  const drawingWidth = drawing.totalLength * scale;
-  const originX = rect.x + (rect.width - drawingWidth) / 2;
-  const originY = rect.y + rect.height - 16;
-  const mapX = (x: number) => originX + x * scale;
-  const mapY = (y: number) => originY - y * scale;
+function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
+  const mapX = (x: number) => scale.halfBreadthOriginX + x * scale.unit;
+  const mapY = (y: number) => scale.halfBreadthOriginY - y * scale.unit;
 
   strokeRect(context, rect);
-  drawText(context, "План / полуширота", rect.x, rect.y - 10, 700);
+  drawText(context, "Полуширота", rect.x, rect.y - 10, 700);
 
   context.save();
   context.strokeStyle = line;
@@ -205,27 +240,46 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.restore();
 }
 
-function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing): void {
-  const radius = Math.min(rect.width, rect.height) * 0.42;
-  const scale = radius / Math.max(drawing.maxRadius, 0.1);
-  const cx = rect.x + rect.width / 2;
-  const cy = rect.y + rect.height / 2;
+function drawBodySectionArc(
+  context: CanvasRenderingContext2D,
+  section: TheoreticalSection,
+  cx: number,
+  cy: number,
+  unit: number,
+): void {
+  const radius = Math.max(0.6, section.radius * unit);
+  context.beginPath();
+  if (section.side === "aft") {
+    context.arc(cx, cy, radius, Math.PI / 2, Math.PI * 1.5);
+  } else if (section.side === "forward") {
+    context.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2);
+  } else {
+    context.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2);
+    context.moveTo(cx, cy + radius);
+    context.arc(cx, cy, radius, Math.PI / 2, Math.PI * 1.5);
+  }
+  context.stroke();
+}
+
+function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
+  const cx = scale.bodyCenterX;
+  const cy = scale.bodyCenterY;
 
   strokeRect(context, rect);
-  drawText(context, "Сечения", rect.x, rect.y - 10, 700);
+  drawText(context, "Корпус", rect.x, rect.y - 10, 700);
 
   context.save();
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const waterline of drawing.waterlines) {
-    const y = cy - waterline.value * scale;
+    const y = cy - waterline.value * scale.unit;
     context.beginPath();
     context.moveTo(rect.x + 8, y);
     context.lineTo(rect.x + rect.width - 8, y);
     context.stroke();
   }
   for (const buttock of drawing.buttocks) {
-    const dx = buttock.value * scale;
+    const dx = buttock.value * scale.unit;
     for (const sign of [-1, 1]) {
       const x = cx + sign * dx;
       context.beginPath();
@@ -248,26 +302,31 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.restore();
 
   context.save();
-  context.strokeStyle = "rgba(15, 118, 110, 0.36)";
   context.lineWidth = 1.2;
-  for (const section of drawing.sections) {
-    const sectionRadius = Math.max(0.6, section.radius * scale);
-    context.beginPath();
-    context.arc(cx, cy, sectionRadius, 0, Math.PI * 2);
-    context.stroke();
-  }
+  context.strokeStyle = aftSection;
+  for (const section of drawing.aftSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
+  context.strokeStyle = forwardSection;
+  for (const section of drawing.forwardSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
   context.strokeStyle = hull;
   context.lineWidth = 2;
-  context.beginPath();
-  context.arc(cx, cy, drawing.maxRadius * scale, 0, Math.PI * 2);
-  context.stroke();
+  for (const section of drawing.midshipSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
+  if (drawing.midshipSections.length === 0) {
+    const maxRadius = drawing.maxRadius * scale.unit;
+    context.beginPath();
+    context.arc(cx, cy, maxRadius, -Math.PI / 2, Math.PI / 2);
+    context.moveTo(cx, cy + maxRadius);
+    context.arc(cx, cy, maxRadius, Math.PI / 2, Math.PI * 1.5);
+    context.stroke();
+  }
   context.restore();
 
   context.save();
   context.fillStyle = muted;
   context.font = "11px Segoe UI, Arial, sans-serif";
-  context.fillText("Y", cx + drawing.maxRadius * scale + 8, cy + 4);
-  context.fillText("Z", cx + 6, cy - drawing.maxRadius * scale - 8);
+  context.fillText("корма", rect.x + 12, rect.y + 18);
+  context.fillText("нос", rect.x + rect.width - 36, rect.y + 18);
+  context.fillText("Y", cx + drawing.maxRadius * scale.unit + 8, cy + 4);
+  context.fillText("Z", cx + 6, cy - drawing.maxRadius * scale.unit - 8);
   context.restore();
 }
 
@@ -281,15 +340,20 @@ export function renderTheoreticalDrawing(canvas: HTMLCanvasElement, drawing: The
 
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   const layout = makeLayout(width, height);
+  const scale = makeProjectionScale(layout, drawing);
   drawSheet(context, layout, drawing);
-  drawProfile(context, layout.profile, drawing);
-  drawHalfBreadth(context, layout.halfBreadth, drawing);
-  drawBodyPlan(context, layout.bodyPlan, drawing);
+  drawProfile(context, layout.profile, drawing, scale);
+  drawHalfBreadth(context, layout.halfBreadth, drawing, scale);
+  drawBodyPlan(context, layout.bodyPlan, drawing, scale);
 
   logger.debug("theoretical drawing rendered", {
     width,
     height,
+    scale: scale.unit,
     sectionCount: drawing.sections.length,
+    forwardSectionCount: drawing.forwardSections.length,
+    aftSectionCount: drawing.aftSections.length,
+    midshipSectionCount: drawing.midshipSections.length,
     waterlineCount: drawing.waterlines.length,
     buttockCount: drawing.buttocks.length,
   });
