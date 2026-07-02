@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { evaluateEquipmentConstraints } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
+import { makeProfileSnapshot } from "../geometry/profile";
 import { equipmentSceneTransform, equipmentSignature } from "./equipment3d";
 
 const sphere: EquipmentItem = {
@@ -41,5 +43,23 @@ describe("equipment 3d helpers", () => {
 
     expect(equipmentSignature([sphere])).not.toBe(equipmentSignature([moved]));
     expect(equipmentSignature([sphere])).toBe(equipmentSignature([sphere]));
+  });
+
+  it("changes signature when constraint status changes", () => {
+    const snapshot = makeProfileSnapshot({
+      length: 10,
+      slenderness: 5,
+      diameter: 2,
+      cylindricalInsertLength: 0,
+      stations: 10,
+      showGrid: true,
+      showPoints: true,
+    });
+    const inside = { ...sphere, position: { x: 4, y: 0, z: 0 } } satisfies EquipmentItem;
+    const outside = { ...inside, position: { x: 4, y: 1.4, z: 0 } } satisfies EquipmentItem;
+    const okReport = evaluateEquipmentConstraints(snapshot, [inside]);
+    const outsideReport = evaluateEquipmentConstraints(snapshot, [outside]);
+
+    expect(equipmentSignature([inside], okReport)).not.toBe(equipmentSignature([inside], outsideReport));
   });
 });

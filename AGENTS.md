@@ -4,7 +4,7 @@
 
 ## Обзор проекта
 
-Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса дирижабля или подводного аппарата и базовой компоновки оборудования. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, Three.js-просмотр, таблицу координат станций, список оборудования и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
+Airship / Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса дирижабля или подводного аппарата и базовой компоновки оборудования. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, Three.js-просмотр, таблицу координат станций, список оборудования, расчетные проверки компоновки оборудования и экспорт SVG/CSV. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
 
 ## Текущий стек
 
@@ -25,7 +25,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 
 - **3D-графика:** Three.js
 - **Геометрия:** ЦВК, цилиндрическая вставка корпуса
-- **Компоновка:** расширенные проверки оборудования внутри корпуса
+- **Компоновка:** более точные CAD-подобные проверки оборудования внутри корпуса
 - **Баланс:** ЦТ, ЦВ, крен и дифферент
 - **Проектные данные:** JSON import/export
 
@@ -43,7 +43,7 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint и UI orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
-│   │   ├── projectState.ts    # App-layer aggregate: profile, equipment, scene3dSettings
+│   │   ├── projectState.ts    # App-layer aggregate: profile, equipment, scene3dSettings, balanceSettings
 │   │   └── styles.css        # Основные стили приложения
 │   ├── modules/
 │   │   ├── geometry/         # Чистая расчетная геометрия и ProfileSnapshot
@@ -78,8 +78,10 @@ Airship / Underwater Vehicle Designer — браузерный инженерн�
 | `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings` |
 | `src/modules/geometry/profile.ts` | Формула радиуса, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
+| `src/modules/balance/equipment-balance.ts` | Pure equipment balance calculation: CG, CB, mass, buoyancy, weight, moment arms and warning codes |
 | `src/modules/equipment/model.ts` | Типы оборудования, объем, центр и displaced-volume helpers |
 | `src/modules/equipment/placement.ts` | Создание, update/delete/rename и нормализация equipment list |
+| `src/modules/equipment/constraints.ts` | Проверки выхода оборудования за корпус, пересечений и status report для UI/2D/3D |
 | `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
 | `src/modules/rendering/scene3d.ts` | Three.js-сцена корпуса, X-Ray/Cutaway, clipping и equipment meshes |
 | `src/modules/rendering/viewSettings.ts` | Нормализация 3D-режима, прозрачности и сечений |

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { evaluateEquipmentConstraints } from "../equipment/constraints";
 import { createDefaultEquipmentItem, updateEquipmentItem } from "../equipment/placement";
-import { readEquipmentUpdate } from "./equipment";
+import { makeProfileSnapshot } from "../geometry/profile";
+import { readEquipmentUpdate, renderEquipmentEditor } from "./equipment";
 
 function row(values: Record<string, string>): HTMLElement {
   return {
@@ -75,5 +77,35 @@ describe("equipment ui", () => {
     expect(switched.shape).toBe("box");
     if (switched.shape !== "box") throw new Error("expected box");
     expect(switched.dimensions).toEqual({ width: 0.4, height: 0.4, depth: 0.4 });
+  });
+  it("renders equipment constraint status and warning text", () => {
+    const item = {
+      id: "outside",
+      name: "Outside",
+      shape: "sphere" as const,
+      massKg: 1,
+      position: { x: 4, y: 1.4, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.2 },
+    };
+    const report = evaluateEquipmentConstraints(
+      makeProfileSnapshot({
+        length: 10,
+        slenderness: 5,
+        diameter: 2,
+        cylindricalInsertLength: 0,
+        stations: 10,
+        showGrid: true,
+        showPoints: true,
+      }),
+      [item],
+    );
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item], report);
+
+    expect(container.innerHTML).toContain("equipment-row--outsideHull");
+    expect(container.innerHTML).toContain("Вне корпуса");
+    expect(container.innerHTML).toContain("Проблемы компоновки");
   });
 });

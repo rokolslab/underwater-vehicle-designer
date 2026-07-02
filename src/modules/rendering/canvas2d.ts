@@ -1,3 +1,6 @@
+import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
+import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
+import type { EquipmentItem } from "../equipment/model";
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -9,6 +12,27 @@ interface CanvasScale {
   readonly height: number;
   readonly yLimit: number;
 }
+
+interface EquipmentProjection {
+  readonly x: number;
+  readonly y: number;
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+}
+
+const statusStroke: Record<EquipmentConstraintStatus, string> = {
+  ok: "#2563eb",
+  outsideHull: "#be123c",
+  intersects: "#c47a13",
+  invalidEquipment: "#7f1d1d",
+};
+
+const statusFill: Record<EquipmentConstraintStatus, string> = {
+  ok: "rgba(37, 99, 235, 0.16)",
+  outsideHull: "rgba(190, 18, 60, 0.2)",
+  intersects: "rgba(196, 122, 19, 0.2)",
+  invalidEquipment: "rgba(127, 29, 29, 0.22)",
+};
 
 export function resizeCanvas(canvas: HTMLCanvasElement): void {
   const rect = canvas.getBoundingClientRect();
@@ -77,7 +101,87 @@ function drawGrid(context: CanvasRenderingContext2D, scale: CanvasScale, totalLe
   context.restore();
 }
 
-export function renderCanvasProfile(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): void {
+function equipmentProjection(item: EquipmentItem): EquipmentProjection {
+  if (item.shape === "sphere") {
+    return Object.freeze({
+      x: item.position.x,
+      y: item.position.y,
+      halfWidth: item.dimensions.radius,
+      halfHeight: item.dimensions.radius,
+    });
+  }
+
+  if (item.shape === "cylinder") {
+    return Object.freeze({
+      x: item.position.x,
+      y: item.position.y,
+      halfWidth: item.orientation === "x" ? item.dimensions.length / 2 : item.dimensions.radius,
+      halfHeight: item.orientation === "y" ? item.dimensions.length / 2 : item.dimensions.radius,
+    });
+  }
+
+  return Object.freeze({
+    x: item.position.x,
+    y: item.position.y,
+    halfWidth: item.dimensions.width / 2,
+    halfHeight: item.dimensions.height / 2,
+  });
+}
+
+function drawEquipmentOverlay(
+  context: CanvasRenderingContext2D,
+  scale: CanvasScale,
+  equipment: readonly EquipmentItem[],
+  report: EquipmentConstraintReport | undefined,
+): void {
+  if (equipment.length === 0) return;
+
+  const equipmentIds = new Set(equipment.map((item) => item.id));
+  for (const id of report?.statusById.keys() ?? []) {
+    if (!equipmentIds.has(id)) logger.warn("2d overlay received status for missing equipment", { id });
+  }
+
+  context.save();
+  for (const item of equipment) {
+    const status = equipmentStatus(report, item.id);
+    const projection = equipmentProjection(item);
+    const left = scale.mapX(projection.x - projection.halfWidth);
+    const right = scale.mapX(projection.x + projection.halfWidth);
+    const top = scale.mapY(projection.y + projection.halfHeight);
+    const bottom = scale.mapY(projection.y - projection.halfHeight);
+    const width = Math.max(4, right - left);
+    const height = Math.max(4, bottom - top);
+
+    context.fillStyle = statusFill[status];
+    context.strokeStyle = statusStroke[status];
+    context.lineWidth = 1.8;
+
+    if (item.shape === "sphere") {
+      context.beginPath();
+      context.ellipse(scale.mapX(projection.x), scale.mapY(projection.y), width / 2, height / 2, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    } else {
+      context.beginPath();
+      context.rect(left, top, width, height);
+      context.fill();
+      context.stroke();
+    }
+  }
+  context.restore();
+
+  logger.debug("2d equipment overlay rendered", {
+    equipmentCount: equipment.length,
+    statusSummary: equipmentStatusSummary(report),
+  });
+}
+
+export function renderCanvasProfile(
+  canvas: HTMLCanvasElement,
+  snapshot: ProfileSnapshot,
+  equipment: readonly EquipmentItem[] = [],
+  report?: EquipmentConstraintReport,
+): void {
   resizeCanvas(canvas);
   const context = canvas.getContext("2d");
   if (!context) {
@@ -124,6 +228,8 @@ export function renderCanvasProfile(canvas: HTMLCanvasElement, snapshot: Profile
   context.lineWidth = 2.4;
   context.fill(shape);
   context.stroke(shape);
+
+  drawEquipmentOverlay(context, scale, equipment, report);
 
   if (snapshot.state.showPoints) {
     context.fillStyle = "#2563eb";

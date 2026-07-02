@@ -1,14 +1,21 @@
 import * as THREE from "three";
 import type { ProfileSnapshot } from "../geometry/model";
+import type { EquipmentConstraintReport } from "../equipment/constraints";
+import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
 import { buildHullMeshData } from "./mesh";
-import { createEquipmentMesh, equipmentSignature } from "./equipment3d";
+import { createEquipmentMaterial, createEquipmentMesh, equipmentSignature } from "./equipment3d";
 import type { Scene3dSection, Scene3dSettings } from "./model";
 import { defaultScene3dSettings } from "./viewSettings";
 
 export interface HullScene3d {
-  readonly render: (snapshot: ProfileSnapshot, equipment?: readonly EquipmentItem[], settings?: Scene3dSettings) => void;
+  readonly render: (
+    snapshot: ProfileSnapshot,
+    equipment?: readonly EquipmentItem[],
+    settings?: Scene3dSettings,
+    report?: EquipmentConstraintReport,
+  ) => void;
   readonly resize: () => void;
   readonly dispose: () => void;
 }
@@ -109,7 +116,7 @@ function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, sn
   });
 }
 
-function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
+export function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
   if (section.type === "disabled") return [];
 
   if (section.type === "crossSectionX") {
@@ -124,19 +131,18 @@ function clippingPlanesForSection(section: Scene3dSection, totalLength: number):
   return [new THREE.Plane(new THREE.Vector3(0, -1, 0), section.offset)];
 }
 
+export function transformClippingPlanesToWorld(
+  localPlanes: readonly THREE.Plane[],
+  matrixWorld: THREE.Matrix4,
+): THREE.Plane[] {
+  return localPlanes.map((plane) => plane.clone().applyMatrix4(matrixWorld));
+}
+
 function applyViewSettings(
-  renderer: THREE.WebGLRenderer | null,
   bodyMaterial: THREE.MeshStandardMaterial,
   wireMaterial: THREE.LineBasicMaterial,
   settings: Scene3dSettings,
-  totalLength: number,
 ): void {
-  const clippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
-  if (renderer) renderer.localClippingEnabled = clippingPlanes.length > 0;
-
-  bodyMaterial.clippingPlanes = clippingPlanes;
-  wireMaterial.clippingPlanes = clippingPlanes;
-
   if (settings.mode === "solid") {
     bodyMaterial.transparent = true;
     bodyMaterial.opacity = solidBodyOpacity;
@@ -155,7 +161,6 @@ function applyViewSettings(
     mode: settings.mode,
     opacity: bodyMaterial.opacity,
     depthWrite: bodyMaterial.depthWrite,
-    clippingPlanes: clippingPlanes.length,
   });
 }
 
@@ -172,14 +177,12 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     depthWrite: true,
   });
   const wireMaterial = new THREE.LineBasicMaterial({ color: 0x134e4a, transparent: true, opacity: solidWireOpacity });
-  const equipmentMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2563eb,
-    metalness: 0.04,
-    roughness: 0.36,
-    transparent: false,
-    opacity: 1,
-    depthWrite: true,
-  });
+  const equipmentMaterials = {
+    ok: createEquipmentMaterial("ok"),
+    outsideHull: createEquipmentMaterial("outsideHull"),
+    intersects: createEquipmentMaterial("intersects"),
+    invalidEquipment: createEquipmentMaterial("invalidEquipment"),
+  };
   const hullGroup = new THREE.Group();
   const equipmentGroup = new THREE.Group();
   const viewState: ViewState = {
@@ -194,6 +197,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   let currentHull: THREE.Object3D | null = null;
   let currentSignature: MeshSignature | null = null;
   let currentEquipmentSignature: string | null = null;
+  let localClippingPlanes: THREE.Plane[] = [];
+  let worldClippingPlanes: THREE.Plane[] = [];
 
   scene.background = new THREE.Color(0xffffff);
   scene.add(hullGroup);
@@ -246,16 +251,67 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentEquipmentSignature = null;
   }
 
-  function replaceEquipment(items: readonly EquipmentItem[], snapshot: ProfileSnapshot): void {
+  function updateWorldClippingPlanes(): void {
+    if (worldClippingPlanes.length === 0) return;
+    currentHull?.updateMatrixWorld(true);
+    const matrixWorld = currentHull?.matrixWorld ?? new THREE.Matrix4();
+    const transformedPlanes = transformClippingPlanesToWorld(localClippingPlanes, matrixWorld);
+
+    for (let index = 0; index < transformedPlanes.length; index += 1) {
+      worldClippingPlanes[index].copy(transformedPlanes[index]);
+    }
+
+    logger.debug("[FIX] 3d clipping planes transformed", {
+      count: worldClippingPlanes.length,
+      rotationX: currentHull?.rotation.x ?? null,
+      rotationY: currentHull?.rotation.y ?? null,
+    });
+  }
+
+  function updateClippingPlanes(settings: Scene3dSettings, totalLength: number): void {
+    localClippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
+    worldClippingPlanes = localClippingPlanes.map((plane) => plane.clone());
+    if (renderer) renderer.localClippingEnabled = worldClippingPlanes.length > 0;
+    bodyMaterial.clippingPlanes = worldClippingPlanes;
+    wireMaterial.clippingPlanes = worldClippingPlanes;
+    bodyMaterial.needsUpdate = true;
+    wireMaterial.needsUpdate = true;
+    updateWorldClippingPlanes();
+  }
+  function replaceEquipment(
+    items: readonly EquipmentItem[],
+    snapshot: ProfileSnapshot,
+    report: EquipmentConstraintReport | undefined,
+  ): void {
     try {
       disposeEquipmentMeshes();
+      const equipmentIds = new Set(items.map((item) => item.id));
+      for (const id of report?.statusById.keys() ?? []) {
+        if (!equipmentIds.has(id)) logger.warn("3d status map references missing equipment", { id });
+      }
+
       for (const item of items) {
-        equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterial));
+        try {
+          const status = equipmentStatus(report, item.id);
+          equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterials[status]));
+        } catch (error) {
+          logger.error("3d equipment mesh creation failed", {
+            id: item.id,
+            shape: item.shape,
+            status: equipmentStatus(report, item.id),
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
       }
       equipmentGroup.rotation.x = viewState.rotationX;
       equipmentGroup.rotation.y = viewState.rotationY;
-      currentEquipmentSignature = equipmentSignature(items);
-      logger.debug("3d equipment meshes replaced", { count: items.length, signature: currentEquipmentSignature });
+      currentEquipmentSignature = equipmentSignature(items, report);
+      logger.debug("3d equipment meshes replaced", {
+        count: items.length,
+        signature: currentEquipmentSignature,
+        statusSummary: equipmentStatusSummary(report),
+      });
     } catch (error) {
       logger.error("3d equipment mesh replacement failed", {
         count: items.length,
@@ -264,7 +320,6 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       throw error;
     }
   }
-
   function replaceHull(snapshot: ProfileSnapshot): void {
     try {
       disposeCurrentHull();
@@ -280,6 +335,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       currentHull = group;
       currentSignature = meshSignature(snapshot);
       hullGroup.add(group);
+      updateWorldClippingPlanes();
       frameSnapshot(camera, viewState, snapshot);
       logger.debug("3d hull mesh replaced", {
         points: snapshot.smoothPoints.length,
@@ -300,17 +356,19 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     snapshot: ProfileSnapshot,
     equipment: readonly EquipmentItem[] = [],
     settings: Scene3dSettings = defaultScene3dSettings,
+    report?: EquipmentConstraintReport,
   ): void {
     if (!renderer) return;
-    applyViewSettings(renderer, bodyMaterial, wireMaterial, settings, snapshot.extents.totalLength);
+    applyViewSettings(bodyMaterial, wireMaterial, settings);
+    updateClippingPlanes(settings, snapshot.extents.totalLength);
     const nextSignature = meshSignature(snapshot);
     if (!isSameSignature(currentSignature, nextSignature)) {
       replaceHull(snapshot);
-      replaceEquipment(equipment, snapshot);
+      replaceEquipment(equipment, snapshot, report);
     } else {
-      const nextEquipmentSignature = equipmentSignature(equipment);
+      const nextEquipmentSignature = equipmentSignature(equipment, report);
       if (currentEquipmentSignature !== nextEquipmentSignature) {
-        replaceEquipment(equipment, snapshot);
+        replaceEquipment(equipment, snapshot, report);
       }
     }
     resize();
@@ -335,6 +393,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentHull.rotation.y = viewState.rotationY;
     equipmentGroup.rotation.x = viewState.rotationX;
     equipmentGroup.rotation.y = viewState.rotationY;
+    updateWorldClippingPlanes();
     draw();
   }
 
@@ -371,7 +430,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     disposeEquipmentMeshes();
     bodyMaterial.dispose();
     wireMaterial.dispose();
-    equipmentMaterial.dispose();
+    Object.values(equipmentMaterials).forEach((material) => material.dispose());
     renderer?.dispose();
     renderer?.domElement.remove();
     logger.debug("3d scene disposed");
