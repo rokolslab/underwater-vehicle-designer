@@ -115,6 +115,19 @@ describe("equipment constraints", () => {
     expect(equipmentIssues(report, "s2").filter((issue) => issue.otherEquipmentId === "s1")).toHaveLength(1);
   });
 
+  it("uses equipment names in intersection messages", () => {
+    const first = { ...sphere("equipment-1", { x: 4, y: 0, z: 0 }, 0.3), name: "Шар 1" };
+    const second = { ...sphere("equipment-2", { x: 4.5, y: 0, z: 0 }, 0.3), name: "Цилиндр 1" };
+    const report = evaluateEquipmentConstraints(snapshot(), [first, second]);
+
+    const firstMessage = equipmentIssues(report, "equipment-1").find((issue) => issue.reason === "intersects")?.message;
+    const secondMessage = equipmentIssues(report, "equipment-2").find((issue) => issue.reason === "intersects")?.message;
+
+    expect(firstMessage).toContain("Цилиндр 1");
+    expect(firstMessage).not.toContain("equipment-2");
+    expect(secondMessage).toContain("Шар 1");
+    expect(secondMessage).not.toContain("equipment-1");
+  });
   it("keeps cylindrical insert containment consistent with profile radius", () => {
     const report = evaluateEquipmentConstraints(snapshot({ cylindricalInsertLength: 2 }), [
       sphere("s1", { x: 4.8, y: 0.68, z: 0 }, 0.08),

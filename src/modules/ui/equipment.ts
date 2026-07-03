@@ -65,7 +65,7 @@ function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | und
   const status = equipmentStatus(report, item.id);
   return `
     <div class="equipment-row ${statusClass(status)}" data-equipment-id="${escapeHtml(item.id)}">
-      <label><span>Имя</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
+      <label><span>Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Форма</span>
         <select data-field="shape">

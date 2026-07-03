@@ -85,7 +85,8 @@
           <section class="drawing-panel" aria-label="2D-проекция корпуса">
             <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата"></canvas>
           </section>
-          <section class="scene3d-panel" aria-label="3D-представление корпуса">
+          <div class="scene3d-stack">
+            <section class="scene3d-panel" aria-label="3D-представление корпуса">
             <div class="scene3d-header">
               <div class="panel-title">3D корпус</div>
               <div class="scene3d-controls" aria-label="Настройки 3D">
@@ -128,6 +129,15 @@
             </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
           </section>
+
+            <section class="equipment-band" aria-label="Оборудование">
+              <div class="data-header">
+                <h2>Оборудование</h2>
+                <button id="add-equipment" class="compact-action" type="button">Добавить</button>
+              </div>
+              <div id="equipment-list" class="equipment-list"></div>
+            </section>
+          </div>
         </section>
       </section>
 
@@ -137,13 +147,6 @@
           <button id="download-theoretical-drawing-svg" class="compact-action" type="button">Скачать SVG</button>
         </div>
         <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
-      </section>
-      <section class="equipment-band" aria-label="Оборудование">
-        <div class="data-header">
-          <h2>Оборудование</h2>
-          <button id="add-equipment" class="compact-action" type="button">Добавить</button>
-        </div>
-        <div id="equipment-list" class="equipment-list"></div>
       </section>
 
       <section class="balance-band" aria-label="Расчет баланса">

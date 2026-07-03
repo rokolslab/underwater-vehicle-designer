@@ -280,6 +280,10 @@ function pairIntersects(first: EquipmentItem, second: EquipmentItem, firstAabb: 
   return true;
 }
 
+function equipmentDisplayName(item: EquipmentItem): string {
+  return item.name.trim() || item.id;
+}
+
 function evaluateIntersections(items: readonly EquipmentItem[]): readonly EquipmentConstraintIssue[] {
   const issues: EquipmentConstraintIssue[] = [];
   const aabbs = new Map<string, Aabb>();
@@ -304,9 +308,12 @@ function evaluateIntersections(items: readonly EquipmentItem[]): readonly Equipm
       if (!pairIntersects(first, second, firstAabb, secondAabb)) continue;
 
       const method = first.shape === "sphere" && second.shape === "sphere" ? "sphere-distance" : "conservative-aabb";
-      logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, method });
-      issues.push(makeIssue(first.id, "intersects", `Пересекается с оборудованием ${second.id}.`, second.id));
-      issues.push(makeIssue(second.id, "intersects", `Пересекается с оборудованием ${first.id}.`, first.id));
+      const firstName = equipmentDisplayName(first);
+      const secondName = equipmentDisplayName(second);
+      logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, firstName, secondName, method });
+      logger.debug("[FIX] equipment intersection warning uses display names", { id: first.id, otherId: second.id });
+      issues.push(makeIssue(first.id, "intersects", `Пересекается с оборудованием ${secondName}.`, second.id));
+      issues.push(makeIssue(second.id, "intersects", `Пересекается с оборудованием ${firstName}.`, first.id));
     }
   }
 

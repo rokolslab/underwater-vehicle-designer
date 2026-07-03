@@ -108,4 +108,13 @@ describe("equipment ui", () => {
     expect(container.innerHTML).toContain("Вне корпуса");
     expect(container.innerHTML).toContain("Проблемы компоновки");
   });
+  it("labels the equipment name field as designation", () => {
+    const item = createDefaultEquipmentItem({ idFactory: () => "item-1", name: "Шар 1" });
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item]);
+
+    expect(container.innerHTML).toContain("Наименование");
+    expect(container.innerHTML).not.toContain(">Имя<");
+  });
 });
