@@ -1,3 +1,4 @@
+import type { Scene3dSettings } from "../rendering/model";
 import type { Scene3dSettingsInput } from "../rendering/viewSettings";
 import { logger } from "../../shared/logger";
 
@@ -27,6 +28,32 @@ export function readScene3dControls(elements: Scene3dControlElements): Scene3dSe
     hullOpacity: input.hullOpacity,
   });
   return input;
+}
+
+export function writeScene3dControls(elements: Scene3dControlElements, settings: Scene3dSettings): void {
+  elements.mode.value = settings.mode;
+  elements.opacity.value = String(settings.hullOpacity);
+  elements.sectionType.value = settings.section.type;
+
+  if (settings.section.type === "crossSectionX") {
+    elements.sectionX.value = String(settings.section.x);
+    elements.sectionPlane.value = "xy";
+    elements.sectionOffset.value = "0";
+  } else if (settings.section.type === "longitudinalPlane") {
+    elements.sectionX.value = "0";
+    elements.sectionPlane.value = settings.section.plane;
+    elements.sectionOffset.value = String(settings.section.offset);
+  } else {
+    elements.sectionX.value = "0";
+    elements.sectionPlane.value = "xy";
+    elements.sectionOffset.value = "0";
+  }
+
+  logger.debug("3d controls written", {
+    mode: settings.mode,
+    sectionType: settings.section.type,
+    hullOpacity: settings.hullOpacity,
+  });
 }
 
 export function bindScene3dControls(elements: Scene3dControlElements, onChange: () => void): void {

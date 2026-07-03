@@ -44,7 +44,7 @@
 │   │   │   ├── scene3d.ts           # Three.js-сцена
 │   │   │   └── mesh.ts              # Геометрия тела вращения
 │   │   ├── persistence/
-│   │   │   ├── projectJson.ts       # Импорт/экспорт проекта
+│   │   │   ├── project-json.ts      # Импорт/экспорт JSON-проекта
 │   │   │   ├── csv.ts               # CSV-экспорт
 │   │   │   ├── svg.ts               # SVG-экспорт
 │   │   │   └── theoretical-drawing-svg.ts # SVG-экспорт теоретического чертежа

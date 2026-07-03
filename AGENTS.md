@@ -4,7 +4,7 @@
 
 ## Обзор проекта
 
-Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса подводного аппарата и базовой компоновки оборудования. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, Three.js-просмотр, таблицу координат станций, список оборудования, расчетные проверки компоновки оборудования и экспорт SVG/CSV и отдельный теоретический чертеж корпуса. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
+Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса подводного аппарата и базовой компоновки оборудования. Текущая версия работает на Vite + TypeScript, сохраняет canvas-визуализацию, Three.js-просмотр, таблицу координат станций, список оборудования, расчетные проверки компоновки оборудования и экспорт SVG/CSV/JSON и отдельный теоретический чертеж корпуса. Подробное описание проекта хранится в `.ai-factory/DESCRIPTION.md`.
 
 ## Текущий стек
 
@@ -13,7 +13,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 - **Графика:** Canvas 2D, Three.js
 - **Сборка:** Vite
 - **Тесты:** Vitest
-- **Экспорт:** SVG, CSV
+- **Экспорт:** SVG, CSV, JSON проекта
 - **Docker:** dev/prod контейнеры для разработки и VPS smoke checks
 
 ## Термины проекта
@@ -27,7 +27,6 @@ Underwater Vehicle Designer — браузерный инженерный инс
 - **Геометрия:** ЦВК, цилиндрическая вставка корпуса
 - **Компоновка:** более точные CAD-подобные проверки оборудования внутри корпуса
 - **Баланс:** ЦТ, ЦВ, крен и дифферент
-- **Проектные данные:** JSON import/export
 
 ## Структура проекта
 
@@ -50,7 +49,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 │   │   ├── equipment/        # Модель оборудования и операции размещения
 │   │   ├── balance/          # Расчеты ЦВ и будущие расчеты баланса
 │   │   ├── rendering/        # Canvas 2D, theoretical drawing, Three.js, mesh/equipment/view settings
-│   │   ├── persistence/      # CSV/SVG/theoretical drawing SVG/download
+│   │   ├── persistence/      # JSON project import/export, CSV/SVG/theoretical drawing SVG/download
 │   │   └── ui/               # Controls, equipment editor, table, metrics
 │   └── shared/               # Общие helpers: math, format, logger
 ├── tests/fixtures/           # Эталонные данные, включая fixture по formula.xlsx
@@ -88,6 +87,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `src/modules/rendering/scene3d.ts` | Three.js-сцена корпуса, X-Ray/Cutaway, clipping и equipment meshes |
 | `src/modules/rendering/viewSettings.ts` | Нормализация 3D-режима, прозрачности и сечений |
 | `src/modules/rendering/equipment3d.ts` | 3D signature/transform helpers и mesh factory для оборудования |
+| `src/modules/persistence/project-json.ts` | JSON import/export проекта: profile, equipment, 3D и balance settings |
 | `src/modules/persistence/svg.ts` | SVG export текущего профиля |
 | `src/modules/persistence/theoretical-drawing-svg.ts` | SVG export листа теоретического чертежа |
 | `src/modules/persistence/csv.ts` | CSV export координат станций |

@@ -13,14 +13,15 @@ import { renderTheoreticalDrawing } from "../modules/rendering/theoretical-drawi
 import { createHullScene3d } from "../modules/rendering/scene3d";
 import { normalizeScene3dSettings } from "../modules/rendering/viewSettings";
 import { buildCsv } from "../modules/persistence/csv";
+import { buildProjectJson, parseProjectJson, type SerializableProjectState } from "../modules/persistence/project-json";
 import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
 import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
 import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, readEquipmentUpdate } from "../modules/ui/equipment";
 import { renderBalanceMetrics, renderMetrics } from "../modules/ui/metrics";
-import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, type Scene3dControlElements } from "../modules/ui/scene3dControls";
+import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
-import type { ControlElements } from "../modules/ui/controls";
+import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
 import type { ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
 
@@ -90,6 +91,9 @@ const balanceMetrics = {
 };
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
+const downloadProjectJsonButton = requiredElement("#download-project-json", HTMLButtonElement);
+const uploadProjectJsonButton = requiredElement("#upload-project-json", HTMLButtonElement);
+const projectJsonInput = requiredElement("#project-json-input", HTMLInputElement);
 const downloadTheoreticalDrawingSvgButton = requiredElement("#download-theoretical-drawing-svg", HTMLButtonElement);
 const resetButton = requiredElement("#reset", HTMLButtonElement);
 
@@ -134,6 +138,54 @@ function renderEquipment(): void {
   const focusState = focusedEquipmentField();
   renderEquipmentEditor(equipmentList, equipmentItems, currentConstraintReport);
   restoreEquipmentFocus(focusState);
+}
+
+function readFileText(file: File): Promise<string> {
+  logger.debug("project json file read started", { name: file.name, size: file.size });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        logger.debug("project json file read completed", { name: file.name, bytes: reader.result.length });
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Project file was not read as text."));
+    });
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("Project file read failed.")));
+    reader.readAsText(file);
+  });
+}
+
+function writeProfileControls(profile: SerializableProjectState["profile"]): void {
+  writeNumericInput(inputs.length, profile.length);
+  writeNumericInput(inputs.slenderness, profile.slenderness);
+  writeNumericInput(inputs.diameter, profile.diameter);
+  writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
+  writeIntegerInput(inputs.stations, profile.stations);
+  inputs.showGrid.checked = profile.showGrid;
+  inputs.showPoints.checked = profile.showPoints;
+  logger.debug("profile controls written from project json", {
+    length: profile.length,
+    slenderness: profile.slenderness,
+    stations: profile.stations,
+  });
+}
+
+function applyImportedProject(project: SerializableProjectState): void {
+  logger.debug("project json import applying", {
+    equipmentCount: project.equipment.length,
+    scene3dMode: project.scene3dSettings.mode,
+  });
+  writeProfileControls(project.profile);
+  equipmentItems = project.equipment;
+  writeScene3dControls(scene3dControls, project.scene3dSettings);
+  writeNumericInput(waterDensityInput, project.balanceSettings.waterDensityKgPerM3);
+  update("slenderness");
+  logger.info("project json import applied", {
+    equipmentCount: project.equipment.length,
+    waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
+  });
 }
 
 function update(source: LastEdited = appState.getLastEdited()): void {
@@ -266,6 +318,48 @@ downloadSvgButton.addEventListener("click", () => {
 
 downloadCsvButton.addEventListener("click", () => {
   download("underwater-vehicle-profile.csv", "text/csv;charset=utf-8", buildCsv(currentSnapshot));
+});
+
+downloadProjectJsonButton.addEventListener("click", () => {
+  logger.info("project json export requested", { equipmentCount: currentProjectState.equipment.length });
+  download("underwater-vehicle-project.json", "application/json;charset=utf-8", buildProjectJson(currentProjectState));
+});
+
+uploadProjectJsonButton.addEventListener("click", () => {
+  logger.debug("project json import file picker requested");
+  projectJsonInput.click();
+});
+
+projectJsonInput.addEventListener("change", async () => {
+  const file = projectJsonInput.files?.[0];
+  if (!file) return;
+
+  try {
+    const json = await readFileText(file);
+    const result = parseProjectJson(json);
+    if (!result.ok) {
+      logger.warn("project json import rejected", { fileName: file.name, error: result.error });
+      window.alert(result.error);
+      return;
+    }
+
+    applyImportedProject(result.project);
+    if (result.warnings.length > 0) {
+      logger.warn("project json import completed with normalization warnings", {
+        fileName: file.name,
+        warningCount: result.warnings.length,
+      });
+    }
+    logger.info("project json import completed", { fileName: file.name, equipmentCount: result.project.equipment.length });
+  } catch (error) {
+    logger.error("project json import failed unexpectedly", {
+      fileName: file.name,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    window.alert("Не удалось прочитать файл проекта.");
+  } finally {
+    projectJsonInput.value = "";
+  }
 });
 
 downloadTheoreticalDrawingSvgButton.addEventListener("click", () => {
