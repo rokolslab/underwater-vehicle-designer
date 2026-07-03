@@ -101,12 +101,18 @@ Underwater Vehicle Designer — браузерный инженерный инс
 
 | Документ | Путь | Описание |
 | --- | --- | --- |
-| Техническое задание | `TECHNICAL_SPEC.md` | Описание целевого функционала 3D-компоновки и расчетов |
-| Docker workflow | `docs/docker.md` | Команды разработки, проверок и VPS smoke через Docker |
-| Описание проекта | `.ai-factory/DESCRIPTION.md` | Сводка стека, функций, паттернов и требований |
-| Архитектура | `.ai-factory/ARCHITECTURE.md` | Правила модульной архитектуры для TypeScript-кода |
-| Базовые правила | `.ai-factory/rules/base.md` | Выявленные соглашения проекта |
-
+| README | `README.md` | Входная страница проекта |
+| Getting Started | `docs/getting-started.md` | Установка, запуск, проверки |
+| UI/UX Guide | `docs/ui-ux.md` | Интерфейс и UX-сценарии |
+| Calculations | `docs/calculations.md` | Геометрия, ограничения, баланс |
+| Architecture | `docs/architecture.md` | Модули и потоки данных |
+| Data and Export | `docs/data-and-export.md` | JSON, CSV, SVG |
+| Testing | `docs/testing.md` | Тесты и smoke checks |
+| Docker Workflow | `docs/docker.md` | Docker и production smoke |
+| Техническое задание | `TECHNICAL_SPEC.md` | Целевой функционал следующих версий |
+| Описание проекта | `.ai-factory/DESCRIPTION.md` | Контекст AI Factory |
+| Архитектура AI Factory | `.ai-factory/ARCHITECTURE.md` | Архитектурные правила |
+| Базовые правила | `.ai-factory/rules/base.md` | Соглашения по коду |
 ## AI Context Files
 
 | Файл | Назначение |

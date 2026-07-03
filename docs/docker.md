@@ -1,26 +1,28 @@
-# Docker workflow
+[← Testing](testing.md) · [Back to README](../README.md)
 
-Docker is the preferred development and verification environment for this project. It avoids Windows PowerShell encoding pitfalls and keeps the commands reproducible for VPS deployment.
+# Docker Workflow
 
-## Development
+Docker является предпочтительным окружением для воспроизводимой разработки и проверок. Он снижает влияние Windows PowerShell encoding pitfalls и использует одинаковые команды для локального smoke и VPS-проверок.
 
-Start Vite inside Docker:
+## Разработка
+
+Запуск Vite внутри Docker:
 
 ```bash
 docker compose up app
 ```
 
-Open the application at:
+Приложение будет доступно по адресу:
 
 ```text
 http://127.0.0.1:5173
 ```
 
-The development service bind-mounts the repository into `/app` and keeps container dependencies in the named `node_modules` volume.
+Development service монтирует репозиторий в `/app`, а зависимости контейнера хранит в именованном volume `node_modules`.
 
-## Checks
+## Проверки
 
-Run project checks inside Docker:
+Запуск проектных проверок внутри Docker:
 
 ```bash
 docker compose run --rm app npm run test
@@ -28,25 +30,49 @@ docker compose run --rm app npm run build
 docker compose run --rm app npm run check:encoding
 ```
 
-The same npm scripts remain available directly on the host when needed, but Docker is the default for agent work.
+Те же npm scripts можно запускать напрямую на host-машине, но Docker остается воспроизводимым окружением по умолчанию для агентской работы.
 
-## Production smoke
+## Production Smoke
 
-Build and run the production container locally:
+Сборка и запуск production container локально:
 
 ```bash
 docker compose -f compose.yml -f compose.production.yml build app
 docker compose -f compose.yml -f compose.production.yml up -d
 ```
 
-By default production publishes the app on host port `80` and serves the built `dist/` directory through nginx on container port `8080`.
+По умолчанию production публикует приложение на host port `80` и обслуживает собранный `dist/` через nginx на container port `8080`.
 
-Override ports and image settings with environment variables:
+Порты и параметры image можно переопределить через environment variables:
 
 ```bash
 COMPOSE_PROJECT_NAME=airship APP_PORT=8080 APP_IMAGE=airship:local docker compose -f compose.yml -f compose.production.yml up -d
 ```
 
-## VPS notes
+## Compose Files
 
-The current production compose is intentionally single-service: no database, cache, queue, or external reverse proxy are included. Add domain TLS or an edge reverse proxy in a separate AI Factory plan when the VPS domain and publication scheme are known.
+| File | Purpose |
+| --- | --- |
+| `compose.yml` | Базовое описание service |
+| `compose.override.yml` | Development override для Vite на `127.0.0.1:5173` |
+| `compose.production.yml` | Hardened production overlay |
+| `Dockerfile` | Multi-stage dev/build/production image |
+| `docker/nginx/` | nginx config для production image |
+
+## VPS Notes
+
+Текущий production compose намеренно остается single-service:
+
+- нет database;
+- нет cache;
+- нет queue;
+- нет внешнего reverse proxy;
+- нет встроенной настройки TLS/domain.
+
+Domain TLS или edge reverse proxy стоит добавлять отдельным AI Factory планом, когда будут известны домен VPS и схема публикации.
+
+## See Also
+
+- [Getting Started](getting-started.md) — локальный и Docker-запуск.
+- [Testing](testing.md) — команды проверки.
+- [Architecture](architecture.md) — runtime-структура, которую обслуживает Docker.
