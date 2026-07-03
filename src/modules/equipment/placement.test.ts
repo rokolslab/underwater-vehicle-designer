@@ -20,6 +20,13 @@ describe("equipment placement", () => {
     expect(next[1].shape).toBe("box");
   });
 
+  it("preserves spaces while renaming equipment", () => {
+    const item = createDefaultEquipmentItem({ idFactory: () => "a", name: "Battery" });
+
+    const [renamed] = renameEquipmentItem([item], "a", "Battery pack ");
+
+    expect(renamed.name).toBe("Battery pack ");
+  });
   it("updates and renames by stable id", () => {
     const items = [
       createDefaultEquipmentItem({ idFactory: () => "a" }),

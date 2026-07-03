@@ -9,34 +9,18 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <h1>Обвод подводного аппарата</h1>
-          <div class="formula-line">
-            y = +/- D/2 sqrt(f(x/L) / fmax), f(t)=t(1-t)(1-0.5t)
-          </div>
+        <h1>Обвод подводного аппарата</h1>
+        <div class="formula-line">
+          y = +/- D/2 sqrt(f(x/L) / fmax), f(t)=t(1-t)(1-0.5t)
         </div>
-        <dl class="metrics" aria-label="Расчётные параметры">
-          <div>
-            <dt>Макс. полу-высота</dt>
-            <dd id="max-radius">0.000</dd>
-          </div>
-          <div>
-            <dt>Макс. высота корпуса</dt>
-            <dd id="max-height">0.000</dd>
-          </div>
-          <div>
-            <dt>Полная длина</dt>
-            <dd id="total-length">0.0000</dd>
-          </div>
-          <div>
-            <dt>ЦВК</dt>
-            <dd id="cylindrical-insert-length-metric">0.0000</dd>
-          </div>
-        </dl>
       </header>
 
       <section class="workbench" aria-label="Построение обводов">
-        <aside class="control-panel">
+        <details class="control-panel panel-details" open>
+          <summary class="data-header">
+            <h2>Размерения</h2>
+            <span class="details-action" aria-hidden="true"></span>
+          </summary>
           <form id="controls" class="control-grid">
             <label>
               <span>Длина L</span>
@@ -62,33 +46,42 @@
               <span>Плотность воды, кг/м3</span>
               <input id="water-density" type="number" min="1" step="1" value="1025" />
             </label>
-            <label class="toggle-row">
-              <input id="show-grid" type="checkbox" checked />
-              <span>Сетка</span>
-            </label>
-            <label class="toggle-row">
-              <input id="show-points" type="checkbox" checked />
-              <span>Точки обвода</span>
-            </label>
+
           </form>
-          <div class="actions">
-            <button id="download-svg" type="button">Скачать SVG</button>
-            <button id="download-csv" type="button">Скачать CSV</button>
+          <div class="actions project-actions">
             <button id="download-project-json" type="button">Сохранить проект</button>
             <button id="upload-project-json" type="button">Загрузить проект</button>
             <input id="project-json-input" class="is-hidden" type="file" accept="application/json,.json" />
             <button id="reset" type="button">Сброс</button>
           </div>
-        </aside>
+        </details>
 
         <section class="visualization-panels">
-          <section class="drawing-panel" aria-label="2D-проекция корпуса">
+          <details class="drawing-panel panel-details" open>
+            <summary class="data-header">
+              <h2>Боковой вид</h2>
+              <span class="panel-actions drawing-panel-actions">
+                <label class="view-toggle-row">
+                  <input id="show-grid" type="checkbox" checked />
+                  <span>Сетка</span>
+                </label>
+                <label class="view-toggle-row">
+                  <input id="show-points" type="checkbox" checked />
+                  <span>Точки обвода</span>
+                </label>
+                <button id="download-svg" class="compact-action summary-action" type="button">Скачать SVG</button>
+                <span class="details-action" aria-hidden="true"></span>
+              </span>
+            </summary>
             <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата"></canvas>
-          </section>
-          <div class="scene3d-stack">
-            <section class="scene3d-panel" aria-label="3D-представление корпуса">
+          </details>
+
+          <details class="scene3d-panel panel-details" open>
+            <summary class="data-header">
+              <h2>3D корпус</h2>
+              <span class="details-action" aria-hidden="true"></span>
+            </summary>
             <div class="scene3d-header">
-              <div class="panel-title">3D корпус</div>
               <div class="scene3d-controls" aria-label="Настройки 3D">
                 <label>
                   <span>Режим</span>
@@ -128,75 +121,80 @@
               </div>
             </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
-          </section>
-
-            <section class="equipment-band" aria-label="Оборудование">
-              <div class="data-header">
-                <h2>Оборудование</h2>
-                <button id="add-equipment" class="compact-action" type="button">Добавить</button>
-              </div>
-              <div id="equipment-list" class="equipment-list"></div>
-            </section>
-          </div>
+          </details>
         </section>
-      </section>
 
-      <section class="theoretical-drawing-band" aria-label="Теоретический чертеж корпуса">
-        <div class="data-header">
-          <h2>Теоретический чертеж</h2>
-          <button id="download-theoretical-drawing-svg" class="compact-action" type="button">Скачать SVG</button>
-        </div>
-        <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
-      </section>
+        <details class="equipment-band panel-details" open>
+          <summary class="data-header">
+            <h2>Оборудование</h2>
+            <span class="panel-actions">
+              <button id="add-equipment" class="compact-action summary-action" type="button">Добавить</button>
+              <span class="details-action" aria-hidden="true"></span>
+            </span>
+          </summary>
+          <div id="equipment-list" class="equipment-list"></div>
+        </details>
 
-      <section class="balance-band" aria-label="Расчет баланса">
-        <div class="data-header">
-          <h2>Баланс</h2>
-        </div>
-        <dl class="balance-grid">
-          <div>
-            <dt>Масса, кг</dt>
-            <dd id="balance-total-mass">0.000</dd>
-          </div>
-          <div>
-            <dt>Вытесненный объем, м3</dt>
-            <dd id="balance-displaced-volume">0.0000</dd>
-          </div>
-          <div>
-            <dt>Вес, Н</dt>
-            <dd id="balance-weight">0.0</dd>
-          </div>
-          <div>
-            <dt>Плавучесть, Н</dt>
-            <dd id="balance-buoyancy-force">0.0</dd>
-          </div>
-          <div>
-            <dt>Запас плавучести, Н</dt>
-            <dd id="balance-net-buoyancy">0.0</dd>
-          </div>
-          <div>
-            <dt>ЦТ</dt>
-            <dd id="balance-center-of-gravity">x 0.000; y 0.000; z 0.000</dd>
-          </div>
-          <div>
-            <dt>ЦВ</dt>
-            <dd id="balance-center-of-buoyancy">x 0.000; y 0.000; z 0.000</dd>
-          </div>
-          <div>
-            <dt>ЦВ - ЦТ</dt>
-            <dd id="balance-moment-arm">x 0.000; y 0.000; z 0.000</dd>
-          </div>
-        </dl>
-        <div id="balance-warnings" class="balance-warning-summary">Нет оборудования для расчета баланса.</div>
-      </section>
+        <details class="balance-band panel-details" open>
+          <summary class="data-header">
+            <h2>Баланс</h2>
+            <span class="details-action" aria-hidden="true"></span>
+          </summary>
+          <dl class="balance-grid">
+            <div>
+              <dt>Масса, кг</dt>
+              <dd id="balance-total-mass">0.000</dd>
+            </div>
+            <div>
+              <dt>Вытесненный объем, м3</dt>
+              <dd id="balance-displaced-volume">0.0000</dd>
+            </div>
+            <div>
+              <dt>Вес, Н</dt>
+              <dd id="balance-weight">0.0</dd>
+            </div>
+            <div>
+              <dt>Плавучесть, Н</dt>
+              <dd id="balance-buoyancy-force">0.0</dd>
+            </div>
+            <div>
+              <dt>Запас плавучести, Н</dt>
+              <dd id="balance-net-buoyancy">0.0</dd>
+            </div>
+            <div>
+              <dt>ЦТ</dt>
+              <dd id="balance-center-of-gravity">x 0.000; y 0.000; z 0.000</dd>
+            </div>
+            <div>
+              <dt>ЦВ</dt>
+              <dd id="balance-center-of-buoyancy">x 0.000; y 0.000; z 0.000</dd>
+            </div>
+            <div>
+              <dt>ЦВ - ЦТ</dt>
+              <dd id="balance-moment-arm">x 0.000; y 0.000; z 0.000</dd>
+            </div>
+          </dl>
+          <div id="balance-warnings" class="balance-warning-summary">Нет оборудования для расчета баланса.</div>
+        </details>
 
-      <section class="data-band" aria-label="Координаты">
-        <details class="coordinate-details">
+        <details class="theoretical-drawing-band panel-details" open>
+          <summary class="data-header">
+            <h2>Теоретический чертеж</h2>
+            <span class="panel-actions">
+              <button id="download-theoretical-drawing-svg" class="compact-action summary-action" type="button">Скачать SVG</button>
+              <span class="details-action" aria-hidden="true"></span>
+            </span>
+          </summary>
+          <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+        </details>
+
+        <details class="data-band panel-details" open>
           <summary class="data-header">
             <h2>Координаты точек</h2>
-            <span class="coordinate-summary">
+            <span class="panel-actions coordinate-summary">
               <span id="point-count"></span>
-              <span class="coordinate-summary-action">Показать</span>
+              <button id="download-csv" class="compact-action summary-action" type="button">Скачать CSV</button>
+              <span class="details-action" aria-hidden="true"></span>
             </span>
           </summary>
           <div class="table-wrap">

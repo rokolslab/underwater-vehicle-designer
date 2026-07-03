@@ -100,8 +100,15 @@ function normalizeDimensions(
 }
 
 function normalizeName(name: string | undefined, fallback: string): string {
-  const trimmed = name?.trim();
-  return trimmed ? trimmed : fallback;
+  if (name === undefined) return fallback;
+  if (!name.trim()) return fallback;
+  if (name !== name.trim()) {
+    logger.debug("[FIX] equipment name whitespace preserved during editing", {
+      length: name.length,
+      trimmedLength: name.trim().length,
+    });
+  }
+  return name;
 }
 
 function normalizeOrientation(orientation: EquipmentAxis | undefined, fallback: EquipmentAxis): EquipmentAxis {

@@ -18,7 +18,7 @@ import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
 import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
 import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, readEquipmentUpdate } from "../modules/ui/equipment";
-import { renderBalanceMetrics, renderMetrics } from "../modules/ui/metrics";
+import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
@@ -72,12 +72,6 @@ const pointCountEl = requiredElement("#point-count", HTMLElement);
 const equipmentList = requiredElement("#equipment-list", HTMLElement);
 const addEquipmentButton = requiredElement("#add-equipment", HTMLButtonElement);
 const waterDensityInput = requiredElement("#water-density", HTMLInputElement);
-const metrics = {
-  maxRadius: requiredElement("#max-radius", HTMLElement),
-  maxHeight: requiredElement("#max-height", HTMLElement),
-  totalLength: requiredElement("#total-length", HTMLElement),
-  cylindricalInsertLength: requiredElement("#cylindrical-insert-length-metric", HTMLElement),
-};
 const balanceMetrics = {
   totalMass: requiredElement("#balance-total-mass", HTMLElement),
   displacedVolume: requiredElement("#balance-displaced-volume", HTMLElement),
@@ -97,8 +91,20 @@ const projectJsonInput = requiredElement("#project-json-input", HTMLInputElement
 const downloadTheoreticalDrawingSvgButton = requiredElement("#download-theoretical-drawing-svg", HTMLButtonElement);
 const resetButton = requiredElement("#reset", HTMLButtonElement);
 
+for (const action of document.querySelectorAll<HTMLElement>(".summary-action, .view-toggle-row")) {
+  action.addEventListener("click", (event) => event.stopPropagation());
+}
+
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
+
+for (const details of document.querySelectorAll<HTMLDetailsElement>(".panel-details")) {
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      window.requestAnimationFrame(() => hullScene3d.resize());
+    }
+  });
+}
 let equipmentItems: readonly EquipmentItem[] = [];
 let currentSnapshot: ProfileSnapshot;
 let currentTheoreticalDrawing: TheoreticalDrawing;
@@ -249,7 +255,6 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
   renderEquipment();
   renderTable(tableBody, pointCountEl, currentSnapshot);
-  renderMetrics(metrics, currentSnapshot);
   renderBalanceMetrics(balanceMetrics, currentBalanceResult);
   hullScene3d.render(currentSnapshot, currentProjectState.equipment, currentProjectState.scene3dSettings, currentConstraintReport);
 }
@@ -271,6 +276,8 @@ window.addEventListener("resize", () => {
 window.addEventListener("beforeunload", () => hullScene3d.dispose());
 
 addEquipmentButton.addEventListener("click", () => {
+  const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");
+  if (equipmentPanel) equipmentPanel.open = true;
   equipmentItems = addEquipmentItem(equipmentItems);
   logger.info("equipment added by user", { count: equipmentItems.length });
   update(appState.getLastEdited());

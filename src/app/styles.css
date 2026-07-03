@@ -689,3 +689,253 @@ tbody tr:hover {
   }
 }
 
+
+/* Layout pass: full-width controls, paired views, collapsible panels. */
+.topbar {
+  display: block;
+  padding: 18px 0 16px;
+}
+
+.metrics {
+  display: none;
+}
+
+.workbench {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.control-panel,
+.drawing-panel,
+.scene3d-panel,
+.theoretical-drawing-band,
+.equipment-band,
+.balance-band,
+.data-band {
+  width: 100%;
+}
+
+.control-panel,
+.drawing-panel,
+.scene3d-panel {
+  padding: 0;
+  min-height: 0;
+}
+
+.panel-details {
+  overflow: hidden;
+}
+
+.panel-details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.panel-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-details:not([open]) > summary {
+  border-bottom: 0;
+}
+
+.panel-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.details-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  min-width: 92px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #fbfcfb;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.details-action::before {
+  content: "Скрыть";
+}
+
+.panel-details:not([open]) .details-action::before {
+  content: "Показать";
+}
+
+.control-grid {
+  grid-template-columns: repeat(6, minmax(126px, 1fr));
+  gap: 12px;
+  padding: 12px 16px 10px;
+  align-items: end;
+}
+
+.control-grid label {
+  grid-template-columns: 1fr;
+  gap: 5px;
+  align-items: start;
+}
+
+.control-grid input[type="number"] {
+  width: 100%;
+}
+
+.toggle-row {
+  align-content: end;
+  grid-template-columns: 18px minmax(0, max-content) !important;
+  min-height: 55px;
+}
+
+.project-actions {
+  margin-top: 0;
+  padding: 0 16px 16px;
+}
+
+.visualization-panels {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.drawing-panel,
+.scene3d-panel {
+  min-height: 0;
+}
+
+#profile-canvas {
+  width: calc(100% - 24px);
+  height: 520px;
+  min-height: 0;
+  margin: 12px;
+}
+
+.scene3d-panel {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0;
+}
+
+.scene3d-header {
+  padding: 12px 12px 0;
+}
+
+.scene3d {
+  min-height: 520px;
+  margin: 12px;
+}
+
+.equipment-band,
+.balance-band,
+.theoretical-drawing-band,
+.data-band {
+  margin-bottom: 0;
+}
+
+.equipment-list {
+  width: 100%;
+}
+
+.coordinate-summary {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.table-wrap {
+  max-height: 420px;
+}
+
+@media (max-width: 1180px) {
+  .control-grid {
+    grid-template-columns: repeat(4, minmax(126px, 1fr));
+  }
+
+  .visualization-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .control-grid,
+  .scene3d-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .data-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .panel-actions {
+    justify-content: flex-start;
+  }
+
+  #profile-canvas,
+  .scene3d {
+    height: 420px;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .control-grid,
+  .scene3d-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .toggle-row {
+    min-height: 0;
+  }
+
+  #profile-canvas,
+  .scene3d {
+    height: 360px;
+  }
+}
+
+/* UI fix: side-view toggles and stable equipment status/delete columns. */
+.drawing-panel-actions {
+  gap: 10px;
+}
+
+.view-toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.view-toggle-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+.equipment-status {
+  grid-column: -3 / -2;
+  width: 100%;
+  min-width: 0;
+}
+
+.equipment-delete {
+  grid-column: -2 / -1;
+  justify-self: end;
+}
+
+@media (max-width: 760px) {
+  .drawing-panel-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
