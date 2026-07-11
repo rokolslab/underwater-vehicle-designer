@@ -1,3 +1,7 @@
+---
+archived: 2026-07-11
+---
+
 # План реализации: миграция на связанную систему координат SNAME/NED
 
 Branch: feature/sname-ned-coordinate-migration
