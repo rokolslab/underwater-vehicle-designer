@@ -7,9 +7,9 @@ export function renderTable(tableBody: HTMLTableSectionElement, pointCountEl: HT
       (point, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${formatNumber(point.x, 4)}</td>
-          <td>${formatNumber(point.yTop, 4)}</td>
-          <td>${formatNumber(point.yBottom, 4)}</td>
+          <td>${formatNumber(point.s, 4)}</td>
+          <td>${formatNumber(point.topRadius, 4)}</td>
+          <td>${formatNumber(point.bottomRadius, 4)}</td>
         </tr>
       `,
     )

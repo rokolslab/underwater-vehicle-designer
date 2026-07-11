@@ -1,6 +1,8 @@
 import { profileRadiusAt } from "../geometry/profile";
 import type { ProfileSnapshot } from "../geometry/model";
-import type { EquipmentItem, Vector3 } from "./model";
+import { profileSFromBodyX } from "../../shared/body-coordinates";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
+import type { EquipmentItem } from "./model";
 import { validateEquipmentItem } from "./model";
 import { logger } from "../../shared/logger";
 
@@ -28,12 +30,13 @@ interface AxisExtents {
 }
 
 interface Aabb {
-  readonly min: Vector3;
-  readonly max: Vector3;
+  readonly min: BodyPoint3;
+  readonly max: BodyPoint3;
 }
 
 interface ContainmentSample {
-  readonly x: number;
+  readonly bodyX: number;
+  readonly stationS: number;
   readonly radialOffset: number;
   readonly localRadius: number;
 }
@@ -136,9 +139,9 @@ function itemAxisExtents(item: EquipmentItem): AxisExtents | null {
   }
 
   return Object.freeze({
-    x: item.dimensions.width / 2,
-    y: item.dimensions.height / 2,
-    z: item.dimensions.depth / 2,
+    x: item.dimensions.lengthX / 2,
+    y: item.dimensions.breadthY / 2,
+    z: item.dimensions.heightZ / 2,
   });
 }
 
@@ -175,17 +178,19 @@ function controlXs(item: EquipmentItem, extents: AxisExtents): readonly number[]
   ]);
 }
 
-function containmentSample(item: EquipmentItem, extents: AxisExtents, x: number): ContainmentSample {
+function containmentSample(item: EquipmentItem, extents: AxisExtents, bodyX: number, length: number): ContainmentSample {
   const radialOffset = Math.hypot(item.position.y, item.position.z);
+  const stationS = profileSFromBodyX(bodyX, length);
 
   if (item.shape === "sphere") {
-    const dx = Math.abs(x - item.position.x);
+    const dx = Math.abs(bodyX - item.position.x);
     const localRadius = Math.sqrt(Math.max(0, item.dimensions.radius ** 2 - dx ** 2));
-    return Object.freeze({ x, radialOffset, localRadius });
+    return Object.freeze({ bodyX, stationS, radialOffset, localRadius });
   }
 
   return Object.freeze({
-    x,
+    bodyX,
+    stationS,
     radialOffset,
     localRadius: Math.hypot(extents.y, extents.z),
   });
@@ -200,18 +205,31 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
   }
 
   const totalLength = snapshot.extents.totalLength;
+  const bodyMinX = -totalLength / 2;
+  const bodyMaxX = totalLength / 2;
   const minX = item.position.x - extents.x;
   const maxX = item.position.x + extents.x;
   const issues: EquipmentConstraintIssue[] = [];
 
-  if (minX < 0 || maxX > totalLength) {
+  logger.debug("equipment body bounds resolved", {
+    id: item.id,
+    shape: item.shape,
+    bodyPosition: item.position,
+    bodyBounds: { minX, maxX },
+    hullBodyBounds: { minX: bodyMinX, maxX: bodyMaxX },
+  });
+
+  if (minX < bodyMinX || maxX > bodyMaxX) {
     logger.warn("equipment outside length bounds", {
       id: item.id,
       shape: item.shape,
-      x: item.position.x,
+      bodyX: item.position.x,
+      bodyY: item.position.y,
+      bodyZ: item.position.z,
       minX,
       maxX,
-      totalLength,
+      bodyMinX,
+      bodyMaxX,
     });
     issues.push(
       makeIssue(item.id, "outsideLength", `Оборудование выходит за длину корпуса: ${minX.toFixed(2)}..${maxX.toFixed(2)} м.`),
@@ -219,13 +237,13 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
   }
 
   for (const x of controlXs(item, extents)) {
-    const sample = containmentSample(item, extents, x);
+    const sample = containmentSample(item, extents, x, snapshot.state.length);
     const requiredRadius = sample.radialOffset + sample.localRadius;
     const hullRadius =
-      x < 0 || x > totalLength
+      x < bodyMinX || x > bodyMaxX
         ? 0
         : profileRadiusAt(
-            x,
+            sample.stationS,
             snapshot.state.length,
             snapshot.state.diameter,
             snapshot.state.cylindricalInsertLength,
@@ -235,7 +253,10 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
       logger.warn("equipment outside hull radius", {
         id: item.id,
         shape: item.shape,
-        x,
+        bodyX: sample.bodyX,
+        bodyY: item.position.y,
+        bodyZ: item.position.z,
+        stationS: sample.stationS,
         requiredRadius,
         hullRadius,
       });
@@ -243,7 +264,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
         makeIssue(
           item.id,
           "outsideHull",
-          `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при x=${x.toFixed(2)} м.`,
+          `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при body.x=${x.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
         ),
       );
       break;

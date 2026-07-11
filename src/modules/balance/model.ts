@@ -1,10 +1,5 @@
-﻿import type { EquipmentItem } from "../equipment/model";
-
-export interface Vector3 {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
+import type { BodyPoint3, BodyVector3 } from "../../shared/body-coordinates";
+import type { EquipmentItem } from "../equipment/model";
 
 export interface HullBuoyancyInput {
   readonly length: number;
@@ -14,7 +9,7 @@ export interface HullBuoyancyInput {
 export interface HullBuoyancyResult {
   readonly isValid: boolean;
   readonly displacedVolume: number;
-  readonly center: Vector3;
+  readonly center: BodyPoint3;
   readonly reason?: string;
 }
 
@@ -32,7 +27,7 @@ export interface BalanceWarning {
   readonly equipmentId?: string;
 }
 
-export type BalanceMomentArm = Vector3;
+export type BalanceMomentArm = BodyVector3;
 
 export interface BalanceSettings {
   readonly waterDensityKgPerM3: number;
@@ -52,8 +47,8 @@ export interface EquipmentBalanceResult {
   readonly weightN: number;
   readonly buoyancyForceN: number;
   readonly netBuoyancyN: number;
-  readonly centerOfGravity: Vector3;
-  readonly centerOfBuoyancy: Vector3;
+  readonly centerOfGravity: BodyPoint3;
+  readonly centerOfBuoyancy: BodyPoint3;
   readonly momentArm: BalanceMomentArm;
   readonly warnings: readonly BalanceWarning[];
 }

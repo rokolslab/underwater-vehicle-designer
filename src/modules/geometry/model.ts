@@ -8,27 +8,27 @@ export interface ProfileState {
   readonly showPoints: boolean;
 }
 
-export interface SmoothPoint {
-  readonly x: number;
-  readonly y: number;
+export interface ProfilePoint {
+  readonly s: number;
+  readonly radius: number;
 }
 
 export interface StationPoint {
-  readonly x: number;
-  readonly yTop: number;
-  readonly yBottom: number;
+  readonly s: number;
+  readonly topRadius: number;
+  readonly bottomRadius: number;
 }
 
 export interface ProfileExtents {
   readonly maxRadius: number;
   readonly maxHeight: number;
-  readonly maxX: number;
+  readonly maxRadiusS: number;
   readonly totalLength: number;
 }
 
 export interface ProfileSnapshot {
   readonly state: ProfileState;
-  readonly smoothPoints: readonly SmoothPoint[];
+  readonly smoothPoints: readonly ProfilePoint[];
   readonly stationPoints: readonly StationPoint[];
   readonly extents: ProfileExtents;
 }

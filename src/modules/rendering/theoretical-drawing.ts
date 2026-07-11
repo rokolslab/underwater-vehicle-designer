@@ -1,3 +1,4 @@
+import type { ProfilePoint } from "../geometry/model";
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -128,7 +129,7 @@ function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {
 
 function drawPolyline(
   context: CanvasRenderingContext2D,
-  points: readonly { readonly x: number; readonly y: number }[],
+  points: readonly ProfilePoint[],
   mapX: (x: number) => number,
   mapY: (y: number) => number,
 ): void {
@@ -136,8 +137,8 @@ function drawPolyline(
 
   context.beginPath();
   points.forEach((point, index) => {
-    const x = mapX(point.x);
-    const y = mapY(point.y);
+    const x = mapX(point.s);
+    const y = mapY(point.radius);
     if (index === 0) context.moveTo(x, y);
     else context.lineTo(x, y);
   });
@@ -157,7 +158,7 @@ function drawProfileSectionCurves(
     drawPolyline(context, curve.points, mapX, mapY);
     drawPolyline(
       context,
-      curve.points.map((point) => ({ x: point.x, y: -point.y })),
+      curve.points.map((point) => ({ s: point.s, radius: -point.radius })),
       mapX,
       mapY,
     );
@@ -189,7 +190,7 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const section of drawing.sections) {
-    const x = mapX(section.x);
+    const x = mapX(section.s);
     context.beginPath();
     context.moveTo(x, rect.y);
     context.lineTo(x, rect.y + rect.height);
@@ -219,12 +220,12 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.lineWidth = 2;
   context.beginPath();
   drawing.profilePoints.forEach((point, index) => {
-    const x = mapX(point.x);
-    const y = mapY(point.y);
+    const x = mapX(point.s);
+    const y = mapY(point.radius);
     if (index === 0) context.moveTo(x, y);
     else context.lineTo(x, y);
   });
-  [...drawing.profilePoints].reverse().forEach((point) => context.lineTo(mapX(point.x), mapY(-point.y)));
+  [...drawing.profilePoints].reverse().forEach((point) => context.lineTo(mapX(point.s), mapY(-point.radius)));
   context.closePath();
   context.fill();
   context.stroke();
@@ -252,7 +253,7 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const section of drawing.sections) {
-    const x = mapX(section.x);
+    const x = mapX(section.s);
     context.beginPath();
     context.moveTo(x, rect.y);
     context.lineTo(x, rect.y + rect.height);

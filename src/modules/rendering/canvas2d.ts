@@ -123,8 +123,8 @@ function equipmentProjection(item: EquipmentItem): EquipmentProjection {
   return Object.freeze({
     x: item.position.x,
     y: item.position.y,
-    halfWidth: item.dimensions.width / 2,
-    halfHeight: item.dimensions.height / 2,
+    halfWidth: item.dimensions.lengthX / 2,
+    halfHeight: item.dimensions.heightZ / 2,
   });
 }
 
@@ -213,13 +213,13 @@ export function renderCanvasProfile(
 
   const shape = new Path2D();
   snapshot.smoothPoints.forEach((point, index) => {
-    const px = scale.mapX(point.x);
-    const py = scale.mapY(point.y);
+    const px = scale.mapX(point.s);
+    const py = scale.mapY(point.radius);
     if (index === 0) shape.moveTo(px, py);
     else shape.lineTo(px, py);
   });
   [...snapshot.smoothPoints].reverse().forEach((point) => {
-    shape.lineTo(scale.mapX(point.x), scale.mapY(-point.y));
+    shape.lineTo(scale.mapX(point.s), scale.mapY(-point.radius));
   });
   shape.closePath();
 
@@ -236,9 +236,9 @@ export function renderCanvasProfile(
     context.strokeStyle = "#ffffff";
     context.lineWidth = 1.5;
     snapshot.stationPoints.forEach((point) => {
-      for (const y of [point.yTop, point.yBottom]) {
+      for (const y of [point.topRadius, point.bottomRadius]) {
         context.beginPath();
-        context.arc(scale.mapX(point.x), scale.mapY(y), 3.5, 0, Math.PI * 2);
+        context.arc(scale.mapX(point.s), scale.mapY(y), 3.5, 0, Math.PI * 2);
         context.fill();
         context.stroke();
       }

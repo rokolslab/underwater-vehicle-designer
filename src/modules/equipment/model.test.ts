@@ -29,7 +29,7 @@ const box: EquipmentItem = Object.freeze({
   massKg: 4,
   position: Object.freeze({ x: -1, y: 2, z: -3 }),
   orientation: "z",
-  dimensions: Object.freeze({ width: 2, height: 3, depth: 4 }),
+  dimensions: Object.freeze({ lengthX: 2, breadthY: 3, heightZ: 4 }),
 });
 
 describe("equipment model", () => {
@@ -77,7 +77,7 @@ describe("equipment model", () => {
     expect(validateEquipmentItem({ ...cylinder, dimensions: { radius: 0.5, length: 0 } }).reason).toBe(
       "cylinder radius and length must be positive",
     );
-    expect(validateEquipmentItem({ ...box, dimensions: { width: 2, height: 3, depth: 0 } }).reason).toBe(
+    expect(validateEquipmentItem({ ...box, dimensions: { lengthX: 2, breadthY: 3, heightZ: 0 } }).reason).toBe(
       "box dimensions must be positive",
     );
   });

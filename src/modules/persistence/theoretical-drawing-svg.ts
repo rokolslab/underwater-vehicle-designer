@@ -1,4 +1,4 @@
-import type { SmoothPoint } from "../geometry/model";
+import type { ProfilePoint } from "../geometry/model";
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 
 interface Rect {
@@ -26,8 +26,8 @@ const bodyPlanRect: Rect = Object.freeze({ x: 900, y: 82, width: 250, height: 24
 const minimumLength = 0.1;
 const minimumRadius = 0.1;
 
-function svgPath(points: readonly SmoothPoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
-  return points.map((point, index) => `${index === 0 ? "M" : "L"}${mapX(point.x).toFixed(2)} ${mapY(point.y).toFixed(2)}`).join(" ");
+function svgPath(points: readonly ProfilePoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
+  return points.map((point, index) => `${index === 0 ? "M" : "L"}${mapX(point.s).toFixed(2)} ${mapY(point.radius).toFixed(2)}`).join(" ");
 }
 
 function makeProjectionScale(drawing: TheoreticalDrawing): ProjectionScale {
@@ -77,7 +77,7 @@ function profileCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value: nu
     .flatMap((curve) => [
       svgPath(curve.points, mapX, mapY),
       svgPath(
-        curve.points.map((point) => ({ x: point.x, y: -point.y })),
+        curve.points.map((point) => ({ s: point.s, radius: -point.radius })),
         mapX,
         mapY,
       ),
@@ -98,9 +98,9 @@ function halfBreadthCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value
 function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
   const { mapX, mapY } = profileMaps(scale);
   const top = svgPath(drawing.profilePoints, mapX, mapY);
-  const bottom = svgPath([...drawing.profilePoints].reverse().map((point) => ({ x: point.x, y: -point.y })), mapX, mapY).replace(/^M/, "L");
+  const bottom = svgPath([...drawing.profilePoints].reverse().map((point) => ({ s: point.s, radius: -point.radius })), mapX, mapY).replace(/^M/, "L");
   const stations = drawing.sections
-    .map((section) => `<line x1="${mapX(section.x).toFixed(2)}" y1="${profileRect.y}" x2="${mapX(section.x).toFixed(2)}" y2="${profileRect.y + profileRect.height}" class="grid" />`)
+    .map((section) => `<line x1="${mapX(section.s).toFixed(2)}" y1="${profileRect.y}" x2="${mapX(section.s).toFixed(2)}" y2="${profileRect.y + profileRect.height}" class="grid" />`)
     .join("\n    ");
   const waterlines = drawing.waterlines
     .map((line) => `<line x1="${profileRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${profileRect.x + profileRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
@@ -121,7 +121,7 @@ function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): str
 function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
   const { mapX, mapY } = halfBreadthMaps(scale);
   const stations = drawing.sections
-    .map((section) => `<line x1="${mapX(section.x).toFixed(2)}" y1="${halfBreadthRect.y}" x2="${mapX(section.x).toFixed(2)}" y2="${halfBreadthRect.y + halfBreadthRect.height}" class="grid" />`)
+    .map((section) => `<line x1="${mapX(section.s).toFixed(2)}" y1="${halfBreadthRect.y}" x2="${mapX(section.s).toFixed(2)}" y2="${halfBreadthRect.y + halfBreadthRect.height}" class="grid" />`)
     .join("\n    ");
   const buttocks = drawing.buttocks
     .map((line) => `<line x1="${halfBreadthRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${halfBreadthRect.x + halfBreadthRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
@@ -154,7 +154,7 @@ function sectionArcPath(section: TheoreticalSection, cx: number, cy: number, uni
 }
 
 function maxBodyArcPath(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const section = Object.freeze({ index: 0, x: drawing.midshipX, radius: drawing.maxRadius, side: "midship" as const });
+  const section = Object.freeze({ index: 0, s: drawing.midshipS, radius: drawing.maxRadius, side: "midship" as const });
   return sectionArcPath(section, scale.bodyCenterX, scale.bodyCenterY, scale.unit);
 }
 

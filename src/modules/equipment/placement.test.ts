@@ -18,6 +18,7 @@ describe("equipment placement", () => {
 
     expect(next.map((item) => item.id)).toEqual(["a", "b"]);
     expect(next[1].shape).toBe("box");
+    expect(next[1].dimensions).toEqual({ lengthX: 0.4, breadthY: 0.4, heightZ: 0.4 });
   });
 
   it("preserves spaces while renaming equipment", () => {

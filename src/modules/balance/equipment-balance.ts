@@ -5,18 +5,19 @@ import {
   type EquipmentItem,
 } from "../equipment/model";
 import { logger } from "../../shared/logger";
-import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult, Vector3 } from "./model";
+import type { BodyPoint3, BodyVector3 } from "../../shared/body-coordinates";
+import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult } from "./model";
 
 export const DEFAULT_WATER_DENSITY_KG_PER_M3 = 1025;
 export const DEFAULT_GRAVITY_M_PER_S2 = 9.80665;
 
-const zeroVector: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
+const zeroVector: BodyPoint3 = Object.freeze({ x: 0, y: 0, z: 0 });
 
 interface Accumulator {
   readonly totalMassKg: number;
   readonly displacedVolumeM3: number;
-  readonly weightedMassCenter: Vector3;
-  readonly weightedVolumeCenter: Vector3;
+  readonly weightedMassCenter: BodyVector3;
+  readonly weightedVolumeCenter: BodyVector3;
 }
 
 function isPositiveFinite(value: number): boolean {
@@ -29,7 +30,7 @@ function warning(code: BalanceWarningCode, message: string, equipmentId?: string
   return item;
 }
 
-function addWeightedVector(current: Vector3, center: Vector3, weight: number): Vector3 {
+function addWeightedVector(current: BodyVector3, center: BodyPoint3, weight: number): BodyVector3 {
   return Object.freeze({
     x: current.x + center.x * weight,
     y: current.y + center.y * weight,
@@ -37,12 +38,12 @@ function addWeightedVector(current: Vector3, center: Vector3, weight: number): V
   });
 }
 
-function divideVector(vector: Vector3, divisor: number): Vector3 {
+function divideVector(vector: BodyVector3, divisor: number): BodyPoint3 {
   if (!isPositiveFinite(divisor)) return zeroVector;
   return Object.freeze({ x: vector.x / divisor, y: vector.y / divisor, z: vector.z / divisor });
 }
 
-function momentArm(centerOfBuoyancy: Vector3, centerOfGravity: Vector3): Vector3 {
+function momentArm(centerOfBuoyancy: BodyPoint3, centerOfGravity: BodyPoint3): BodyVector3 {
   return Object.freeze({
     x: centerOfBuoyancy.x - centerOfGravity.x,
     y: centerOfBuoyancy.y - centerOfGravity.y,
@@ -68,8 +69,8 @@ function emptyResult(warnings: readonly BalanceWarning[]): EquipmentBalanceResul
 function accumulateEquipment(items: readonly EquipmentItem[], warnings: BalanceWarning[]): Accumulator {
   let totalMassKg = 0;
   let displacedVolumeM3 = 0;
-  let weightedMassCenter: Vector3 = zeroVector;
-  let weightedVolumeCenter: Vector3 = zeroVector;
+  let weightedMassCenter: BodyVector3 = zeroVector;
+  let weightedVolumeCenter: BodyVector3 = zeroVector;
 
   for (const item of items) {
     const validation = validateEquipmentItem(item);

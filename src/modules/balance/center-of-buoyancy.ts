@@ -1,7 +1,8 @@
 import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/profile";
-import type { HullBuoyancyInput, HullBuoyancyResult, Vector3 } from "./model";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
+import type { HullBuoyancyInput, HullBuoyancyResult } from "./model";
 
-const zeroCenter: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
+const zeroCenter: BodyPoint3 = Object.freeze({ x: 0, y: 0, z: 0 });
 
 function invalidResult(reason: string): HullBuoyancyResult {
   return Object.freeze({

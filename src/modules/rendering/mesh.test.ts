@@ -57,7 +57,7 @@ describe("hull mesh data", () => {
     const mesh = buildHullMeshData(snapshot, { radialSegments: 8 });
     const verticesPerRing = mesh.radialSegments + 1;
     const maxRadius = snapshot.extents.maxRadius;
-    const maximumRings = snapshot.smoothPoints.filter((point) => Math.abs(point.y - maxRadius) < 1e-12);
+    const maximumRings = snapshot.smoothPoints.filter((point) => Math.abs(point.radius - maxRadius) < 1e-12);
 
     expect(maximumRings.length).toBeGreaterThan(10);
 
@@ -65,7 +65,7 @@ describe("hull mesh data", () => {
       const radius = readVertexRadius(mesh, ringIndex * verticesPerRing);
       expect(Number.isNaN(radius)).toBe(false);
       expect(radius).toBeGreaterThanOrEqual(0);
-      expect(radius).toBeCloseTo(snapshot.smoothPoints[ringIndex].y, 6);
+      expect(radius).toBeCloseTo(snapshot.smoothPoints[ringIndex].radius, 6);
     }
   });
 });

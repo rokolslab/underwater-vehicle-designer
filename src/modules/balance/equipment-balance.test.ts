@@ -20,7 +20,7 @@ const box: EquipmentItem = Object.freeze({
   massKg: 30,
   position: Object.freeze({ x: 5, y: 2, z: 3 }),
   orientation: "z",
-  dimensions: Object.freeze({ width: 1, height: 1, depth: 1 }),
+  dimensions: Object.freeze({ lengthX: 1, breadthY: 1, heightZ: 1 }),
   displacedVolume: 0.08,
 });
 

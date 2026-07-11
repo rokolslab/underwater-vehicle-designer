@@ -74,7 +74,7 @@ export function createEquipmentMesh(item: EquipmentItem, totalLength: number, ma
   } else if (item.shape === "cylinder") {
     geometry = new THREE.CylinderGeometry(item.dimensions.radius, item.dimensions.radius, item.dimensions.length, 24);
   } else {
-    geometry = new THREE.BoxGeometry(item.dimensions.width, item.dimensions.height, item.dimensions.depth);
+    geometry = new THREE.BoxGeometry(item.dimensions.lengthX, item.dimensions.heightZ, item.dimensions.breadthY);
   }
 
   const transform = equipmentSceneTransform(item, totalLength);

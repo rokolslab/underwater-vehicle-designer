@@ -20,7 +20,7 @@ const baseProject: SerializableProjectState = Object.freeze({
       massKg: 12,
       position: Object.freeze({ x: 3, y: 0.1, z: -0.2 }),
       orientation: "x" as const,
-      dimensions: Object.freeze({ width: 0.8, height: 0.3, depth: 0.4 }),
+      dimensions: Object.freeze({ lengthX: 0.8, breadthY: 0.4, heightZ: 0.3 }),
       displacedVolume: 0.096,
     }),
     Object.freeze({

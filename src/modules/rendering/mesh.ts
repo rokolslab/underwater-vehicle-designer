@@ -36,7 +36,7 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
 
   for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
     const point = rings[ringIndex];
-    const radius = Math.max(0, point.y);
+    const radius = Math.max(0, point.radius);
 
     for (let radialIndex = 0; radialIndex <= radialSegments; radialIndex += 1) {
       const angle = (radialIndex / radialSegments) * Math.PI * 2;
@@ -46,13 +46,13 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
       const positionOffset = vertexIndex * 3;
       const uvOffset = vertexIndex * 2;
 
-      positions[positionOffset] = point.x;
+      positions[positionOffset] = point.s;
       positions[positionOffset + 1] = radius * cos;
       positions[positionOffset + 2] = radius * sin;
       normals[positionOffset] = 0;
       normals[positionOffset + 1] = cos;
       normals[positionOffset + 2] = sin;
-      uvs[uvOffset] = point.x / totalLength;
+      uvs[uvOffset] = point.s / totalLength;
       uvs[uvOffset + 1] = radialIndex / radialSegments;
     }
   }

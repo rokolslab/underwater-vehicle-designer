@@ -1,8 +1,8 @@
-import type { SmoothPoint, ProfileSnapshot } from "../geometry/model";
+import type { ProfilePoint, ProfileSnapshot } from "../geometry/model";
 
-function svgPath(points: readonly SmoothPoint[], ySign: 1 | -1): string {
+function svgPath(points: readonly ProfilePoint[], ySign: 1 | -1): string {
   return points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(6)} ${(ySign * point.y).toFixed(6)}`)
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.s.toFixed(6)} ${(ySign * point.radius).toFixed(6)}`)
     .join(" ");
 }
 
@@ -15,8 +15,8 @@ export function buildSvg(snapshot: ProfileSnapshot): string {
   const stationMarkers = snapshot.stationPoints
     .map(
       (point) =>
-        `<circle cx="${point.x.toFixed(6)}" cy="${(-point.yTop).toFixed(6)}" r="${(totalLength / 250).toFixed(6)}" />` +
-        `<circle cx="${point.x.toFixed(6)}" cy="${(-point.yBottom).toFixed(6)}" r="${(totalLength / 250).toFixed(6)}" />`,
+        `<circle cx="${point.s.toFixed(6)}" cy="${(-point.topRadius).toFixed(6)}" r="${(totalLength / 250).toFixed(6)}" />` +
+        `<circle cx="${point.s.toFixed(6)}" cy="${(-point.bottomRadius).toFixed(6)}" r="${(totalLength / 250).toFixed(6)}" />`,
     )
     .join("\n  ");
 

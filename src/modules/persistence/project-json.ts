@@ -1,6 +1,7 @@
 import { DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../balance/equipment-balance";
 import type { BalanceSettings } from "../balance/model";
-import type { EquipmentAxis, EquipmentItem, EquipmentShape, Vector3 } from "../equipment/model";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
+import type { EquipmentAxis, EquipmentItem, EquipmentShape } from "../equipment/model";
 import { createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
 import type { ProfileState } from "../geometry/model";
 import type { Scene3dSettings } from "../rendering/model";
@@ -110,7 +111,7 @@ function normalizeAxis(value: unknown, warnings: string[], id: string): Equipmen
   return "x";
 }
 
-function normalizeVector(value: unknown, warnings: string[], id: string): Partial<Vector3> {
+function normalizeVector(value: unknown, warnings: string[], id: string): Partial<BodyPoint3> {
   const source = readRecord(value, warnings, `equipment ${id} position`);
   return Object.freeze({
     x: readNumber(source.x, 0, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, warnings, `equipment ${id} position.x`),
@@ -124,9 +125,9 @@ function normalizeDimensions(value: unknown, warnings: string[], id: string): Eq
   return Object.freeze({
     radius: readNumber(source.radius, 0.2, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.radius`),
     length: readNumber(source.length, 0.5, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.length`),
-    width: readNumber(source.width, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.width`),
-    height: readNumber(source.height, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.height`),
-    depth: readNumber(source.depth, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.depth`),
+    lengthX: readNumber(source.lengthX ?? source.width, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.lengthX`),
+    breadthY: readNumber(source.breadthY ?? source.depth, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.breadthY`),
+    heightZ: readNumber(source.heightZ ?? source.height, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.heightZ`),
   });
 }
 

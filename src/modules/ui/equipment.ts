@@ -41,9 +41,9 @@ function dimensionFields(item: EquipmentItem): string {
   }
 
   return `
-    <label><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="${item.dimensions.width}" /></label>
-    <label><span>В</span><input data-field="height" type="number" min="0.001" step="0.01" value="${item.dimensions.height}" /></label>
-    <label><span>Гл.</span><input data-field="depth" type="number" min="0.001" step="0.01" value="${item.dimensions.depth}" /></label>
+    <label><span>Lx</span><input data-field="lengthX" type="number" min="0.001" step="0.01" value="${item.dimensions.lengthX}" /></label>
+    <label><span>By</span><input data-field="breadthY" type="number" min="0.001" step="0.01" value="${item.dimensions.breadthY}" /></label>
+    <label><span>Hz</span><input data-field="heightZ" type="number" min="0.001" step="0.01" value="${item.dimensions.heightZ}" /></label>
   `;
 }
 
@@ -142,9 +142,9 @@ function readDimensions(row: HTMLElement, shape: EquipmentShape): EquipmentUpdat
   }
 
   return {
-    width: Number(rowValue(row, "width")),
-    height: Number(rowValue(row, "height")),
-    depth: Number(rowValue(row, "depth")),
+    lengthX: Number(rowValue(row, "lengthX")),
+    breadthY: Number(rowValue(row, "breadthY")),
+    heightZ: Number(rowValue(row, "heightZ")),
   };
 }
 

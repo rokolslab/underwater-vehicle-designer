@@ -1,4 +1,5 @@
-import type { EquipmentBalanceResult, BalanceWarningCode, Vector3 } from "../balance/model";
+import type { BodyVector3 } from "../../shared/body-coordinates";
+import type { EquipmentBalanceResult, BalanceWarningCode } from "../balance/model";
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -38,7 +39,7 @@ export function renderMetrics(elements: MetricsElements, snapshot: ProfileSnapsh
   elements.cylindricalInsertLength.textContent = formatNumber(snapshot.state.cylindricalInsertLength, 4);
 }
 
-function formatVector(vector: Vector3): string {
+function formatVector(vector: BodyVector3): string {
   return `x ${formatNumber(vector.x, 3)}; y ${formatNumber(vector.y, 3)}; z ${formatNumber(vector.z, 3)}`;
 }
 

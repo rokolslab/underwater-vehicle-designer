@@ -67,7 +67,7 @@ describe("equipment ui", () => {
         ...baseRowValues,
         shape: "box",
         radius: "0.2",
-        width: "",
+        lengthX: "",
       }),
       { includeDimensions: false },
     );
@@ -76,7 +76,7 @@ describe("equipment ui", () => {
 
     expect(switched.shape).toBe("box");
     if (switched.shape !== "box") throw new Error("expected box");
-    expect(switched.dimensions).toEqual({ width: 0.4, height: 0.4, depth: 0.4 });
+    expect(switched.dimensions).toEqual({ lengthX: 0.4, breadthY: 0.4, heightZ: 0.4 });
   });
   it("renders equipment constraint status and warning text", () => {
     const item = {
