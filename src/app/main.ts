@@ -81,8 +81,12 @@ const balanceMetrics = {
   centerOfGravity: requiredElement("#balance-center-of-gravity", HTMLElement),
   centerOfBuoyancy: requiredElement("#balance-center-of-buoyancy", HTMLElement),
   momentArm: requiredElement("#balance-moment-arm", HTMLElement),
+  deltaX: requiredElement("#balance-delta-x", HTMLElement),
+  deltaY: requiredElement("#balance-delta-y", HTMLElement),
+  bg: requiredElement("#balance-bg", HTMLElement),
   warnings: requiredElement("#balance-warnings", HTMLElement),
 };
+const projectImportNotice = requiredElement("#project-import-notice", HTMLElement);
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
 const downloadProjectJsonButton = requiredElement("#download-project-json", HTMLButtonElement);
@@ -192,6 +196,42 @@ function applyImportedProject(project: SerializableProjectState): void {
     equipmentCount: project.equipment.length,
     waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
   });
+}
+
+function userFacingImportWarnings(warnings: readonly string[]): readonly string[] {
+  const unique = new Set<string>();
+  let equipmentNormalizationCount = 0;
+  for (const warning of warnings) {
+    if (/^(project\.equipment\[|equipment )/i.test(warning)) {
+      equipmentNormalizationCount += 1;
+      continue;
+    }
+    unique.add(warning);
+  }
+  if (equipmentNormalizationCount > 0) {
+    unique.add(`Нормализованы данные оборудования (${equipmentNormalizationCount}). Проверьте выделенные строки.`);
+  }
+  return Object.freeze([...unique]);
+}
+
+function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: readonly string[]): void {
+  const messages = userFacingImportWarnings(warnings).filter((warning) => !warning.includes("старая ось z"));
+  const migrationMessage = migratedFromVersion === 1
+    ? "Проект v1 успешно преобразован в Body/SNAME-NED. Проверьте, что оборудование осталось на правильном (правом или левом) борту."
+    : "Проект успешно импортирован.";
+  projectImportNotice.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = migrationMessage;
+  projectImportNotice.append(title);
+  if (messages.length > 0) {
+    const details = document.createElement("span");
+    details.textContent = ` ${messages.join(" ")}`;
+    projectImportNotice.append(details);
+  }
+  projectImportNotice.classList.remove("is-hidden");
+  projectImportNotice.classList.toggle("project-import-notice--migration", migratedFromVersion === 1);
+  projectImportNotice.focus();
+  logger.info("project json import notice shown", { migratedFromVersion, userWarningCount: messages.length });
 }
 
 function update(source: LastEdited = appState.getLastEdited()): void {
@@ -357,6 +397,7 @@ projectJsonInput.addEventListener("change", async () => {
         warningCount: result.warnings.length,
       });
     }
+    showProjectImportNotice(result.migratedFromVersion, result.warnings);
     logger.info("project json import completed", { fileName: file.name, equipmentCount: result.project.equipment.length });
   } catch (error) {
     logger.error("project json import failed unexpectedly", {

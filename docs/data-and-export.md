@@ -23,7 +23,8 @@ Root document:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "coordinateSystem": "SNAME_NED_BODY_CENTER_V1",
   "exportedAt": "2026-07-03T00:00:00.000Z",
   "project": {
     "profile": {},
@@ -34,7 +35,7 @@ Root document:
 }
 ```
 
-`schemaVersion` сейчас равен `1`. Импорт другого `schemaVersion` отклоняется.
+Новый экспорт использует `schemaVersion: 2` и обязательный marker `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Поддерживаются импорт v2 и односторонняя миграция v1; остальные версии отклоняются.
 
 ## Profile JSON
 
@@ -62,9 +63,9 @@ Root document:
   "name": "Аккумуляторный блок",
   "shape": "box",
   "massKg": 12,
-  "position": { "x": 2.4, "y": 0, "z": 0 },
+  "position": { "x": 0, "y": 0, "z": 0 },
   "orientation": "x",
-  "dimensions": { "width": 0.4, "height": 0.3, "depth": 0.5 },
+  "dimensions": { "lengthX": 0.4, "breadthY": 0.5, "heightZ": 0.3 },
   "displacedVolume": 0.06
 }
 ```
@@ -75,9 +76,23 @@ Supported shapes:
 | --- | --- |
 | `sphere` | `radius` |
 | `cylinder` | `radius`, `length` |
-| `box` | `width`, `height`, `depth` |
+| `box` | `lengthX`, `breadthY`, `heightZ` |
 
 `displacedVolume` optional. Если не задан, используется геометрический объем.
+
+## JSON v1 Migration
+
+Старые проекты преобразуются один раз в Body/SNAME-NED:
+
+```text
+body.x = L/2 - old.x
+body.y = old.z
+body.z = -old.y
+```
+
+Поскольку старый код не позволял доказать знак поперечной оси, миграция принимает `old.z > 0` как правый борт и всегда возвращает пользователю предупреждение проверить размещение по бортам. Оси цилиндра: old X→Body X, old Y→Body Z, old Z→Body Y. Размеры box: `old.width→lengthX`, `old.depth→breadthY`, `old.height→heightZ`.
+
+Сечения мигрируют так: old X→`L/2-old.x`; old `xy`→Body `xz` без смены offset; old `xz`→Body `xy` с `offset = -old.offset`. Новые проекты обратно в v1 не экспортируются.
 
 ## JSON Import Normalization
 
@@ -104,7 +119,7 @@ CSV строится из `ProfileSnapshot.stationPoints`.
 Header:
 
 ```text
-N;x;y_top;y_bottom
+N;s;radius_top;radius_bottom
 ```
 
 Rows:
@@ -115,7 +130,7 @@ Rows:
 ...
 ```
 
-Разделитель — `;`. CSV соответствует панели `Координаты точек`.
+Разделитель — `;`. CSV соответствует панели `Параметрические точки профиля`.
 
 ## SVG Export: Side View
 
@@ -147,7 +162,7 @@ Rows:
 
 ## Compatibility Rules
 
-- Не менять `schemaVersion` без миграции.
+- Не менять `schemaVersion` или `coordinateSystem` без миграции.
 - Новые поля JSON должны иметь fallback при импорте.
 - CSV должен оставаться построенным из `stationPoints`.
 - SVG не должен пересчитывать геометрию независимо от `ProfileSnapshot`.

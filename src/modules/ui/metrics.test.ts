@@ -21,6 +21,9 @@ function makeElements() {
     centerOfGravity: element(),
     centerOfBuoyancy: element(),
     momentArm: element(),
+    deltaX: element(),
+    deltaY: element(),
+    bg: element(),
     warnings: element(),
   };
 }
@@ -57,9 +60,12 @@ describe("balance metrics ui", () => {
     expect(elements.weight.textContent).toBe("392,3");
     expect(elements.buoyancyForce.textContent).toBe("1 005,2");
     expect(elements.netBuoyancy.textContent).toBe("612,9");
-    expect(elements.centerOfGravity.textContent).toContain("x 4,000");
-    expect(elements.centerOfBuoyancy.textContent).toContain("z 2,200");
-    expect(elements.momentArm.textContent).toContain("x 0,200");
+    expect(elements.centerOfGravity.textContent).toContain("X 4,000 м");
+    expect(elements.centerOfBuoyancy.textContent).toContain("Z 2,200 м");
+    expect(elements.momentArm.textContent).toContain("X 0,200 м");
+    expect(elements.deltaX.textContent).toBe("0,200 м");
+    expect(elements.deltaY.textContent).toBe("0,100 м");
+    expect(elements.bg.textContent).toBe("-0,200 м");
     expect(elements.warnings.textContent).toBe("Норма");
   });
 

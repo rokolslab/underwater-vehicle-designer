@@ -117,4 +117,15 @@ describe("equipment ui", () => {
     expect(container.innerHTML).toContain("Наименование");
     expect(container.innerHTML).not.toContain(">Имя<");
   });
+  it("renders Body/SNAME-NED directions and metric units", () => {
+    const item = createDefaultEquipmentItem({ idFactory: () => "item-1" });
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item]);
+
+    expect(container.innerHTML).toContain("X, м → нос");
+    expect(container.innerHTML).toContain("Y, м → правый борт");
+    expect(container.innerHTML).toContain("Z, м → вниз");
+    expect(container.innerHTML).toContain("X — нос");
+  });
 });

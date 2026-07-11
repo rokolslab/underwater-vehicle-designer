@@ -104,7 +104,7 @@ npm run build
 | Русские строки выглядят поврежденными в PowerShell | Запустите `npm run check:encoding`; terminal output может показывать mojibake, файл при этом валиден |
 | 3D-сцена пустая после изменения layout | Перезагрузите страницу; при открытии панели приложение вызывает resize сцены |
 | CSV/SVG не скачиваются | Проверьте, что страница запущена через Vite, а не открыта как raw file |
-| JSON не загружается | Проверьте `schemaVersion`; текущая версия схемы — `1` |
+| JSON не загружается | Проверьте `schemaVersion`; текущая версия схемы — `2`; v2 также требует `coordinateSystem: SNAME_NED_BODY_CENTER_V1` |
 
 ## See Also
 

@@ -20,6 +20,9 @@ export interface BalanceMetricsElements {
   readonly centerOfGravity: HTMLElement;
   readonly centerOfBuoyancy: HTMLElement;
   readonly momentArm: HTMLElement;
+  readonly deltaX: HTMLElement;
+  readonly deltaY: HTMLElement;
+  readonly bg: HTMLElement;
   readonly warnings: HTMLElement;
 }
 
@@ -43,7 +46,7 @@ export function renderMetrics(elements: MetricsElements, snapshot: ProfileSnapsh
 }
 
 function formatVector(vector: BodyVector3): string {
-  return `x ${formatNumber(vector.x, 3)}; y ${formatNumber(vector.y, 3)}; z ${formatNumber(vector.z, 3)}`;
+  return `X ${formatNumber(vector.x, 3)} м; Y ${formatNumber(vector.y, 3)} м; Z ${formatNumber(vector.z, 3)} м`;
 }
 
 function warningText(result: EquipmentBalanceResult): string {
@@ -61,6 +64,9 @@ export function renderBalanceMetrics(elements: BalanceMetricsElements, result: E
   elements.centerOfGravity.textContent = formatVector(result.centerOfGravity);
   elements.centerOfBuoyancy.textContent = formatVector(result.centerOfBuoyancy);
   elements.momentArm.textContent = formatVector(result.momentArm);
+  elements.deltaX.textContent = `${formatNumber(result.deltaX, 3)} м`;
+  elements.deltaY.textContent = `${formatNumber(result.deltaY, 3)} м`;
+  elements.bg.textContent = `${formatNumber(result.bgM, 3)} м`;
   elements.warnings.textContent = warningText(result);
   elements.warnings.classList.toggle("balance-warning-summary--ok", result.warnings.length === 0);
   logger.debug("balance metrics render completed", { isValid: result.isValid, warningCount: result.warnings.length });

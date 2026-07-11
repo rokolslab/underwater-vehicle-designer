@@ -21,6 +21,13 @@ Underwater Vehicle Designer — браузерный инженерный инс
 - **ЦВК** — цилиндрическая вставка корпуса: прямой участок постоянного максимального сечения, задаваемый длиной в метрах.
 - **ЦВ** — центр величины: расчетная точка баланса по вытесненному объему; не используйте `ЦВ` как сокращение для цилиндрической вставки.
 
+## Координаты
+
+- Body/SNAME-NED: начало в центре, `+X` к носу, `+Y` на правый борт, `+Z` вниз.
+- Profile: `s=0` на носу, `s=L` на корме; `body.x=L/2-s`.
+- Three.js и Canvas/SVG используют только adapters. JSON v2 marker: `SNAME_NED_BODY_CENTER_V1`.
+- ЦВ текущего balance — equipment-only, не ЦВ внешнего герметичного корпуса.
+
 ## Следующие целевые расширения
 
 - **3D-графика:** Three.js
@@ -39,6 +46,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 │   └── nginx/                # Конфигурация nginx для production container
 ├── docs/                     # Документация по разработке и эксплуатации
 ├── src/
+│   ├── shared/body-coordinates.ts # Body/Profile types and pure conversions
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint и UI orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
@@ -82,6 +90,10 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `src/modules/equipment/model.ts` | Типы оборудования, объем, центр и displaced-volume helpers |
 | `src/modules/equipment/placement.ts` | Создание, update/delete/rename и нормализация equipment list |
 | `src/modules/equipment/constraints.ts` | Проверки выхода оборудования за корпус, пересечений и status report для UI/2D/3D |
+| `src/shared/body-coordinates.ts` | Body/SNAME-NED types, Profile s↔Body X, vector operations |
+| `src/modules/rendering/coordinate-adapter.ts` | Body↔Three and XZ/XY/YZ projection adapters |
+| `src/modules/balance/stability.ts` | BG, alignment deltas and Body moments |
+| `src/modules/persistence/project-json-migrations.ts` | One-way JSON v1→v2 coordinate migration |
 | `src/modules/rendering/canvas2d.ts` | Отрисовка 2D-профиля на canvas |
 | `src/modules/rendering/theoretical-drawing.ts` | Canvas-отрисовка теоретического чертежа корпуса |
 | `src/modules/rendering/scene3d.ts` | Three.js-сцена корпуса, X-Ray/Cutaway, clipping и equipment meshes |
