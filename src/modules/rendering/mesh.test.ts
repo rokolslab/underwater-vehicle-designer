@@ -30,15 +30,15 @@ describe("hull mesh data", () => {
     expect(mesh.indices).toHaveLength((ringCount - 1) * radialSegments * 6);
   });
 
-  it("preserves nose and stern endpoints on the x axis", () => {
+  it("places the nose on positive Three X and the stern on negative Three X", () => {
     const snapshot = makeSnapshot(2);
     const radialSegments = 12;
     const mesh = buildHullMeshData(snapshot, { radialSegments });
     const verticesPerRing = radialSegments + 1;
     const lastRingFirstVertex = (snapshot.smoothPoints.length - 1) * verticesPerRing;
 
-    expect(mesh.positions[0]).toBe(0);
-    expect(mesh.positions[lastRingFirstVertex * 3]).toBeCloseTo(snapshot.extents.totalLength, 12);
+    expect(mesh.positions[0]).toBeCloseTo(snapshot.extents.totalLength / 2, 12);
+    expect(mesh.positions[lastRingFirstVertex * 3]).toBeCloseTo(-snapshot.extents.totalLength / 2, 12);
     expect(readVertexRadius(mesh, 0)).toBe(0);
     expect(readVertexRadius(mesh, lastRingFirstVertex)).toBeCloseTo(0, 6);
   });
@@ -57,7 +57,7 @@ describe("hull mesh data", () => {
     const mesh = buildHullMeshData(snapshot, { radialSegments: 8 });
     const verticesPerRing = mesh.radialSegments + 1;
     const maxRadius = snapshot.extents.maxRadius;
-    const maximumRings = snapshot.smoothPoints.filter((point) => Math.abs(point.y - maxRadius) < 1e-12);
+    const maximumRings = snapshot.smoothPoints.filter((point) => Math.abs(point.radius - maxRadius) < 1e-12);
 
     expect(maximumRings.length).toBeGreaterThan(10);
 
@@ -65,7 +65,7 @@ describe("hull mesh data", () => {
       const radius = readVertexRadius(mesh, ringIndex * verticesPerRing);
       expect(Number.isNaN(radius)).toBe(false);
       expect(radius).toBeGreaterThanOrEqual(0);
-      expect(radius).toBeCloseTo(snapshot.smoothPoints[ringIndex].y, 6);
+      expect(radius).toBeCloseTo(snapshot.smoothPoints[ringIndex].radius, 6);
     }
   });
 });

@@ -21,7 +21,7 @@ describe("theoretical drawing geometry", () => {
     expect(drawing.totalLength).toBe(snapshot.extents.totalLength);
     expect(drawing.maxRadius).toBe(snapshot.extents.maxRadius);
     expect(drawing.maxHeight).toBe(snapshot.extents.maxHeight);
-    expect(drawing.midshipX).toBe(snapshot.extents.totalLength / 2);
+    expect(drawing.midshipS).toBe(snapshot.extents.totalLength / 2);
     expect(drawing.profilePoints).toHaveLength(snapshot.smoothPoints.length);
     expect(drawing.halfBreadthPoints).toHaveLength(snapshot.smoothPoints.length);
   });
@@ -34,8 +34,8 @@ describe("theoretical drawing geometry", () => {
     drawing.sections.forEach((section, index) => {
       const station = snapshot.stationPoints[index];
       expect(section.index).toBe(index + 1);
-      expect(section.x).toBeCloseTo(station.x, 12);
-      expect(section.radius).toBeCloseTo(station.yTop, 12);
+      expect(section.s).toBeCloseTo(station.s, 12);
+      expect(section.radius).toBeCloseTo(station.topRadius, 12);
     });
   });
 
@@ -45,9 +45,9 @@ describe("theoretical drawing geometry", () => {
     expect(drawing.forwardSections.length).toBeGreaterThan(0);
     expect(drawing.aftSections.length).toBeGreaterThan(0);
     expect(drawing.midshipSections.length).toBe(1);
-    expect(drawing.forwardSections.every((section) => section.side === "forward" && section.x < drawing.midshipX)).toBe(true);
-    expect(drawing.aftSections.every((section) => section.side === "aft" && section.x > drawing.midshipX)).toBe(true);
-    expect(drawing.midshipSections.every((section) => section.side === "midship" && section.x === drawing.midshipX)).toBe(true);
+    expect(drawing.forwardSections.every((section) => section.side === "forward" && section.s < drawing.midshipS)).toBe(true);
+    expect(drawing.aftSections.every((section) => section.side === "aft" && section.s > drawing.midshipS)).toBe(true);
+    expect(drawing.midshipSections.every((section) => section.side === "midship" && section.s === drawing.midshipS)).toBe(true);
     expect(drawing.forwardSections.length + drawing.aftSections.length + drawing.midshipSections.length).toBe(drawing.sections.length);
   });
 
@@ -61,13 +61,13 @@ describe("theoretical drawing geometry", () => {
       expect(curve.value).toBeGreaterThan(0);
       expect(curve.value).toBeLessThan(drawing.maxRadius);
       expect(curve.points.length).toBeGreaterThan(2);
-      expect(curve.points.every((point) => point.y >= 0 && point.y <= drawing.maxRadius)).toBe(true);
+      expect(curve.points.every((point) => point.radius >= 0 && point.radius <= drawing.maxRadius)).toBe(true);
 
-      const sourcePoint = snapshot.smoothPoints.find((point) => point.x === curve.points[Math.floor(curve.points.length / 2)].x);
+      const sourcePoint = snapshot.smoothPoints.find((point) => point.s === curve.points[Math.floor(curve.points.length / 2)].s);
       expect(sourcePoint).toBeDefined();
       if (sourcePoint) {
-        const expected = Math.sqrt(Math.max(0, sourcePoint.y * sourcePoint.y - curve.value * curve.value));
-        expect(curve.points[Math.floor(curve.points.length / 2)].y).toBeCloseTo(expected, 12);
+        const expected = Math.sqrt(Math.max(0, sourcePoint.radius * sourcePoint.radius - curve.value * curve.value));
+        expect(curve.points[Math.floor(curve.points.length / 2)].radius).toBeCloseTo(expected, 12);
       }
     }
   });

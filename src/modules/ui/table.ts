@@ -4,15 +4,15 @@ import { formatNumber } from "../../shared/format";
 export function renderTable(tableBody: HTMLTableSectionElement, pointCountEl: HTMLElement, snapshot: ProfileSnapshot): void {
   tableBody.innerHTML = snapshot.stationPoints
     .map(
-      (point, index) => `
+      (station, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${formatNumber(point.x, 4)}</td>
-          <td>${formatNumber(point.yTop, 4)}</td>
-          <td>${formatNumber(point.yBottom, 4)}</td>
+          <td>${formatNumber(station.s, 4)}</td>
+          <td>${formatNumber(station.topRadius, 4)}</td>
+          <td>${formatNumber(station.bottomRadius, 4)}</td>
         </tr>
       `,
     )
     .join("");
-  pointCountEl.textContent = `${snapshot.stationPoints.length} точек`;
+  pointCountEl.textContent = `${snapshot.stationPoints.length} параметрических станций`;
 }

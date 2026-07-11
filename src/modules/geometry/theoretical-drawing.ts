@@ -1,4 +1,4 @@
-import type { ProfileSnapshot, SmoothPoint } from "./model";
+import type { ProfileSnapshot, ProfilePoint } from "./model";
 
 export interface TheoreticalGridLine {
   readonly value: number;
@@ -8,14 +8,14 @@ export interface TheoreticalGridLine {
 export interface TheoreticalCurve {
   readonly value: number;
   readonly label: string;
-  readonly points: readonly SmoothPoint[];
+  readonly points: readonly ProfilePoint[];
 }
 
 export type TheoreticalBodySectionSide = "forward" | "aft" | "midship";
 
 export interface TheoreticalSection {
   readonly index: number;
-  readonly x: number;
+  readonly s: number;
   readonly radius: number;
   readonly side: TheoreticalBodySectionSide;
 }
@@ -25,9 +25,9 @@ export interface TheoreticalDrawing {
   readonly totalLength: number;
   readonly maxRadius: number;
   readonly maxHeight: number;
-  readonly midshipX: number;
-  readonly profilePoints: readonly SmoothPoint[];
-  readonly halfBreadthPoints: readonly SmoothPoint[];
+  readonly midshipS: number;
+  readonly profilePoints: readonly ProfilePoint[];
+  readonly halfBreadthPoints: readonly ProfilePoint[];
   readonly profileButtockCurves: readonly TheoreticalCurve[];
   readonly halfBreadthWaterlineCurves: readonly TheoreticalCurve[];
   readonly sections: readonly TheoreticalSection[];
@@ -67,27 +67,27 @@ function makePositiveGrid(maxValue: number): readonly TheoreticalGridLine[] {
   return Object.freeze(lines);
 }
 
-function classifyBodyPlanSide(x: number, midshipX: number, totalLength: number): TheoreticalBodySectionSide {
+function classifyBodyPlanSide(s: number, midshipS: number, totalLength: number): TheoreticalBodySectionSide {
   const tolerance = Math.max(totalLength, 1) * 1e-9;
-  if (Math.abs(x - midshipX) <= tolerance) return "midship";
-  return x < midshipX ? "forward" : "aft";
+  if (Math.abs(s - midshipS) <= tolerance) return "midship";
+  return s < midshipS ? "forward" : "aft";
 }
 
-function makeOffsetCurve(points: readonly SmoothPoint[], offset: number): readonly SmoothPoint[] {
+function makeOffsetCurve(points: readonly ProfilePoint[], offset: number): readonly ProfilePoint[] {
   const tolerance = 1e-9;
   return Object.freeze(
     points
-      .filter((point) => point.y + tolerance >= offset)
+      .filter((point) => point.radius + tolerance >= offset)
       .map((point) =>
         Object.freeze({
-          x: point.x,
-          y: Math.sqrt(Math.max(0, point.y * point.y - offset * offset)),
+          s: point.s,
+          radius: Math.sqrt(Math.max(0, point.radius * point.radius - offset * offset)),
         }),
       ),
   );
 }
 
-function makeSectionCurves(lines: readonly TheoreticalGridLine[], points: readonly SmoothPoint[], maxRadius: number): readonly TheoreticalCurve[] {
+function makeSectionCurves(lines: readonly TheoreticalGridLine[], points: readonly ProfilePoint[], maxRadius: number): readonly TheoreticalCurve[] {
   const tolerance = Math.max(maxRadius, 1) * 1e-9;
   return Object.freeze(
     lines
@@ -106,25 +106,25 @@ function makeSectionCurves(lines: readonly TheoreticalGridLine[], points: readon
 export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDrawing {
   const totalLength = snapshot.extents.totalLength;
   const maxRadius = snapshot.extents.maxRadius;
-  const midshipX = totalLength / 2;
+  const midshipS = totalLength / 2;
   const waterlines = makeSymmetricGrid(maxRadius);
   const buttocks = makePositiveGrid(maxRadius);
   const sections = snapshot.stationPoints.map((point, index) =>
     Object.freeze({
       index: index + 1,
-      x: point.x,
-      radius: Math.max(0, point.yTop),
-      side: classifyBodyPlanSide(point.x, midshipX, totalLength),
+      s: point.s,
+      radius: Math.max(0, point.topRadius),
+      side: classifyBodyPlanSide(point.s, midshipS, totalLength),
     }),
   );
-  const halfBreadthPoints = Object.freeze(snapshot.smoothPoints.map((point) => Object.freeze({ x: point.x, y: point.y })));
+  const halfBreadthPoints = Object.freeze(snapshot.smoothPoints.map((point) => Object.freeze({ s: point.s, radius: point.radius })));
 
   return Object.freeze({
     title: "Теоретический чертеж корпуса",
     totalLength,
     maxRadius,
     maxHeight: snapshot.extents.maxHeight,
-    midshipX,
+    midshipS,
     profilePoints: Object.freeze([...snapshot.smoothPoints]),
     halfBreadthPoints,
     profileButtockCurves: makeSectionCurves(buttocks, snapshot.smoothPoints, maxRadius),

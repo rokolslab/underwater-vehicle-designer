@@ -1,4 +1,5 @@
-import type { EquipmentBalanceResult, BalanceWarningCode, Vector3 } from "../balance/model";
+import type { BodyVector3 } from "../../shared/body-coordinates";
+import type { EquipmentBalanceResult, BalanceWarningCode } from "../balance/model";
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
@@ -19,6 +20,9 @@ export interface BalanceMetricsElements {
   readonly centerOfGravity: HTMLElement;
   readonly centerOfBuoyancy: HTMLElement;
   readonly momentArm: HTMLElement;
+  readonly deltaX: HTMLElement;
+  readonly deltaY: HTMLElement;
+  readonly bg: HTMLElement;
   readonly warnings: HTMLElement;
 }
 
@@ -27,8 +31,11 @@ const warningLabels: Record<BalanceWarningCode, string> = {
   invalidEquipment: "Есть оборудование с некорректными данными.",
   invalidWaterDensity: "Плотность воды должна быть положительным числом.",
   invalidGravity: "Ускорение свободного падения должно быть положительным числом.",
+  equipmentOnlyBuoyancyModel: "ЦВ рассчитан только по вытесненным объёмам оборудования и не является ЦВ внешнего герметичного корпуса.",
   nonPositiveBuoyancy: "Плавучесть нулевая или отрицательная.",
   unstableVerticalCenters: "ЦВ не выше ЦТ по вертикали.",
+  longitudinalCentersMisaligned: "Продольное смещение ЦВ и ЦТ превышает допуск.",
+  transverseCentersMisaligned: "Поперечное смещение ЦВ и ЦТ превышает допуск.",
 };
 
 export function renderMetrics(elements: MetricsElements, snapshot: ProfileSnapshot): void {
@@ -38,8 +45,8 @@ export function renderMetrics(elements: MetricsElements, snapshot: ProfileSnapsh
   elements.cylindricalInsertLength.textContent = formatNumber(snapshot.state.cylindricalInsertLength, 4);
 }
 
-function formatVector(vector: Vector3): string {
-  return `x ${formatNumber(vector.x, 3)}; y ${formatNumber(vector.y, 3)}; z ${formatNumber(vector.z, 3)}`;
+function formatVector(vector: BodyVector3): string {
+  return `X ${formatNumber(vector.x, 3)} м; Y ${formatNumber(vector.y, 3)} м; Z ${formatNumber(vector.z, 3)} м`;
 }
 
 function warningText(result: EquipmentBalanceResult): string {
@@ -57,6 +64,9 @@ export function renderBalanceMetrics(elements: BalanceMetricsElements, result: E
   elements.centerOfGravity.textContent = formatVector(result.centerOfGravity);
   elements.centerOfBuoyancy.textContent = formatVector(result.centerOfBuoyancy);
   elements.momentArm.textContent = formatVector(result.momentArm);
+  elements.deltaX.textContent = `${formatNumber(result.deltaX, 3)} м`;
+  elements.deltaY.textContent = `${formatNumber(result.deltaY, 3)} м`;
+  elements.bg.textContent = `${formatNumber(result.bgM, 3)} м`;
   elements.warnings.textContent = warningText(result);
   elements.warnings.classList.toggle("balance-warning-summary--ok", result.warnings.length === 0);
   logger.debug("balance metrics render completed", { isValid: result.isValid, warningCount: result.warnings.length });

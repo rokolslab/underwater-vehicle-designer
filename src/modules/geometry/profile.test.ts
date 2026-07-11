@@ -3,9 +3,9 @@ import formulaFixture from "../../../tests/fixtures/formula-profile.json";
 import {
   getExtents,
   makeProfileSnapshot,
-  makeSmoothPoints,
+  makeProfilePoints,
   makeStationPoints,
-  maxRadiusX,
+  maxRadiusS,
   profileRadiusAt,
   radiusAt,
   totalProfileLength,
@@ -14,14 +14,14 @@ import {
 describe("profile geometry", () => {
   it("treats diameter as the physical maximum hull height", () => {
     const diameter = 2;
-    const x = maxRadiusX(6);
+    const s = maxRadiusS(6);
 
-    expect(radiusAt(x, 6, diameter)).toBeCloseTo(diameter / 2, 12);
+    expect(radiusAt(s, 6, diameter)).toBeCloseTo(diameter / 2, 12);
   });
   it("matches formula fixture radii", () => {
     for (const point of formulaFixture.points) {
-      expect(radiusAt(point.x, formulaFixture.length, formulaFixture.diameter)).toBeCloseTo(point.radius, 12);
-      expect(profileRadiusAt(point.x, formulaFixture.length, formulaFixture.diameter, 0)).toBeCloseTo(point.radius, 12);
+      expect(radiusAt(point.s, formulaFixture.length, formulaFixture.diameter)).toBeCloseTo(point.radius, 12);
+      expect(profileRadiusAt(point.s, formulaFixture.length, formulaFixture.diameter, 0)).toBeCloseTo(point.radius, 12);
     }
   });
 
@@ -29,18 +29,18 @@ describe("profile geometry", () => {
     const points = makeStationPoints(formulaFixture.length, formulaFixture.diameter, formulaFixture.stations);
 
     expect(points).toHaveLength(23);
-    expect(points[0].x).toBe(0);
-    expect(points[1].x).toBeCloseTo(0.15, 12);
-    expect(points.at(-2)?.x).toBeCloseTo(5.85, 12);
-    expect(points.at(-1)?.x).toBe(6);
+    expect(points[0].s).toBe(0);
+    expect(points[1].s).toBeCloseTo(0.15, 12);
+    expect(points.at(-2)?.s).toBeCloseTo(5.85, 12);
+    expect(points.at(-1)?.s).toBe(6);
   });
 
   it("matches sampled extents used by the current UI when insert length is zero", () => {
-    const extents = getExtents(makeSmoothPoints(formulaFixture.length, formulaFixture.diameter));
+    const extents = getExtents(makeProfilePoints(formulaFixture.length, formulaFixture.diameter));
 
     expect(extents.maxRadius).toBeCloseTo(formulaFixture.extents.maxRadius, 12);
     expect(extents.maxHeight).toBeCloseTo(formulaFixture.extents.maxHeight, 12);
-    expect(extents.maxX).toBeCloseTo(formulaFixture.extents.maxX, 12);
+    expect(extents.maxRadiusS).toBeCloseTo(formulaFixture.extents.maxRadiusS, 12);
     expect(extents.totalLength).toBe(formulaFixture.length);
   });
 
@@ -49,7 +49,7 @@ describe("profile geometry", () => {
     const diameter = 2;
     const cylindricalInsertLength = 2;
     const sourceLength = length - cylindricalInsertLength;
-    const insertStart = maxRadiusX(sourceLength);
+    const insertStart = maxRadiusS(sourceLength);
     const insertEnd = insertStart + cylindricalInsertLength;
     const maxRadius = radiusAt(insertStart, sourceLength, diameter);
 
@@ -66,10 +66,10 @@ describe("profile geometry", () => {
   it("uses total profile length for station points when insert is present", () => {
     const points = makeStationPoints(6, 2, 20, 2);
 
-    expect(points[0].x).toBe(0);
-    expect(points[1].x).toBeCloseTo(0.15, 12);
-    expect(points.at(-2)?.x).toBeCloseTo(5.85, 12);
-    expect(points.at(-1)?.x).toBe(6);
+    expect(points[0].s).toBe(0);
+    expect(points[1].s).toBeCloseTo(0.15, 12);
+    expect(points.at(-2)?.s).toBeCloseTo(5.85, 12);
+    expect(points.at(-1)?.s).toBe(6);
   });
 
   it("creates a shared immutable profile snapshot", () => {

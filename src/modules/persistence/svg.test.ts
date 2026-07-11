@@ -20,7 +20,10 @@ describe("svg export", () => {
     expect(svg).toContain("<path");
     expect(svg).toContain("<line");
     expect(svg.match(/<circle/g)).toHaveLength(46);
-    expect(svg).toContain('viewBox="-0.240000');
+    expect(svg).toContain('viewBox="-3.240000');
+    expect(svg).toContain('нос (+X)');
+    expect(svg).toContain('+Z вниз');
+    expect(svg).toContain('M3.000000 0.000000');
   });
 
   it("keeps the declared total profile length in the viewBox when insert is present", () => {
@@ -36,7 +39,8 @@ describe("svg export", () => {
 
     const svg = buildSvg(snapshot);
 
-    expect(svg).toContain('viewBox="-0.240000');
-    expect(svg).toContain('x2="6.000000"');
+    expect(svg).toContain('viewBox="-3.240000');
+    expect(svg).toContain('x1="-3.000000"');
+    expect(svg).toContain('x2="3.000000"');
   });
 });

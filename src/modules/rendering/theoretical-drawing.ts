@@ -1,6 +1,9 @@
+import type { ProfilePoint } from "../geometry/model";
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
+import { bodyXFromProfileS } from "../../shared/body-coordinates";
+import { bodyPointToXyProjection, bodyPointToXzProjection, bodyPointToYzProjection } from "./coordinate-adapter";
 
 interface Rect {
   readonly x: number;
@@ -84,14 +87,12 @@ function makeProjectionScale(layout: DrawingLayout, drawing: TheoreticalDrawing)
       bodyRadiusLimit / maxRadius,
     ),
   );
-  const drawingWidth = drawing.totalLength * unit;
-
   return Object.freeze({
     unit,
-    profileOriginX: layout.profile.x + (layout.profile.width - drawingWidth) / 2,
+    profileOriginX: layout.profile.x + layout.profile.width / 2,
     profileOriginY: layout.profile.y + layout.profile.height / 2,
-    halfBreadthOriginX: layout.halfBreadth.x + (layout.halfBreadth.width - drawingWidth) / 2,
-    halfBreadthOriginY: layout.halfBreadth.y + layout.halfBreadth.height - 16,
+    halfBreadthOriginX: layout.halfBreadth.x + layout.halfBreadth.width / 2,
+    halfBreadthOriginY: layout.halfBreadth.y + 16,
     bodyCenterX: layout.bodyPlan.x + layout.bodyPlan.width / 2,
     bodyCenterY: layout.bodyPlan.y + layout.bodyPlan.height / 2,
   });
@@ -128,7 +129,7 @@ function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {
 
 function drawPolyline(
   context: CanvasRenderingContext2D,
-  points: readonly { readonly x: number; readonly y: number }[],
+  points: readonly ProfilePoint[],
   mapX: (x: number) => number,
   mapY: (y: number) => number,
 ): void {
@@ -136,8 +137,8 @@ function drawPolyline(
 
   context.beginPath();
   points.forEach((point, index) => {
-    const x = mapX(point.x);
-    const y = mapY(point.y);
+    const x = mapX(point.s);
+    const y = mapY(point.radius);
     if (index === 0) context.moveTo(x, y);
     else context.lineTo(x, y);
   });
@@ -157,7 +158,7 @@ function drawProfileSectionCurves(
     drawPolyline(context, curve.points, mapX, mapY);
     drawPolyline(
       context,
-      curve.points.map((point) => ({ x: point.x, y: -point.y })),
+      curve.points.map((point) => ({ s: point.s, radius: -point.radius })),
       mapX,
       mapY,
     );
@@ -179,8 +180,8 @@ function drawHalfBreadthSectionCurves(
 }
 
 function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
-  const mapX = (x: number) => scale.profileOriginX + x * scale.unit;
-  const mapY = (y: number) => scale.profileOriginY - y * scale.unit;
+  const mapX = (s: number) => scale.profileOriginX + bodyPointToXzProjection({ x: bodyXFromProfileS(s, drawing.totalLength), y: 0, z: 0 }).right * scale.unit;
+  const mapY = (radius: number) => scale.profileOriginY + bodyPointToXzProjection({ x: 0, y: 0, z: -radius }).down * scale.unit;
 
   strokeRect(context, rect);
   drawText(context, "Бок", rect.x, rect.y - 10, 700);
@@ -189,7 +190,7 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const section of drawing.sections) {
-    const x = mapX(section.x);
+    const x = mapX(section.s);
     context.beginPath();
     context.moveTo(x, rect.y);
     context.lineTo(x, rect.y + rect.height);
@@ -219,12 +220,12 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.lineWidth = 2;
   context.beginPath();
   drawing.profilePoints.forEach((point, index) => {
-    const x = mapX(point.x);
-    const y = mapY(point.y);
+    const x = mapX(point.s);
+    const y = mapY(point.radius);
     if (index === 0) context.moveTo(x, y);
     else context.lineTo(x, y);
   });
-  [...drawing.profilePoints].reverse().forEach((point) => context.lineTo(mapX(point.x), mapY(-point.y)));
+  [...drawing.profilePoints].reverse().forEach((point) => context.lineTo(mapX(point.s), mapY(-point.radius)));
   context.closePath();
   context.fill();
   context.stroke();
@@ -235,15 +236,16 @@ function drawProfile(context: CanvasRenderingContext2D, rect: Rect, drawing: The
   context.save();
   context.fillStyle = muted;
   context.font = "11px Segoe UI, Arial, sans-serif";
-  context.fillText("0", mapX(0) - 4, rect.y + rect.height + 16);
-  context.fillText("L", mapX(drawing.totalLength) - 8, rect.y + rect.height + 16);
+  context.fillText("нос (+X)", mapX(0) - 50, rect.y + rect.height + 16);
+  context.fillText("корма", mapX(drawing.totalLength), rect.y + rect.height + 16);
   context.fillText("WL", rect.x - 28, mapY(0) + 4);
+  context.fillText("+Z вниз", rect.x + 8, rect.y + rect.height - 8);
   context.restore();
 }
 
 function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing: TheoreticalDrawing, scale: ProjectionScale): void {
-  const mapX = (x: number) => scale.halfBreadthOriginX + x * scale.unit;
-  const mapY = (y: number) => scale.halfBreadthOriginY - y * scale.unit;
+  const mapX = (s: number) => scale.halfBreadthOriginX + bodyPointToXyProjection({ x: bodyXFromProfileS(s, drawing.totalLength), y: 0, z: 0 }).right * scale.unit;
+  const mapY = (radius: number) => scale.halfBreadthOriginY + bodyPointToXyProjection({ x: 0, y: radius, z: 0 }).down * scale.unit;
 
   strokeRect(context, rect);
   drawText(context, "Полуширота", rect.x, rect.y - 10, 700);
@@ -252,7 +254,7 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const section of drawing.sections) {
-    const x = mapX(section.x);
+    const x = mapX(section.s);
     context.beginPath();
     context.moveTo(x, rect.y);
     context.lineTo(x, rect.y + rect.height);
@@ -289,6 +291,7 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.font = "11px Segoe UI, Arial, sans-serif";
   context.fillText("CL", rect.x - 28, mapY(0) + 4);
   context.fillText("B/2", rect.x - 32, mapY(drawing.maxRadius) + 4);
+  context.fillText("+Y правый борт", rect.x + 8, rect.y + rect.height - 8);
   context.restore();
 }
 
@@ -324,16 +327,15 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.strokeStyle = line;
   context.lineWidth = 1;
   for (const waterline of drawing.waterlines) {
-    const y = cy - waterline.value * scale.unit;
+    const y = cy + bodyPointToYzProjection({ x: 0, y: 0, z: waterline.value }).down * scale.unit;
     context.beginPath();
     context.moveTo(rect.x + 8, y);
     context.lineTo(rect.x + rect.width - 8, y);
     context.stroke();
   }
   for (const buttock of drawing.buttocks) {
-    const dx = buttock.value * scale.unit;
     for (const sign of [-1, 1]) {
-      const x = cx + sign * dx;
+      const x = cx + bodyPointToYzProjection({ x: 0, y: sign * buttock.value, z: 0 }).right * scale.unit;
       context.beginPath();
       context.moveTo(x, rect.y + 8);
       context.lineTo(x, rect.y + rect.height - 8);
@@ -375,10 +377,10 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.save();
   context.fillStyle = muted;
   context.font = "11px Segoe UI, Arial, sans-serif";
-  context.fillText("корма", rect.x + 12, rect.y + 18);
-  context.fillText("нос", rect.x + rect.width - 36, rect.y + 18);
-  context.fillText("Y", cx + drawing.maxRadius * scale.unit + 8, cy + 4);
-  context.fillText("Z", cx + 6, cy - drawing.maxRadius * scale.unit - 8);
+  context.fillText("левый борт", rect.x + 12, rect.y + 18);
+  context.fillText("правый борт (+Y)", rect.x + rect.width - 112, rect.y + 18);
+  context.fillText("+Y", cx + drawing.maxRadius * scale.unit + 8, cy + 4);
+  context.fillText("+Z вниз", cx + 6, cy + drawing.maxRadius * scale.unit + 14);
   context.restore();
 }
 
@@ -388,6 +390,15 @@ export function renderTheoreticalDrawing(canvas: HTMLCanvasElement, drawing: The
   if (!context) {
     logger.warn("theoretical drawing canvas context unavailable", { canvasId: canvas.id });
     return;
+  }
+  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxRadius <= 0) {
+    logger.warn("theoretical drawing canvas has empty or invalid geometry", {
+      exportView: "theoretical-drawing",
+      projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
+      totalLength: drawing.totalLength,
+      maxRadius: drawing.maxRadius,
+      pointCount: drawing.profilePoints.length,
+    });
   }
 
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -399,6 +410,10 @@ export function renderTheoreticalDrawing(canvas: HTMLCanvasElement, drawing: The
   drawBodyPlan(context, layout.bodyPlan, drawing, scale);
 
   logger.debug("theoretical drawing rendered", {
+    exportView: "theoretical-drawing",
+    projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
+    bodyXRange: [-drawing.totalLength / 2, drawing.totalLength / 2],
+    radialRange: [-drawing.maxRadius, drawing.maxRadius],
     width,
     height,
     scale: scale.unit,

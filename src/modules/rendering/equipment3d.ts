@@ -2,6 +2,8 @@ import * as THREE from "three";
 import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
 import { equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
+import { logger } from "../../shared/logger";
+import { bodyCylinderAxisToThreeEuler, bodyPointToThree } from "./coordinate-adapter";
 
 export interface EquipmentTransform {
   readonly position: {
@@ -39,19 +41,23 @@ export function equipmentSignature(items: readonly EquipmentItem[], report?: Equ
     .join("|");
 }
 
-export function equipmentSceneTransform(item: EquipmentItem, totalLength: number): EquipmentTransform {
-  const rotation = { x: 0, y: 0, z: 0 };
-  if (item.shape === "cylinder") {
-    if (item.orientation === "x") rotation.z = Math.PI / 2;
-    if (item.orientation === "z") rotation.x = Math.PI / 2;
-  }
+export function equipmentSceneTransform(item: EquipmentItem): EquipmentTransform {
+  const rotation = item.shape === "cylinder"
+    ? bodyCylinderAxisToThreeEuler(item.orientation)
+    : Object.freeze({ x: 0, y: 0, z: 0 });
+
+  const position = bodyPointToThree(item.position);
+  logger.debug("3d equipment transform created", {
+    id: item.id,
+    shape: item.shape,
+    sourceFrame: "Body/SNAME-NED",
+    targetFrame: "Three.js",
+    axisMapping: "three=(body.x,-body.z,body.y)",
+    bodyAxis: item.shape === "cylinder" ? item.orientation : null,
+  });
 
   return Object.freeze({
-    position: Object.freeze({
-      x: item.position.x - totalLength / 2,
-      y: item.position.y,
-      z: item.position.z,
-    }),
+    position,
     rotation: Object.freeze(rotation),
   });
 }
@@ -67,17 +73,17 @@ export function createEquipmentMaterial(status: EquipmentConstraintStatus): THRE
   });
 }
 
-export function createEquipmentMesh(item: EquipmentItem, totalLength: number, material: THREE.Material): THREE.Mesh {
+export function createEquipmentMesh(item: EquipmentItem, material: THREE.Material): THREE.Mesh {
   let geometry: THREE.BufferGeometry;
   if (item.shape === "sphere") {
     geometry = new THREE.SphereGeometry(item.dimensions.radius, 24, 16);
   } else if (item.shape === "cylinder") {
     geometry = new THREE.CylinderGeometry(item.dimensions.radius, item.dimensions.radius, item.dimensions.length, 24);
   } else {
-    geometry = new THREE.BoxGeometry(item.dimensions.width, item.dimensions.height, item.dimensions.depth);
+    geometry = new THREE.BoxGeometry(item.dimensions.lengthX, item.dimensions.heightZ, item.dimensions.breadthY);
   }
 
-  const transform = equipmentSceneTransform(item, totalLength);
+  const transform = equipmentSceneTransform(item);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `equipment:${item.id}`;
   mesh.position.set(transform.position.x, transform.position.y, transform.position.z);

@@ -5,18 +5,20 @@ import {
   type EquipmentItem,
 } from "../equipment/model";
 import { logger } from "../../shared/logger";
-import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult, Vector3 } from "./model";
+import type { BodyPoint3, BodyVector3 } from "../../shared/body-coordinates";
+import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult } from "./model";
+import { calculateStability, normalizeAlignmentToleranceM } from "./stability";
 
 export const DEFAULT_WATER_DENSITY_KG_PER_M3 = 1025;
 export const DEFAULT_GRAVITY_M_PER_S2 = 9.80665;
 
-const zeroVector: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
+const zeroVector: BodyPoint3 = Object.freeze({ x: 0, y: 0, z: 0 });
 
 interface Accumulator {
   readonly totalMassKg: number;
   readonly displacedVolumeM3: number;
-  readonly weightedMassCenter: Vector3;
-  readonly weightedVolumeCenter: Vector3;
+  readonly weightedMassCenter: BodyVector3;
+  readonly weightedVolumeCenter: BodyVector3;
 }
 
 function isPositiveFinite(value: number): boolean {
@@ -29,7 +31,7 @@ function warning(code: BalanceWarningCode, message: string, equipmentId?: string
   return item;
 }
 
-function addWeightedVector(current: Vector3, center: Vector3, weight: number): Vector3 {
+function addWeightedVector(current: BodyVector3, center: BodyPoint3, weight: number): BodyVector3 {
   return Object.freeze({
     x: current.x + center.x * weight,
     y: current.y + center.y * weight,
@@ -37,12 +39,12 @@ function addWeightedVector(current: Vector3, center: Vector3, weight: number): V
   });
 }
 
-function divideVector(vector: Vector3, divisor: number): Vector3 {
+function divideVector(vector: BodyVector3, divisor: number): BodyPoint3 {
   if (!isPositiveFinite(divisor)) return zeroVector;
   return Object.freeze({ x: vector.x / divisor, y: vector.y / divisor, z: vector.z / divisor });
 }
 
-function momentArm(centerOfBuoyancy: Vector3, centerOfGravity: Vector3): Vector3 {
+function momentArm(centerOfBuoyancy: BodyPoint3, centerOfGravity: BodyPoint3): BodyVector3 {
   return Object.freeze({
     x: centerOfBuoyancy.x - centerOfGravity.x,
     y: centerOfBuoyancy.y - centerOfGravity.y,
@@ -50,8 +52,9 @@ function momentArm(centerOfBuoyancy: Vector3, centerOfGravity: Vector3): Vector3
   });
 }
 
-function emptyResult(warnings: readonly BalanceWarning[]): EquipmentBalanceResult {
+function emptyResult(warnings: readonly BalanceWarning[], alignmentToleranceM: number): EquipmentBalanceResult {
   return Object.freeze({
+    buoyancyModel: "equipmentDisplacedVolume",
     isValid: false,
     totalMassKg: 0,
     displacedVolumeM3: 0,
@@ -61,6 +64,13 @@ function emptyResult(warnings: readonly BalanceWarning[]): EquipmentBalanceResul
     centerOfGravity: zeroVector,
     centerOfBuoyancy: zeroVector,
     momentArm: zeroVector,
+    deltaX: 0,
+    deltaY: 0,
+    bgM: 0,
+    isVerticallyStable: false,
+    alignmentToleranceM,
+    momentNm: zeroVector,
+    restoringMomentNm: zeroVector,
     warnings: Object.freeze([...warnings]),
   });
 }
@@ -68,8 +78,8 @@ function emptyResult(warnings: readonly BalanceWarning[]): EquipmentBalanceResul
 function accumulateEquipment(items: readonly EquipmentItem[], warnings: BalanceWarning[]): Accumulator {
   let totalMassKg = 0;
   let displacedVolumeM3 = 0;
-  let weightedMassCenter: Vector3 = zeroVector;
-  let weightedVolumeCenter: Vector3 = zeroVector;
+  let weightedMassCenter: BodyVector3 = zeroVector;
+  let weightedVolumeCenter: BodyVector3 = zeroVector;
 
   for (const item of items) {
     const validation = validateEquipmentItem(item);
@@ -93,6 +103,13 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
   const waterDensityKgPerM3 = input.waterDensityKgPerM3 ?? DEFAULT_WATER_DENSITY_KG_PER_M3;
   const gravityMPerS2 = input.gravityMPerS2 ?? DEFAULT_GRAVITY_M_PER_S2;
   const warnings: BalanceWarning[] = [];
+  const alignmentToleranceM = normalizeAlignmentToleranceM(input.alignmentToleranceM);
+  warnings.push(
+    warning(
+      "equipmentOnlyBuoyancyModel",
+      "Center of buoyancy is weighted only by equipment displaced volumes and is not the center of buoyancy of the external watertight hull.",
+    ),
+  );
 
   logger.debug("equipment balance calculation started", {
     equipmentCount: input.equipment.length,
@@ -126,7 +143,7 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
       displacedVolumeM3: accumulator.displacedVolumeM3,
       warningCount: warnings.length,
     });
-    return emptyResult(warnings);
+    return emptyResult(warnings, alignmentToleranceM);
   }
 
   const centerOfGravity = divideVector(accumulator.weightedMassCenter, accumulator.totalMassKg);
@@ -135,16 +152,49 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
   const buoyancyForceN = accumulator.displacedVolumeM3 * waterDensityKgPerM3 * gravityMPerS2;
   const netBuoyancyN = buoyancyForceN - weightN;
   const arm = momentArm(centerOfBuoyancy, centerOfGravity);
+  const stability = calculateStability({
+    centerOfGravity,
+    centerOfBuoyancy,
+    weightN,
+    buoyancyForceN,
+    origin: input.momentOrigin,
+    rollRad: input.rollRad,
+    pitchRad: input.pitchRad,
+    alignmentToleranceM,
+  });
 
   if (netBuoyancyN <= 0) {
     warnings.push(warning("nonPositiveBuoyancy", "Net buoyancy is zero or negative."));
+    logger.warn("equipment balance has non-positive buoyancy", { netBuoyancyN });
   }
 
-  if (centerOfBuoyancy.z <= centerOfGravity.z) {
-    warnings.push(warning("unstableVerticalCenters", "Center of buoyancy is not above center of gravity."));
+  if (!stability.isVerticallyStable) {
+    warnings.push(warning("unstableVerticalCenters", "Center of buoyancy is not above center of gravity in body/NED."));
+    logger.warn("equipment balance has non-positive BG", {
+      bgM: stability.bgM,
+      centerOfGravityZ: centerOfGravity.z,
+      centerOfBuoyancyZ: centerOfBuoyancy.z,
+    });
+  }
+
+  if (Math.abs(stability.deltaX) > stability.alignmentToleranceM) {
+    warnings.push(warning("longitudinalCentersMisaligned", "Longitudinal CG/CB offset exceeds tolerance."));
+    logger.warn("equipment balance longitudinal centers exceed tolerance", {
+      deltaX: stability.deltaX,
+      alignmentToleranceM: stability.alignmentToleranceM,
+    });
+  }
+
+  if (Math.abs(stability.deltaY) > stability.alignmentToleranceM) {
+    warnings.push(warning("transverseCentersMisaligned", "Transverse CG/CB offset exceeds tolerance."));
+    logger.warn("equipment balance transverse centers exceed tolerance", {
+      deltaY: stability.deltaY,
+      alignmentToleranceM: stability.alignmentToleranceM,
+    });
   }
 
   const result = Object.freeze({
+    buoyancyModel: "equipmentDisplacedVolume" as const,
     isValid: !warnings.some((item) =>
       item.code === "emptyEquipment" || item.code === "invalidEquipment" || item.code === "invalidWaterDensity" || item.code === "invalidGravity",
     ),
@@ -156,6 +206,13 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
     centerOfGravity,
     centerOfBuoyancy,
     momentArm: arm,
+    deltaX: stability.deltaX,
+    deltaY: stability.deltaY,
+    bgM: stability.bgM,
+    isVerticallyStable: stability.isVerticallyStable,
+    alignmentToleranceM: stability.alignmentToleranceM,
+    momentNm: stability.momentNm,
+    restoringMomentNm: stability.restoringMomentNm,
     warnings: Object.freeze([...warnings]),
   });
 
@@ -164,6 +221,13 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
     totalMassKg: result.totalMassKg,
     displacedVolumeM3: result.displacedVolumeM3,
     netBuoyancyN: result.netBuoyancyN,
+    deltaX: result.deltaX,
+    deltaY: result.deltaY,
+    bgM: result.bgM,
+    restoringMomentNm: result.restoringMomentNm,
+    alignmentToleranceM: result.alignmentToleranceM,
+    momentNm: result.momentNm,
+    momentOrigin: input.momentOrigin ?? zeroVector,
     warningCount: result.warnings.length,
   });
 

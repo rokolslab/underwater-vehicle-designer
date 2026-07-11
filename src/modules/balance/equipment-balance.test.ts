@@ -20,7 +20,7 @@ const box: EquipmentItem = Object.freeze({
   massKg: 30,
   position: Object.freeze({ x: 5, y: 2, z: 3 }),
   orientation: "z",
-  dimensions: Object.freeze({ width: 1, height: 1, depth: 1 }),
+  dimensions: Object.freeze({ lengthX: 1, breadthY: 1, heightZ: 1 }),
   displacedVolume: 0.08,
 });
 
@@ -37,6 +37,7 @@ describe("equipment balance", () => {
     expect(result.displacedVolumeM3).toBe(0);
     expect(result.centerOfGravity).toEqual({ x: 0, y: 0, z: 0 });
     expect(warningCodes(result)).toContain("emptyEquipment");
+    expect(warningCodes(result)).toContain("equipmentOnlyBuoyancyModel");
   });
 
   it("calculates balance for one equipment item", () => {
@@ -98,12 +99,27 @@ describe("equipment balance", () => {
     expect(warningCodes(result)).toContain("nonPositiveBuoyancy");
   });
 
-  it("warns when center of buoyancy is not above center of gravity", () => {
-    const lowerVolume = { ...sphere, position: { x: 0, y: 0, z: -2 }, massKg: 1, displacedVolume: 0.09 } satisfies EquipmentItem;
-    const higherMass = { ...box, position: { x: 0, y: 0, z: 2 }, massKg: 100, displacedVolume: 0.01 } satisfies EquipmentItem;
-    const result = calculateEquipmentBalance({ equipment: [lowerVolume, higherMass] });
+  it("uses the NED vertical sign and warns only when CB is below CG", () => {
+    const upperMass = { ...sphere, position: { x: 0, y: 0, z: -2 }, massKg: 100, displacedVolume: 0.01 } satisfies EquipmentItem;
+    const lowerVolume = { ...box, position: { x: 0, y: 0, z: 2 }, massKg: 1, displacedVolume: 0.09 } satisfies EquipmentItem;
+    const result = calculateEquipmentBalance({ equipment: [upperMass, lowerVolume] });
 
-    expect(result.centerOfBuoyancy.z).toBeLessThan(result.centerOfGravity.z);
+    expect(result.centerOfBuoyancy.z).toBeGreaterThan(result.centerOfGravity.z);
+    expect(result.bgM).toBeLessThan(0);
     expect(warningCodes(result)).toContain("unstableVerticalCenters");
+  });
+
+  it("reports explicit alignment tolerance and offset warnings", () => {
+    const result = calculateEquipmentBalance({ equipment: [sphere, box], alignmentToleranceM: 0.05 });
+
+    expect(result.alignmentToleranceM).toBe(0.05);
+    expect(result.deltaX).toBeCloseTo(result.centerOfBuoyancy.x - result.centerOfGravity.x, 12);
+    expect(result.deltaY).toBeCloseTo(result.centerOfBuoyancy.y - result.centerOfGravity.y, 12);
+    expect(warningCodes(result)).toContain("longitudinalCentersMisaligned");
+  });
+
+  it("preserves normalized tolerance in an invalid result", () => {
+    expect(calculateEquipmentBalance({ equipment: [], alignmentToleranceM: 0.25 }).alignmentToleranceM).toBe(0.25);
+    expect(calculateEquipmentBalance({ equipment: [], alignmentToleranceM: -1 }).alignmentToleranceM).toBe(0.001);
   });
 });

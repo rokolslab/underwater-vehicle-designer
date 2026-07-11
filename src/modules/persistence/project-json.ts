@@ -1,14 +1,17 @@
 import { DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../balance/equipment-balance";
 import type { BalanceSettings } from "../balance/model";
-import type { EquipmentAxis, EquipmentItem, EquipmentShape, Vector3 } from "../equipment/model";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
+import type { EquipmentAxis, EquipmentItem, EquipmentShape } from "../equipment/model";
 import { createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
 import type { ProfileState } from "../geometry/model";
 import type { Scene3dSettings } from "../rendering/model";
 import { defaultScene3dSettings, normalizeScene3dSettings } from "../rendering/viewSettings";
 import { logger } from "../../shared/logger";
 import { clampNumber } from "../../shared/math";
+import { migrateProjectV1ToV2 } from "./project-json-migrations";
 
-export const projectJsonSchemaVersion = 1;
+export const projectJsonSchemaVersion = 2;
+export const projectJsonCoordinateSystem = "SNAME_NED_BODY_CENTER_V1" as const;
 
 export interface SerializableProjectState {
   readonly profile: ProfileState;
@@ -19,12 +22,18 @@ export interface SerializableProjectState {
 
 export interface ProjectJsonDocument {
   readonly schemaVersion: typeof projectJsonSchemaVersion;
+  readonly coordinateSystem: typeof projectJsonCoordinateSystem;
   readonly exportedAt: string;
   readonly project: SerializableProjectState;
 }
 
 export type ProjectJsonParseResult =
-  | { readonly ok: true; readonly project: SerializableProjectState; readonly warnings: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly project: SerializableProjectState;
+      readonly warnings: readonly string[];
+      readonly migratedFromVersion?: 1;
+    }
   | { readonly ok: false; readonly error: string; readonly warnings: readonly string[] };
 
 const defaultProfile: ProfileState = Object.freeze({
@@ -110,7 +119,7 @@ function normalizeAxis(value: unknown, warnings: string[], id: string): Equipmen
   return "x";
 }
 
-function normalizeVector(value: unknown, warnings: string[], id: string): Partial<Vector3> {
+function normalizeVector(value: unknown, warnings: string[], id: string): Partial<BodyPoint3> {
   const source = readRecord(value, warnings, `equipment ${id} position`);
   return Object.freeze({
     x: readNumber(source.x, 0, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, warnings, `equipment ${id} position.x`),
@@ -124,9 +133,9 @@ function normalizeDimensions(value: unknown, warnings: string[], id: string): Eq
   return Object.freeze({
     radius: readNumber(source.radius, 0.2, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.radius`),
     length: readNumber(source.length, 0.5, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.length`),
-    width: readNumber(source.width, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.width`),
-    height: readNumber(source.height, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.height`),
-    depth: readNumber(source.depth, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.depth`),
+    lengthX: readNumber(source.lengthX, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.lengthX`),
+    breadthY: readNumber(source.breadthY, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.breadthY`),
+    heightZ: readNumber(source.heightZ, 0.4, Number.EPSILON, Number.POSITIVE_INFINITY, warnings, `equipment ${id} dimensions.heightZ`),
   });
 }
 
@@ -218,6 +227,7 @@ export function buildProjectJson(project: SerializableProjectState): string {
   });
   const document: ProjectJsonDocument = Object.freeze({
     schemaVersion: projectJsonSchemaVersion,
+    coordinateSystem: projectJsonCoordinateSystem,
     exportedAt: new Date().toISOString(),
     project,
   });
@@ -243,7 +253,7 @@ export function parseProjectJson(json: string): ProjectJsonParseResult {
     return Object.freeze({ ok: false, error: "Файл проекта должен содержать JSON-объект.", warnings });
   }
 
-  if (parsed.schemaVersion !== projectJsonSchemaVersion) {
+  if (parsed.schemaVersion !== 1 && parsed.schemaVersion !== projectJsonSchemaVersion) {
     logger.warn("project json import failed", { reason: "unsupportedVersion", requested: parsed.schemaVersion });
     return Object.freeze({ ok: false, error: "Версия JSON-проекта не поддерживается.", warnings });
   }
@@ -253,7 +263,49 @@ export function parseProjectJson(json: string): ProjectJsonParseResult {
     return Object.freeze({ ok: false, error: "В файле проекта отсутствует секция project.", warnings });
   }
 
-  const project = normalizeProject(parsed.project, warnings);
-  logger.debug("project json import parse completed", { equipmentCount: project.equipment.length, warningCount: warnings.length });
-  return Object.freeze({ ok: true, project, warnings: Object.freeze(warnings) });
+  if (parsed.schemaVersion === projectJsonSchemaVersion && parsed.coordinateSystem !== projectJsonCoordinateSystem) {
+    logger.warn("project json import failed", { reason: "invalidCoordinateSystem", schemaVersion: parsed.schemaVersion });
+    return Object.freeze({
+      ok: false,
+      error: "JSON-проект v2 содержит неизвестную или отсутствующую систему координат.",
+      warnings,
+    });
+  }
+
+  try {
+    let projectSource: Record<string, unknown> = parsed.project;
+    let migratedFromVersion: 1 | undefined;
+    if (parsed.schemaVersion === 1) {
+      const normalizedProfile = normalizeProfile(projectSource.profile, warnings);
+      projectSource = migrateProjectV1ToV2(projectSource, normalizedProfile);
+      migratedFromVersion = 1;
+      warnings.push("Проект v1 преобразован в SNAME/NED: старая ось z принята направленной на правый борт (body +Y). Проверьте размещение по бортам.");
+      logger.info("project json schema migration completed", { fromVersion: 1, toVersion: projectJsonSchemaVersion });
+      logger.warn("project json migration assumption applied", {
+        fromVersion: 1,
+        toVersion: projectJsonSchemaVersion,
+        assumption: "old.z=starboard",
+      });
+    }
+
+    const project = normalizeProject(projectSource, warnings);
+    logger.debug("project json import parse completed", {
+      schemaVersion: parsed.schemaVersion,
+      migratedFromVersion,
+      equipmentCount: project.equipment.length,
+      warningCount: warnings.length,
+    });
+    return Object.freeze({
+      ok: true,
+      project,
+      warnings: Object.freeze(warnings),
+      ...(migratedFromVersion === undefined ? {} : { migratedFromVersion }),
+    });
+  } catch (error) {
+    logger.error("project json import failed unexpectedly", {
+      schemaVersion: parsed.schemaVersion,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return Object.freeze({ ok: false, error: "Не удалось обработать JSON-проект.", warnings: Object.freeze(warnings) });
+  }
 }

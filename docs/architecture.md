@@ -32,6 +32,27 @@ index.html
 | `ui/` | HTML snippets, tables, metrics, control helpers | Хранить бизнес-правила |
 | `shared/` | Форматирование, math, logger | Становиться dumping ground |
 
+## Coordinate Architecture
+
+Проект разделяет четыре пространства:
+
+| Space | Contract |
+| --- | --- |
+| Body/SNAME-NED | Инженерные позиции, силы, моменты и сечения; `+X` к носу, `+Y` на правый борт, `+Z` вниз |
+| Profile | Параметр `s ∈ [0,L]` от носа к корме и радиус |
+| Three.js | Техническая Y-up сцена |
+| Canvas/SVG | Экранные координаты конкретной проекции |
+
+`src/shared/body-coordinates.ts` владеет Body/Profile conversion. `rendering/coordinate-adapter.ts` — единственная граница Body↔Three и Body↔screen:
+
+```text
+three.x = body.x
+three.y = -body.z
+three.z = body.y
+```
+
+Проекции: XZ — вправо `+X`, вниз `+Z`; XY — вправо `+X`, вниз `+Y`; YZ — вправо `+Y`, вниз `+Z`. Domain-модули не импортируют Three.js, DOM или Canvas.
+
 ## State Layers
 
 | Layer | Type/File | Description |
@@ -77,7 +98,7 @@ Canvas/SVG/CSV должны использовать один и тот же `Pr
 - `scene3dSettings`;
 - `balanceSettings`.
 
-Импорт нормализует значения и возвращает предупреждения, но не меняет схему молча без `schemaVersion`.
+Экспорт пишет JSON v2 с `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Импорт v1 выполняет явную одностороннюю миграцию и предупреждает о соглашении `old.z = starboard`; импорт v2 без корректного marker отклоняется.
 
 ## Error and Warning Strategy
 
@@ -95,7 +116,7 @@ Canvas/SVG/CSV должны использовать один и тот же `Pr
 | Geometry | Formula fixture, ЦВК, stations, snapshot immutability |
 | Theoretical drawing | Sections, waterlines, buttocks, body plan split |
 | Equipment | Volume, validation, placement, constraints |
-| Balance | CG, CB, buoyancy, warning codes |
+| Balance | CG, equipment-only CB, BG, forces, moments, warning codes |
 | Persistence | CSV, SVG, JSON schema normalization |
 | UI | Equipment editor, metrics, DOM contract |
 

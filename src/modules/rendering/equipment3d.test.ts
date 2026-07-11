@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 import { evaluateEquipmentConstraints } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { makeProfileSnapshot } from "../geometry/profile";
@@ -15,10 +16,10 @@ const sphere: EquipmentItem = {
 };
 
 describe("equipment 3d helpers", () => {
-  it("translates equipment x from nose coordinates to centered scene coordinates", () => {
-    const transform = equipmentSceneTransform(sphere, 6);
+  it("maps body equipment position to the Three frame", () => {
+    const transform = equipmentSceneTransform(sphere);
 
-    expect(transform.position).toEqual({ x: 1, y: 0.5, z: -0.25 });
+    expect(transform.position).toEqual({ x: 4, y: 0.25, z: 0.5 });
     expect(transform.rotation).toEqual({ x: 0, y: 0, z: 0 });
   });
 
@@ -33,9 +34,19 @@ describe("equipment 3d helpers", () => {
       dimensions: { radius: 0.2, length: 1 },
     };
 
-    expect(equipmentSceneTransform(cylinder, 6).rotation.z).toBeCloseTo(Math.PI / 2, 12);
-    expect(equipmentSceneTransform({ ...cylinder, orientation: "z" }, 6).rotation.x).toBeCloseTo(Math.PI / 2, 12);
-    expect(equipmentSceneTransform({ ...cylinder, orientation: "y" }, 6).rotation).toEqual({ x: 0, y: 0, z: 0 });
+    const expectedByAxis = {
+      x: new THREE.Vector3(1, 0, 0),
+      y: new THREE.Vector3(0, 0, 1),
+      z: new THREE.Vector3(0, -1, 0),
+    } as const;
+
+    for (const orientation of ["x", "y", "z"] as const) {
+      const rotation = equipmentSceneTransform({ ...cylinder, orientation }).rotation;
+      const actual = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(rotation.x, rotation.y, rotation.z));
+      expect(actual.x).toBeCloseTo(expectedByAxis[orientation].x, 12);
+      expect(actual.y).toBeCloseTo(expectedByAxis[orientation].y, 12);
+      expect(actual.z).toBeCloseTo(expectedByAxis[orientation].z, 12);
+    }
   });
 
   it("changes signature when dimensions or position changes", () => {

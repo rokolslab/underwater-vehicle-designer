@@ -1,12 +1,14 @@
+import { bodyXFromProfileS } from "../../shared/body-coordinates";
+import { logger } from "../../shared/logger";
 import { uniqueSorted } from "../../shared/math";
-import type { ProfileExtents, ProfileSnapshot, ProfileState, SmoothPoint, StationPoint } from "./model";
+import type { ProfileExtents, ProfileSnapshot, ProfileState, ProfilePoint, StationPoint } from "./model";
 
 const smoothSamples = 320;
 const maxRadiusPositionRatio = 1 - Math.sqrt(3) / 3;
 const maxRadiusBody = maxRadiusPositionRatio * (1 - maxRadiusPositionRatio) * (1 - 0.5 * maxRadiusPositionRatio);
 export const PROFILE_RADIUS_NORMALIZATION = 1 / (2 * Math.sqrt(maxRadiusBody));
 
-export function maxRadiusX(length: number): number {
+export function maxRadiusS(length: number): number {
   return length * maxRadiusPositionRatio;
 }
 
@@ -18,33 +20,33 @@ function normalizeCylindricalInsertLength(length: number, cylindricalInsertLengt
   return Math.min(Math.max(0, cylindricalInsertLength), length / 2);
 }
 
-export function radiusAt(x: number, length: number, diameter: number): number {
-  const t = x / length;
+export function radiusAt(s: number, length: number, diameter: number): number {
+  const t = s / length;
   const body = t * (1 - t) * (1 - 0.5 * t);
   return diameter * PROFILE_RADIUS_NORMALIZATION * Math.sqrt(Math.max(0, body));
 }
 
-function sourceXAt(x: number, length: number, cylindricalInsertLength: number): number {
-  if (cylindricalInsertLength <= 0) return x;
+function sourceSAt(s: number, length: number, cylindricalInsertLength: number): number {
+  if (cylindricalInsertLength <= 0) return s;
 
   const normalizedInsertLength = normalizeCylindricalInsertLength(length, cylindricalInsertLength);
   const sourceLength = length - normalizedInsertLength;
-  const insertStart = maxRadiusX(sourceLength);
+  const insertStart = maxRadiusS(sourceLength);
   const insertEnd = insertStart + normalizedInsertLength;
-  if (x <= insertStart) return x;
-  if (x <= insertEnd) return insertStart;
-  return x - normalizedInsertLength;
+  if (s <= insertStart) return s;
+  if (s <= insertEnd) return insertStart;
+  return s - normalizedInsertLength;
 }
 
 export function profileRadiusAt(
-  x: number,
+  s: number,
   length: number,
   diameter: number,
   cylindricalInsertLength = 0,
 ): number {
   const normalizedInsertLength = normalizeCylindricalInsertLength(length, cylindricalInsertLength);
   const sourceLength = length - normalizedInsertLength;
-  return radiusAt(sourceXAt(x, length, normalizedInsertLength), sourceLength, diameter);
+  return radiusAt(sourceSAt(s, length, normalizedInsertLength), sourceLength, diameter);
 }
 
 export function makeStationPoints(
@@ -56,47 +58,47 @@ export function makeStationPoints(
   const totalLength = totalProfileLength(length, cylindricalInsertLength);
   const step = totalLength / stations;
   const halfStep = step / 2;
-  const xs = [0, halfStep];
+  const stationSValues = [0, halfStep];
 
   for (let index = 1; index < stations; index += 1) {
-    xs.push(index * step);
+    stationSValues.push(index * step);
   }
 
-  xs.push(totalLength - halfStep, totalLength);
+  stationSValues.push(totalLength - halfStep, totalLength);
 
-  return uniqueSorted(xs).map((x) => {
-    const y = profileRadiusAt(x, length, diameter, cylindricalInsertLength);
-    return { x, yTop: y, yBottom: -y };
+  return uniqueSorted(stationSValues).map((s) => {
+    const radius = profileRadiusAt(s, length, diameter, cylindricalInsertLength);
+    return { s, topRadius: radius, bottomRadius: -radius };
   });
 }
 
-export function makeSmoothPoints(length: number, diameter: number, cylindricalInsertLength = 0): SmoothPoint[] {
-  const points: SmoothPoint[] = [];
+export function makeProfilePoints(length: number, diameter: number, cylindricalInsertLength = 0): ProfilePoint[] {
+  const points: ProfilePoint[] = [];
   const totalLength = totalProfileLength(length, cylindricalInsertLength);
   for (let index = 0; index <= smoothSamples; index += 1) {
-    const x = (totalLength * index) / smoothSamples;
-    points.push({ x, y: profileRadiusAt(x, length, diameter, cylindricalInsertLength) });
+    const s = (totalLength * index) / smoothSamples;
+    points.push({ s, radius: profileRadiusAt(s, length, diameter, cylindricalInsertLength) });
   }
   return points;
 }
 
-export function getExtents(points: readonly SmoothPoint[]): ProfileExtents {
-  const maxPoint = points.reduce<SmoothPoint>(
-    (best, point) => (point.y > best.y ? point : best),
-    { x: 0, y: 0 },
+export function getExtents(points: readonly ProfilePoint[]): ProfileExtents {
+  const maxPoint = points.reduce<ProfilePoint>(
+    (best, point) => (point.radius > best.radius ? point : best),
+    { s: 0, radius: 0 },
   );
-  const totalLength = points.at(-1)?.x ?? 0;
+  const totalLength = points.at(-1)?.s ?? 0;
 
   return {
-    maxRadius: maxPoint.y,
-    maxHeight: maxPoint.y * 2,
-    maxX: maxPoint.x,
+    maxRadius: maxPoint.radius,
+    maxHeight: maxPoint.radius * 2,
+    maxRadiusS: maxPoint.s,
     totalLength,
   };
 }
 
 export function makeProfileSnapshot(state: ProfileState): ProfileSnapshot {
-  const smoothPoints = makeSmoothPoints(state.length, state.diameter, state.cylindricalInsertLength);
+  const smoothPoints = makeProfilePoints(state.length, state.diameter, state.cylindricalInsertLength);
   const stationPoints = makeStationPoints(
     state.length,
     state.diameter,
@@ -104,6 +106,18 @@ export function makeProfileSnapshot(state: ProfileState): ProfileSnapshot {
     state.cylindricalInsertLength,
   );
   const extents = getExtents(smoothPoints);
+  const firstS = smoothPoints[0]?.s ?? 0;
+  const lastS = smoothPoints.at(-1)?.s ?? 0;
+
+  logger.debug("profile snapshot built", {
+    profileSRange: { min: firstS, max: lastS },
+    bodyXExtents: {
+      min: bodyXFromProfileS(lastS, state.length),
+      max: bodyXFromProfileS(firstS, state.length),
+    },
+    smoothPointCount: smoothPoints.length,
+    stationPointCount: stationPoints.length,
+  });
 
   return Object.freeze({
     state: Object.freeze({ ...state }),

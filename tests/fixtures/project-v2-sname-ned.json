@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "coordinateSystem": "SNAME_NED_BODY_CENTER_V1",
+  "exportedAt": "2026-07-11T12:00:00.000Z",
+  "project": {
+    "profile": {
+      "length": 10,
+      "slenderness": 5,
+      "diameter": 2,
+      "cylindricalInsertLength": 1,
+      "stations": 20,
+      "showGrid": true,
+      "showPoints": false
+    },
+    "equipment": [
+      {
+        "id": "body-box",
+        "name": "Body box",
+        "shape": "box",
+        "massKg": 4,
+        "position": { "x": 1, "y": 0.75, "z": 0.25 },
+        "orientation": "x",
+        "dimensions": { "lengthX": 1.2, "breadthY": 3.4, "heightZ": 2.3 }
+      }
+    ],
+    "scene3dSettings": {
+      "mode": "cutaway",
+      "hullOpacity": 0.3,
+      "section": { "type": "longitudinalPlane", "plane": "xy", "offset": -0.25 }
+    },
+    "balanceSettings": { "waterDensityKgPerM3": 1025, "gravityMPerS2": 9.81 }
+  }
+}

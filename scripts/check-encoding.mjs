@@ -56,10 +56,10 @@ const expectedStrings = [
   { file: "index.html", value: "Размерения" },
   { file: "index.html", value: "Боковой вид" },
   { file: "index.html", value: "Скачать SVG" },
-  { file: "index.html", value: "Координаты точек" },
+  { file: "index.html", value: "Параметрические станции профиля" },
   { file: "src/app/styles.css", value: "Показать" },
   { file: "src/app/styles.css", value: "Скрыть" },
-  { file: "src/modules/ui/table.ts", value: "точек" },
+  { file: "src/modules/ui/table.ts", value: "параметрических станций" },
 ];
 
 const results = {

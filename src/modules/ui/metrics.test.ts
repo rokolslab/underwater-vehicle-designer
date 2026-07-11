@@ -21,11 +21,15 @@ function makeElements() {
     centerOfGravity: element(),
     centerOfBuoyancy: element(),
     momentArm: element(),
+    deltaX: element(),
+    deltaY: element(),
+    bg: element(),
     warnings: element(),
   };
 }
 
 const result: EquipmentBalanceResult = Object.freeze({
+  buoyancyModel: "equipmentDisplacedVolume",
   isValid: true,
   totalMassKg: 40,
   displacedVolumeM3: 0.1,
@@ -35,6 +39,13 @@ const result: EquipmentBalanceResult = Object.freeze({
   centerOfGravity: Object.freeze({ x: 4, y: 1.5, z: 2 }),
   centerOfBuoyancy: Object.freeze({ x: 4.2, y: 1.6, z: 2.2 }),
   momentArm: Object.freeze({ x: 0.2, y: 0.1, z: 0.2 }),
+  deltaX: 0.2,
+  deltaY: 0.1,
+  bgM: -0.2,
+  isVerticallyStable: false,
+  alignmentToleranceM: 0.001,
+  momentNm: Object.freeze({ x: -100, y: 200, z: 0 }),
+  restoringMomentNm: Object.freeze({ x: 0, y: 0, z: 0 }),
   warnings: Object.freeze([]),
 });
 
@@ -49,9 +60,12 @@ describe("balance metrics ui", () => {
     expect(elements.weight.textContent).toBe("392,3");
     expect(elements.buoyancyForce.textContent).toBe("1 005,2");
     expect(elements.netBuoyancy.textContent).toBe("612,9");
-    expect(elements.centerOfGravity.textContent).toContain("x 4,000");
-    expect(elements.centerOfBuoyancy.textContent).toContain("z 2,200");
-    expect(elements.momentArm.textContent).toContain("x 0,200");
+    expect(elements.centerOfGravity.textContent).toContain("X 4,000 м");
+    expect(elements.centerOfBuoyancy.textContent).toContain("Z 2,200 м");
+    expect(elements.momentArm.textContent).toContain("X 0,200 м");
+    expect(elements.deltaX.textContent).toBe("0,200 м");
+    expect(elements.deltaY.textContent).toBe("0,100 м");
+    expect(elements.bg.textContent).toBe("-0,200 м");
     expect(elements.warnings.textContent).toBe("Норма");
   });
 

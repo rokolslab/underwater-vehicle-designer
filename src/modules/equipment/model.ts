@@ -1,13 +1,8 @@
 import { logger } from "../../shared/logger";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
 
 export type EquipmentShape = "sphere" | "cylinder" | "box";
 export type EquipmentAxis = "x" | "y" | "z";
-
-export interface Vector3 {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
 
 export interface SphereDimensions {
   readonly radius: number;
@@ -19,9 +14,9 @@ export interface CylinderDimensions {
 }
 
 export interface BoxDimensions {
-  readonly width: number;
-  readonly height: number;
-  readonly depth: number;
+  readonly lengthX: number;
+  readonly breadthY: number;
+  readonly heightZ: number;
 }
 
 export interface SphereEquipmentItem {
@@ -29,7 +24,7 @@ export interface SphereEquipmentItem {
   readonly name: string;
   readonly shape: "sphere";
   readonly massKg: number;
-  readonly position: Vector3;
+  readonly position: BodyPoint3;
   readonly orientation: EquipmentAxis;
   readonly dimensions: SphereDimensions;
   readonly displacedVolume?: number;
@@ -40,7 +35,7 @@ export interface CylinderEquipmentItem {
   readonly name: string;
   readonly shape: "cylinder";
   readonly massKg: number;
-  readonly position: Vector3;
+  readonly position: BodyPoint3;
   readonly orientation: EquipmentAxis;
   readonly dimensions: CylinderDimensions;
   readonly displacedVolume?: number;
@@ -51,7 +46,7 @@ export interface BoxEquipmentItem {
   readonly name: string;
   readonly shape: "box";
   readonly massKg: number;
-  readonly position: Vector3;
+  readonly position: BodyPoint3;
   readonly orientation: EquipmentAxis;
   readonly dimensions: BoxDimensions;
   readonly displacedVolume?: number;
@@ -64,13 +59,13 @@ export interface EquipmentValidationResult {
   readonly reason?: string;
 }
 
-export const zeroVector: Vector3 = Object.freeze({ x: 0, y: 0, z: 0 });
+export const zeroVector: BodyPoint3 = Object.freeze({ x: 0, y: 0, z: 0 });
 
 function positiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
-function validPosition(position: Vector3): boolean {
+function validPosition(position: BodyPoint3): boolean {
   return Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z);
 }
 
@@ -83,14 +78,14 @@ export function equipmentVolume(item: EquipmentItem): number {
   } else if (item.shape === "cylinder") {
     volume = Math.PI * item.dimensions.radius ** 2 * item.dimensions.length;
   } else {
-    volume = item.dimensions.width * item.dimensions.height * item.dimensions.depth;
+    volume = item.dimensions.lengthX * item.dimensions.breadthY * item.dimensions.heightZ;
   }
 
   logger.debug("equipment volume calculation completed", { id: item.id, shape: item.shape, volume });
   return volume;
 }
 
-export function equipmentCenter(item: EquipmentItem): Vector3 {
+export function equipmentCenter(item: EquipmentItem): BodyPoint3 {
   logger.debug("equipment center resolved", { id: item.id, shape: item.shape, position: item.position });
   return Object.freeze({ ...item.position });
 }
@@ -157,9 +152,9 @@ export function validateEquipmentItem(item: EquipmentItem): EquipmentValidationR
 
   if (
     item.shape === "box" &&
-    (!positiveFinite(item.dimensions.width) ||
-      !positiveFinite(item.dimensions.height) ||
-      !positiveFinite(item.dimensions.depth))
+    (!positiveFinite(item.dimensions.lengthX) ||
+      !positiveFinite(item.dimensions.breadthY) ||
+      !positiveFinite(item.dimensions.heightZ))
   ) {
     logger.warn("equipment validation failed", {
       id: item.id,

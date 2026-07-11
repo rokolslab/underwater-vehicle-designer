@@ -1,6 +1,7 @@
 import { clampNumber } from "../../shared/math";
 import { logger } from "../../shared/logger";
-import type { BoxDimensions, CylinderDimensions, EquipmentAxis, EquipmentItem, EquipmentShape, SphereDimensions, Vector3 } from "./model";
+import type { BodyPoint3 } from "../../shared/body-coordinates";
+import type { BoxDimensions, CylinderDimensions, EquipmentAxis, EquipmentItem, EquipmentShape, SphereDimensions } from "./model";
 
 export type EquipmentIdFactory = () => string;
 
@@ -14,7 +15,7 @@ export type EquipmentUpdate = Partial<{
   readonly name: string;
   readonly shape: EquipmentShape;
   readonly massKg: number;
-  readonly position: Partial<Vector3>;
+  readonly position: Partial<BodyPoint3>;
   readonly orientation: EquipmentAxis;
   readonly dimensions: Partial<BoxDimensions & CylinderDimensions>;
   readonly displacedVolume: number | undefined;
@@ -24,9 +25,9 @@ const defaults = {
   massKg: 1,
   radius: 0.2,
   length: 0.5,
-  width: 0.4,
-  height: 0.4,
-  depth: 0.4,
+  lengthX: 0.4,
+  breadthY: 0.4,
+  heightZ: 0.4,
 };
 
 let nextGeneratedId = 1;
@@ -46,7 +47,7 @@ function normalizePositive(value: unknown, fallback: number, field: string, id: 
   return normalized;
 }
 
-function normalizeVector(position: Partial<Vector3> | undefined, fallback: Vector3, id: string): Vector3 {
+function normalizeVector(position: Partial<BodyPoint3> | undefined, fallback: BodyPoint3, id: string): BodyPoint3 {
   return Object.freeze({
     x: normalizeCoordinate(position?.x, fallback.x, "position.x", id),
     y: normalizeCoordinate(position?.y, fallback.y, "position.y", id),
@@ -71,7 +72,7 @@ function defaultCylinderDimensions(): CylinderDimensions {
 }
 
 function defaultBoxDimensions(): BoxDimensions {
-  return Object.freeze({ width: defaults.width, height: defaults.height, depth: defaults.depth });
+  return Object.freeze({ lengthX: defaults.lengthX, breadthY: defaults.breadthY, heightZ: defaults.heightZ });
 }
 
 function normalizeDimensions(
@@ -93,9 +94,9 @@ function normalizeDimensions(
   }
 
   return Object.freeze({
-    width: normalizePositive(dimensions?.width, defaults.width, "width", id),
-    height: normalizePositive(dimensions?.height, defaults.height, "height", id),
-    depth: normalizePositive(dimensions?.depth, defaults.depth, "depth", id),
+    lengthX: normalizePositive(dimensions?.lengthX, defaults.lengthX, "lengthX", id),
+    breadthY: normalizePositive(dimensions?.breadthY, defaults.breadthY, "breadthY", id),
+    heightZ: normalizePositive(dimensions?.heightZ, defaults.heightZ, "heightZ", id),
   });
 }
 
@@ -170,10 +171,19 @@ export function updateEquipmentItem(
       position: normalizeVector(update.position, item.position, id),
       orientation: normalizeOrientation(update.orientation, item.orientation),
       dimensions,
-      displacedVolume:
-        update.displacedVolume === undefined
-          ? item.displacedVolume
-          : normalizePositive(update.displacedVolume, item.displacedVolume ?? defaults.massKg, "displacedVolume", id),
+      ...(update.displacedVolume === undefined && item.displacedVolume === undefined
+        ? {}
+        : {
+            displacedVolume:
+              update.displacedVolume === undefined
+                ? item.displacedVolume
+                : normalizePositive(
+                    update.displacedVolume,
+                    item.displacedVolume ?? defaults.massKg,
+                    "displacedVolume",
+                    id,
+                  ),
+          }),
     } as EquipmentItem);
     logger.debug("equipment item updated", {
       id,

@@ -70,8 +70,15 @@ export function updateScene3dControlBounds(
   totalLength: number,
   maxRadius: number,
 ): void {
-  elements.sectionX.max = String(totalLength);
+  const halfLength = totalLength / 2;
+  elements.sectionX.min = String(-halfLength);
+  elements.sectionX.max = String(halfLength);
   elements.sectionOffset.min = String(-maxRadius);
   elements.sectionOffset.max = String(maxRadius);
-  logger.debug("3d control bounds updated", { totalLength, maxRadius });
+  logger.debug("3d body section control bounds updated", {
+    sourceFrame: "Body/SNAME-NED",
+    minBodyX: -halfLength,
+    maxBodyX: halfLength,
+    maxRadius,
+  });
 }

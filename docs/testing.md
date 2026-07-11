@@ -93,6 +93,15 @@ docker compose run --rm app npm run build
 - JSON normalization for profile, equipment, scene3d and balance settings;
 - rejection of invalid JSON/root/schema.
 
+## Coordinate and Migration Regressions
+
+- правый базис Body/SNAME-NED и преобразования `s↔body.x`;
+- Body↔Three и знаки XZ/XY/YZ projections;
+- три оси цилиндра, стороны clipping и сечения `[-L/2,+L/2]`;
+- fixtures JSON v1/v2, marker `SNAME_NED_BODY_CENTER_V1` и предупреждение `old.z=starboard`;
+- миграция размеров box и секущих плоскостей;
+- `BG`, знаки моментов и equipment-only ограничение ЦВ.
+
 ## UI Contract Tests
 
 `dom-contract.test.ts` защищает DOM ids, которые требуются `main.ts`. Если в `index.html` переименовать элемент без изменения `main.ts`, тест должен упасть.

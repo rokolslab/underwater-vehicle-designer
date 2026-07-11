@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-07-10T12:00:00.000Z",
+  "project": {
+    "profile": {
+      "length": 10,
+      "slenderness": 5,
+      "diameter": 2,
+      "cylindricalInsertLength": 1,
+      "stations": 20,
+      "showGrid": true,
+      "showPoints": false
+    },
+    "equipment": [
+      {
+        "id": "axis-x-nose",
+        "name": "Axis X at nose",
+        "shape": "cylinder",
+        "massKg": 1,
+        "position": { "x": 0, "y": 2, "z": 3 },
+        "orientation": "x",
+        "dimensions": { "radius": 0.1, "length": 0.8 }
+      },
+      {
+        "id": "axis-y-aft",
+        "name": "Axis Y at aft",
+        "shape": "cylinder",
+        "massKg": 2,
+        "position": { "x": 10, "y": -2, "z": -3 },
+        "orientation": "y",
+        "dimensions": { "radius": 0.2, "length": 0.9 }
+      },
+      {
+        "id": "axis-z-mid",
+        "name": "Axis Z amidships",
+        "shape": "cylinder",
+        "massKg": 3,
+        "position": { "x": 5, "y": 1.5, "z": -2.5 },
+        "orientation": "z",
+        "dimensions": { "radius": 0.3, "length": 1.1 }
+      },
+      {
+        "id": "noncubic-box",
+        "name": "Non-cubic box",
+        "shape": "box",
+        "massKg": 4,
+        "position": { "x": 4, "y": -0.25, "z": 0.75 },
+        "orientation": "x",
+        "dimensions": { "width": 1.2, "height": 2.3, "depth": 3.4 }
+      }
+    ],
+    "scene3dSettings": {
+      "mode": "cutaway",
+      "hullOpacity": 0.3,
+      "section": { "type": "crossSectionX", "x": 2 }
+    },
+    "balanceSettings": { "waterDensityKgPerM3": 1025, "gravityMPerS2": 9.81 }
+  }
+}

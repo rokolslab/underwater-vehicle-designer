@@ -1,5 +1,8 @@
-import type { SmoothPoint } from "../geometry/model";
+import type { ProfilePoint } from "../geometry/model";
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
+import { bodyXFromProfileS } from "../../shared/body-coordinates";
+import { logger } from "../../shared/logger";
+import { bodyPointToXyProjection, bodyPointToXzProjection, bodyPointToYzProjection } from "../rendering/coordinate-adapter";
 
 interface Rect {
   readonly x: number;
@@ -26,8 +29,8 @@ const bodyPlanRect: Rect = Object.freeze({ x: 900, y: 82, width: 250, height: 24
 const minimumLength = 0.1;
 const minimumRadius = 0.1;
 
-function svgPath(points: readonly SmoothPoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
-  return points.map((point, index) => `${index === 0 ? "M" : "L"}${mapX(point.x).toFixed(2)} ${mapY(point.y).toFixed(2)}`).join(" ");
+function svgPath(points: readonly ProfilePoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
+  return points.map((point, index) => `${index === 0 ? "M" : "L"}${mapX(point.s).toFixed(2)} ${mapY(point.radius).toFixed(2)}`).join(" ");
 }
 
 function makeProjectionScale(drawing: TheoreticalDrawing): ProjectionScale {
@@ -45,30 +48,28 @@ function makeProjectionScale(drawing: TheoreticalDrawing): ProjectionScale {
       bodyRadiusLimit / maxRadius,
     ),
   );
-  const drawingWidth = drawing.totalLength * unit;
-
   return Object.freeze({
     unit,
-    profileOriginX: profileRect.x + (profileRect.width - drawingWidth) / 2,
+    profileOriginX: profileRect.x + profileRect.width / 2,
     profileOriginY: profileRect.y + profileRect.height / 2,
-    halfBreadthOriginX: halfBreadthRect.x + (halfBreadthRect.width - drawingWidth) / 2,
-    halfBreadthOriginY: halfBreadthRect.y + halfBreadthRect.height - 16,
+    halfBreadthOriginX: halfBreadthRect.x + halfBreadthRect.width / 2,
+    halfBreadthOriginY: halfBreadthRect.y + 16,
     bodyCenterX: bodyPlanRect.x + bodyPlanRect.width / 2,
     bodyCenterY: bodyPlanRect.y + bodyPlanRect.height / 2,
   });
 }
 
-function profileMaps(scale: ProjectionScale): { mapX: (value: number) => number; mapY: (value: number) => number } {
+function profileMaps(scale: ProjectionScale, totalLength: number): { mapX: (value: number) => number; mapY: (value: number) => number } {
   return {
-    mapX: (value) => scale.profileOriginX + value * scale.unit,
-    mapY: (value) => scale.profileOriginY - value * scale.unit,
+    mapX: (s) => scale.profileOriginX + bodyPointToXzProjection({ x: bodyXFromProfileS(s, totalLength), y: 0, z: 0 }).right * scale.unit,
+    mapY: (radius) => scale.profileOriginY + bodyPointToXzProjection({ x: 0, y: 0, z: -radius }).down * scale.unit,
   };
 }
 
-function halfBreadthMaps(scale: ProjectionScale): { mapX: (value: number) => number; mapY: (value: number) => number } {
+function halfBreadthMaps(scale: ProjectionScale, totalLength: number): { mapX: (value: number) => number; mapY: (value: number) => number } {
   return {
-    mapX: (value) => scale.halfBreadthOriginX + value * scale.unit,
-    mapY: (value) => scale.halfBreadthOriginY - value * scale.unit,
+    mapX: (s) => scale.halfBreadthOriginX + bodyPointToXyProjection({ x: bodyXFromProfileS(s, totalLength), y: 0, z: 0 }).right * scale.unit,
+    mapY: (radius) => scale.halfBreadthOriginY + bodyPointToXyProjection({ x: 0, y: radius, z: 0 }).down * scale.unit,
   };
 }
 
@@ -77,7 +78,7 @@ function profileCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value: nu
     .flatMap((curve) => [
       svgPath(curve.points, mapX, mapY),
       svgPath(
-        curve.points.map((point) => ({ x: point.x, y: -point.y })),
+        curve.points.map((point) => ({ s: point.s, radius: -point.radius })),
         mapX,
         mapY,
       ),
@@ -96,11 +97,11 @@ function halfBreadthCurvePaths(curves: readonly TheoreticalCurve[], mapX: (value
 }
 
 function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const { mapX, mapY } = profileMaps(scale);
+  const { mapX, mapY } = profileMaps(scale, drawing.totalLength);
   const top = svgPath(drawing.profilePoints, mapX, mapY);
-  const bottom = svgPath([...drawing.profilePoints].reverse().map((point) => ({ x: point.x, y: -point.y })), mapX, mapY).replace(/^M/, "L");
+  const bottom = svgPath([...drawing.profilePoints].reverse().map((point) => ({ s: point.s, radius: -point.radius })), mapX, mapY).replace(/^M/, "L");
   const stations = drawing.sections
-    .map((section) => `<line x1="${mapX(section.x).toFixed(2)}" y1="${profileRect.y}" x2="${mapX(section.x).toFixed(2)}" y2="${profileRect.y + profileRect.height}" class="grid" />`)
+    .map((section) => `<line x1="${mapX(section.s).toFixed(2)}" y1="${profileRect.y}" x2="${mapX(section.s).toFixed(2)}" y2="${profileRect.y + profileRect.height}" class="grid" />`)
     .join("\n    ");
   const waterlines = drawing.waterlines
     .map((line) => `<line x1="${profileRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${profileRect.x + profileRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
@@ -115,13 +116,15 @@ function renderProfile(drawing: TheoreticalDrawing, scale: ProjectionScale): str
     <line x1="${mapX(0).toFixed(2)}" y1="${mapY(0).toFixed(2)}" x2="${mapX(drawing.totalLength).toFixed(2)}" y2="${mapY(0).toFixed(2)}" class="axis" />
     <path d="${top} ${bottom} Z" class="hull-fill" />
     ${internalCurves}
+    <text x="${mapX(0).toFixed(2)}" y="${profileRect.y + profileRect.height - 8}" text-anchor="end" class="meta">нос (+X)</text>
+    <text x="${profileRect.x + 8}" y="${profileRect.y + profileRect.height - 8}" class="meta">+Z вниз</text>
   </g>`;
 }
 
 function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const { mapX, mapY } = halfBreadthMaps(scale);
+  const { mapX, mapY } = halfBreadthMaps(scale, drawing.totalLength);
   const stations = drawing.sections
-    .map((section) => `<line x1="${mapX(section.x).toFixed(2)}" y1="${halfBreadthRect.y}" x2="${mapX(section.x).toFixed(2)}" y2="${halfBreadthRect.y + halfBreadthRect.height}" class="grid" />`)
+    .map((section) => `<line x1="${mapX(section.s).toFixed(2)}" y1="${halfBreadthRect.y}" x2="${mapX(section.s).toFixed(2)}" y2="${halfBreadthRect.y + halfBreadthRect.height}" class="grid" />`)
     .join("\n    ");
   const buttocks = drawing.buttocks
     .map((line) => `<line x1="${halfBreadthRect.x}" y1="${mapY(line.value).toFixed(2)}" x2="${halfBreadthRect.x + halfBreadthRect.width}" y2="${mapY(line.value).toFixed(2)}" class="grid" />`)
@@ -137,6 +140,7 @@ function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale):
     <line x1="${mapX(0).toFixed(2)}" y1="${mapY(0).toFixed(2)}" x2="${mapX(drawing.totalLength).toFixed(2)}" y2="${mapY(0).toFixed(2)}" class="axis" />
     ${internalCurves}
     <path d="${path}" class="hull-line" />
+    <text x="${halfBreadthRect.x + 8}" y="${halfBreadthRect.y + halfBreadthRect.height - 8}" class="meta">+Y правый борт</text>
   </g>`;
 }
 
@@ -154,7 +158,7 @@ function sectionArcPath(section: TheoreticalSection, cx: number, cy: number, uni
 }
 
 function maxBodyArcPath(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const section = Object.freeze({ index: 0, x: drawing.midshipX, radius: drawing.maxRadius, side: "midship" as const });
+  const section = Object.freeze({ index: 0, s: drawing.midshipS, radius: drawing.maxRadius, side: "midship" as const });
   return sectionArcPath(section, scale.bodyCenterX, scale.bodyCenterY, scale.unit);
 }
 
@@ -162,10 +166,13 @@ function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): st
   const cx = scale.bodyCenterX;
   const cy = scale.bodyCenterY;
   const waterlines = drawing.waterlines
-    .map((line) => `<line x1="${bodyPlanRect.x + 8}" y1="${(cy - line.value * scale.unit).toFixed(2)}" x2="${bodyPlanRect.x + bodyPlanRect.width - 8}" y2="${(cy - line.value * scale.unit).toFixed(2)}" class="grid" />`)
+    .map((line) => {
+      const y = cy + bodyPointToYzProjection({ x: 0, y: 0, z: line.value }).down * scale.unit;
+      return `<line x1="${bodyPlanRect.x + 8}" y1="${y.toFixed(2)}" x2="${bodyPlanRect.x + bodyPlanRect.width - 8}" y2="${y.toFixed(2)}" class="grid" />`;
+    })
     .join("\n    ");
   const buttocks = drawing.buttocks
-    .flatMap((line) => [-1, 1].map((sign) => cx + sign * line.value * scale.unit))
+    .flatMap((line) => [-1, 1].map((sign) => cx + bodyPointToYzProjection({ x: 0, y: sign * line.value, z: 0 }).right * scale.unit))
     .map((x) => `<line x1="${x.toFixed(2)}" y1="${bodyPlanRect.y + 8}" x2="${x.toFixed(2)}" y2="${bodyPlanRect.y + bodyPlanRect.height - 8}" class="grid" />`)
     .join("\n    ");
   const aftSections = drawing.aftSections
@@ -186,8 +193,9 @@ function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): st
     ${buttocks}
     <line x1="${cx}" y1="${bodyPlanRect.y + 10}" x2="${cx}" y2="${bodyPlanRect.y + bodyPlanRect.height - 10}" class="axis" />
     <line x1="${bodyPlanRect.x + 10}" y1="${cy}" x2="${bodyPlanRect.x + bodyPlanRect.width - 10}" y2="${cy}" class="axis" />
-    <text x="${bodyPlanRect.x + 12}" y="${bodyPlanRect.y + 18}" class="meta">корма</text>
-    <text x="${bodyPlanRect.x + bodyPlanRect.width - 36}" y="${bodyPlanRect.y + 18}" class="meta">нос</text>
+    <text x="${bodyPlanRect.x + 12}" y="${bodyPlanRect.y + 18}" class="meta">левый борт</text>
+    <text x="${bodyPlanRect.x + bodyPlanRect.width - 118}" y="${bodyPlanRect.y + 18}" class="meta">правый борт (+Y)</text>
+    <text x="${cx + 6}" y="${bodyPlanRect.y + bodyPlanRect.height - 12}" class="meta">+Z вниз</text>
     ${aftSections}
     ${forwardSections}
     ${midshipSections}
@@ -197,6 +205,21 @@ function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): st
 
 export function buildTheoreticalDrawingSvg(drawing: TheoreticalDrawing): string {
   const scale = makeProjectionScale(drawing);
+
+  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxRadius <= 0) {
+    logger.warn("theoretical drawing SVG has empty or invalid geometry", {
+      exportView: "theoretical-drawing", projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
+      totalLength: drawing.totalLength, maxRadius: drawing.maxRadius,
+      pointCount: drawing.profilePoints.length,
+    });
+  }
+  logger.debug("theoretical drawing SVG built", {
+    exportView: "theoretical-drawing", projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
+    bodyXRange: [-drawing.totalLength / 2, drawing.totalLength / 2],
+    radialRange: [-drawing.maxRadius, drawing.maxRadius],
+    sectionCount: drawing.sections.length,
+    curveCount: drawing.profileButtockCurves.length + drawing.halfBreadthWaterlineCurves.length,
+  });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">

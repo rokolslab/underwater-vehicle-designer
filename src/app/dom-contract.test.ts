@@ -15,7 +15,11 @@ const requiredIds = [
   "balance-center-of-gravity",
   "balance-center-of-buoyancy",
   "balance-moment-arm",
+  "balance-delta-x",
+  "balance-delta-y",
+  "balance-bg",
   "balance-warnings",
+  "project-import-notice",
 ];
 
 describe("app DOM contract", () => {
@@ -25,5 +29,15 @@ describe("app DOM contract", () => {
     for (const id of requiredIds) {
       expect(html, id).toContain('id="' + id + '"');
     }
+  });
+
+  it("keeps the Body axis memo and migration guidance in the app contract", () => {
+    const html = readFileSync("index.html", "utf8");
+    const main = readFileSync("src/app/main.ts", "utf8");
+
+    expect(html).toContain("X — нос; Y — правый борт; Z — вниз");
+    expect(html).toContain("Body-сечение");
+    expect(main).toContain("result.migratedFromVersion");
+    expect(main).toContain("правом или левом");
   });
 });

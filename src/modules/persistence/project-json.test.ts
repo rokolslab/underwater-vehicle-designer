@@ -1,111 +1,134 @@
 import { describe, expect, it } from "vitest";
+import v1Fixture from "../../../tests/fixtures/project-v1-coordinate-migration.json";
+import v2Fixture from "../../../tests/fixtures/project-v2-sname-ned.json";
 import type { SerializableProjectState } from "./project-json";
-import { buildProjectJson, parseProjectJson, projectJsonSchemaVersion } from "./project-json";
+import {
+  buildProjectJson,
+  parseProjectJson,
+  projectJsonCoordinateSystem,
+  projectJsonSchemaVersion,
+} from "./project-json";
 
-const baseProject: SerializableProjectState = Object.freeze({
-  profile: Object.freeze({
-    length: 8,
-    slenderness: 4,
-    diameter: 2,
-    cylindricalInsertLength: 1,
-    stations: 24,
-    showGrid: false,
-    showPoints: true,
-  }),
-  equipment: Object.freeze([
-    Object.freeze({
-      id: "battery-1",
-      name: "Battery",
-      shape: "box" as const,
-      massKg: 12,
-      position: Object.freeze({ x: 3, y: 0.1, z: -0.2 }),
-      orientation: "x" as const,
-      dimensions: Object.freeze({ width: 0.8, height: 0.3, depth: 0.4 }),
-      displacedVolume: 0.096,
-    }),
-    Object.freeze({
-      id: "tank-1",
-      name: "Tank",
-      shape: "cylinder" as const,
-      massKg: 5,
-      position: Object.freeze({ x: 5, y: 0, z: 0.2 }),
-      orientation: "z" as const,
-      dimensions: Object.freeze({ radius: 0.2, length: 0.7 }),
-    }),
-  ]),
-  scene3dSettings: Object.freeze({
-    mode: "cutaway" as const,
-    hullOpacity: 0.32,
-    section: Object.freeze({ type: "longitudinalPlane" as const, plane: "xz" as const, offset: 0.15 }),
-  }),
-  balanceSettings: Object.freeze({ waterDensityKgPerM3: 1030, gravityMPerS2: 9.8 }),
-});
+function parseFixture(value: unknown) {
+  return parseProjectJson(JSON.stringify(value));
+}
 
 describe("project json persistence", () => {
-  it("exports a versioned project document and parses it back", () => {
-    const json = buildProjectJson(baseProject);
-    const raw = JSON.parse(json) as { schemaVersion: number; exportedAt: string };
-    const parsed = parseProjectJson(json);
+  it("exports only canonical v2 and round-trips without migration", () => {
+    const initial = parseFixture(v2Fixture);
+    expect(initial.ok).toBe(true);
+    if (!initial.ok) return;
+
+    const json = buildProjectJson(initial.project);
+    const raw = JSON.parse(json) as { schemaVersion: number; coordinateSystem: string; exportedAt: string };
+    const roundTrip = parseProjectJson(json);
 
     expect(raw.schemaVersion).toBe(projectJsonSchemaVersion);
+    expect(raw.coordinateSystem).toBe(projectJsonCoordinateSystem);
     expect(Date.parse(raw.exportedAt)).not.toBeNaN();
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-    expect(parsed.warnings).toHaveLength(0);
-    expect(parsed.project.profile).toEqual(baseProject.profile);
-    expect(parsed.project.equipment).toEqual(baseProject.equipment);
-    expect(parsed.project.scene3dSettings).toEqual(baseProject.scene3dSettings);
-    expect(parsed.project.balanceSettings).toEqual(baseProject.balanceSettings);
+    expect(roundTrip.ok).toBe(true);
+    if (!roundTrip.ok) return;
+    expect(roundTrip.migratedFromVersion).toBeUndefined();
+    expect(roundTrip.warnings).toHaveLength(0);
+    expect(roundTrip.project).toEqual(initial.project);
   });
 
-  it("normalizes unsafe numeric fields while preserving import", () => {
-    const parsed = parseProjectJson(
-      JSON.stringify({
-        schemaVersion: projectJsonSchemaVersion,
-        project: {
-          profile: {
-            length: -1,
-            slenderness: 0,
-            cylindricalInsertLength: 20,
-            stations: 200,
-            showGrid: true,
-            showPoints: false,
-          },
-          equipment: [
-            {
-              id: "bad-equipment",
-              name: "",
-              shape: "unknown",
-              massKg: -5,
-              position: { x: "bad", y: 1, z: 2 },
-              orientation: "bad-axis",
-              dimensions: { radius: -1 },
-            },
-          ],
-          scene3dSettings: { mode: "bad", hullOpacity: 99, section: { type: "crossSectionX", x: 999 } },
-          balanceSettings: { waterDensityKgPerM3: -10, gravityMPerS2: "bad" },
-        },
-      }),
-    );
+  it("migrates known v1 points, cylinder axes, and non-cubic box dimensions", () => {
+    const result = parseFixture(v1Fixture);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.migratedFromVersion).toBe(1);
+    expect(result.warnings).toContainEqual(expect.stringContaining("старая ось z"));
+    expect(result.project.equipment[0]).toMatchObject({ position: { x: 5, y: 3, z: -2 }, orientation: "x" });
+    expect(result.project.equipment[1]).toMatchObject({ position: { x: -5, y: -3, z: 2 }, orientation: "z" });
+    expect(result.project.equipment[2]).toMatchObject({ position: { x: 0, y: -2.5, z: -1.5 }, orientation: "y" });
+    expect(result.project.equipment[3]).toMatchObject({
+      position: { x: 1, y: 0.75, z: 0.25 },
+      dimensions: { lengthX: 1.2, breadthY: 3.4, heightZ: 2.3 },
+    });
+    expect(result.project.scene3dSettings.section).toEqual({ type: "crossSectionX", x: 3 });
+  });
+
+  it("normalizes v1 profile length before applying position and section migration", () => {
+    const legacy = structuredClone(v1Fixture) as unknown as Record<string, any>;
+    legacy.project.profile.length = -10;
+    legacy.project.equipment[0].position.x = 0;
+    legacy.project.scene3dSettings.section = { type: "crossSectionX", x: 0 };
+    const result = parseFixture(legacy);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.profile.length).toBe(0.1);
+    expect(result.project.equipment[0].position.x).toBe(0.05);
+    expect(result.project.scene3dSettings.section).toEqual({ type: "crossSectionX", x: 0.05 });
+  });
+
+  it.each([
+    ["xy", 0.35, { type: "longitudinalPlane", plane: "xz", offset: 0.35 }],
+    ["xz", 0.35, { type: "longitudinalPlane", plane: "xy", offset: -0.35 }],
+  ])("migrates legacy %s longitudinal plane", (plane, offset, expected) => {
+    const legacy = structuredClone(v1Fixture) as unknown as Record<string, any>;
+    legacy.project.scene3dSettings.section = { type: "longitudinalPlane", plane, offset };
+    const result = parseFixture(legacy);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.project.scene3dSettings.section).toEqual(expected);
+  });
+
+  it("does not apply v1 conversion twice after migrated save/import", () => {
+    const migrated = parseFixture(v1Fixture);
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) return;
+    const secondImport = parseProjectJson(buildProjectJson(migrated.project));
+    expect(secondImport.ok).toBe(true);
+    if (!secondImport.ok) return;
+
+    expect(secondImport.migratedFromVersion).toBeUndefined();
+    expect(secondImport.warnings).toHaveLength(0);
+    expect(secondImport.project).toEqual(migrated.project);
+  });
+
+  it("normalizes unsafe v2 fields without legacy migration", () => {
+    const unsafe = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    unsafe.project.profile.length = -1;
+    unsafe.project.profile.slenderness = 0;
+    unsafe.project.profile.cylindricalInsertLength = 20;
+    unsafe.project.profile.stations = 200;
+    unsafe.project.equipment[0].massKg = -5;
+    unsafe.project.equipment[0].position.x = "bad";
+    unsafe.project.scene3dSettings = { mode: "bad", hullOpacity: 99, section: { type: "crossSectionX", x: 999 } };
+    unsafe.project.balanceSettings = { waterDensityKgPerM3: -10, gravityMPerS2: "bad" };
+    const parsed = parseFixture(unsafe);
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
+    expect(parsed.migratedFromVersion).toBeUndefined();
     expect(parsed.warnings.length).toBeGreaterThan(0);
-    expect(parsed.project.profile.length).toBe(0.1);
-    expect(parsed.project.profile.slenderness).toBe(0.1);
-    expect(parsed.project.profile.diameter).toBe(1);
-    expect(parsed.project.profile.cylindricalInsertLength).toBe(0.05);
-    expect(parsed.project.profile.stations).toBe(80);
-    expect(parsed.project.equipment[0].shape).toBe("sphere");
-    expect(parsed.project.equipment[0].massKg).toBeGreaterThan(0);
-    expect(parsed.project.equipment[0].orientation).toBe("x");
-    expect(parsed.project.scene3dSettings.mode).toBe("solid");
-    expect(parsed.project.balanceSettings.waterDensityKgPerM3).toBeGreaterThan(0);
+    expect(parsed.project.profile).toMatchObject({ length: 0.1, slenderness: 0.1, diameter: 1, stations: 80 });
+    expect(parsed.project.equipment[0].position.x).toBe(0);
+    expect(parsed.project.scene3dSettings.section).toEqual({ type: "crossSectionX", x: 0.05 });
   });
 
-  it("rejects unsupported schema versions and invalid json", () => {
+  it.each([
+    ["missing version", { project: {} }],
+    ["unknown version", { schemaVersion: 0, project: {} }],
+    ["future version", { schemaVersion: 3, coordinateSystem: projectJsonCoordinateSystem, project: {} }],
+    ["missing v2 marker", { schemaVersion: 2, project: {} }],
+    ["invalid v2 marker", { schemaVersion: 2, coordinateSystem: "OTHER", project: {} }],
+  ])("rejects %s", (_label, document) => {
+    expect(parseFixture(document).ok).toBe(false);
+  });
+
+  it("rejects invalid JSON and a v2 document without project", () => {
     expect(parseProjectJson("not json").ok).toBe(false);
-    expect(parseProjectJson(JSON.stringify({ schemaVersion: 999, project: {} })).ok).toBe(false);
-    expect(parseProjectJson(JSON.stringify({ schemaVersion: projectJsonSchemaVersion })).ok).toBe(false);
+    expect(parseFixture({ schemaVersion: 2, coordinateSystem: projectJsonCoordinateSystem }).ok).toBe(false);
+  });
+
+  it("accepts a typed project state for export", () => {
+    const parsed = parseFixture(v2Fixture);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const project: SerializableProjectState = parsed.project;
+    expect(JSON.parse(buildProjectJson(project))).toMatchObject({ schemaVersion: 2 });
   });
 });
