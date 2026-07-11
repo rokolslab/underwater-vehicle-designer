@@ -1,4 +1,6 @@
 import type { ProfileSnapshot } from "../geometry/model";
+import { logger } from "../../shared/logger";
+import { profilePointToThree } from "./coordinate-adapter";
 
 export interface HullMeshData {
   readonly positions: Float32Array;
@@ -19,8 +21,8 @@ function normalizeSegments(radialSegments: number | undefined): number {
   return Math.max(8, Math.round(radialSegments ?? defaultRadialSegments));
 }
 
-function radiusFromPosition(y: number, z: number): number {
-  return Math.hypot(y, z);
+function radiusFromPosition(threeY: number, threeZ: number): number {
+  return Math.hypot(threeY, threeZ);
 }
 
 export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOptions = {}): HullMeshData {
@@ -34,6 +36,14 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
   const indices = new Uint32Array((ringCount - 1) * radialSegments * 6);
   const totalLength = Math.max(snapshot.extents.totalLength, 1);
 
+  logger.debug("3d hull mesh data creation started", {
+    sourceFrame: "profile(s,radius)",
+    targetFrame: "Three(x,y,z)",
+    axisMapping: "three=(body.x,-body.z,body.y)",
+    ringCount,
+    radialSegments,
+  });
+
   for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
     const point = rings[ringIndex];
     const radius = Math.max(0, point.radius);
@@ -46,12 +56,14 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
       const positionOffset = vertexIndex * 3;
       const uvOffset = vertexIndex * 2;
 
-      positions[positionOffset] = point.s;
-      positions[positionOffset + 1] = radius * cos;
-      positions[positionOffset + 2] = radius * sin;
-      normals[positionOffset] = 0;
-      normals[positionOffset + 1] = cos;
-      normals[positionOffset + 2] = sin;
+      const position = profilePointToThree(point.s, radius * cos, radius * sin, totalLength);
+      const normal = profilePointToThree(totalLength / 2, cos, sin, totalLength);
+      positions[positionOffset] = position.x;
+      positions[positionOffset + 1] = position.y;
+      positions[positionOffset + 2] = position.z;
+      normals[positionOffset] = normal.x;
+      normals[positionOffset + 1] = normal.y;
+      normals[positionOffset + 2] = normal.z;
       uvs[uvOffset] = point.s / totalLength;
       uvs[uvOffset + 1] = radialIndex / radialSegments;
     }
@@ -75,7 +87,7 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
     }
   }
 
-  return {
+  const result = {
     positions,
     normals,
     uvs,
@@ -83,6 +95,13 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
     radialSegments,
     longitudinalSegments: Math.max(0, ringCount - 1),
   };
+  logger.debug("3d hull mesh data creation completed", {
+    sourceFrame: "profile(s,radius)",
+    targetFrame: "Three(x,y,z)",
+    vertices: ringCount * verticesPerRing,
+    triangles: indices.length / 3,
+  });
+  return result;
 }
 
 export function readVertexRadius(mesh: HullMeshData, vertexIndex: number): number {

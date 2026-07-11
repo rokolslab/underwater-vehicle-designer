@@ -28,8 +28,11 @@ const warningLabels: Record<BalanceWarningCode, string> = {
   invalidEquipment: "Есть оборудование с некорректными данными.",
   invalidWaterDensity: "Плотность воды должна быть положительным числом.",
   invalidGravity: "Ускорение свободного падения должно быть положительным числом.",
+  equipmentOnlyBuoyancyModel: "ЦВ рассчитан только по вытесненным объёмам оборудования и не является ЦВ внешнего герметичного корпуса.",
   nonPositiveBuoyancy: "Плавучесть нулевая или отрицательная.",
   unstableVerticalCenters: "ЦВ не выше ЦТ по вертикали.",
+  longitudinalCentersMisaligned: "Продольное смещение ЦВ и ЦТ превышает допуск.",
+  transverseCentersMisaligned: "Поперечное смещение ЦВ и ЦТ превышает допуск.",
 };
 
 export function renderMetrics(elements: MetricsElements, snapshot: ProfileSnapshot): void {

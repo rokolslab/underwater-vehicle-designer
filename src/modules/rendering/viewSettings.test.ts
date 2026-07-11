@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { logger } from "../../shared/logger";
 import { maxHullOpacity, minHullOpacity, normalizeScene3dSettings } from "./viewSettings";
 
 const bounds = { totalLength: 6, maxRadius: 1.2 };
 
 describe("3d view settings", () => {
+  afterEach(() => vi.restoreAllMocks());
   it("keeps valid x-ray settings", () => {
     const settings = normalizeScene3dSettings(
       { mode: "x-ray", hullOpacity: 0.3, section: { type: "disabled" } },
@@ -28,21 +30,38 @@ describe("3d view settings", () => {
     expect(settings.hullOpacity).toBe(minHullOpacity);
   });
 
-  it("normalizes cross section position to total length", () => {
+  it("clamps cross section position to signed Body X bounds", () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
     const settings = normalizeScene3dSettings(
       { mode: "cutaway", section: { type: "crossSectionX", x: 99 } },
       bounds,
     );
 
-    expect(settings.section).toEqual({ type: "crossSectionX", x: 6 });
+    expect(settings.section).toEqual({ type: "crossSectionX", x: 3 });
+    expect(warn).toHaveBeenCalledWith("3d body cross section position clamped", expect.objectContaining({
+      requested: 99,
+      normalized: 3,
+      minBodyX: -3,
+      maxBodyX: 3,
+    }));
+
+    expect(normalizeScene3dSettings(
+      { mode: "cutaway", section: { type: "crossSectionX", x: -99 } },
+      bounds,
+    ).section).toEqual({ type: "crossSectionX", x: -3 });
   });
 
   it("normalizes longitudinal section plane and offset", () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
     const settings = normalizeScene3dSettings(
       { mode: "cutaway", section: { type: "longitudinalPlane", plane: "bad", offset: -4 } },
       bounds,
     );
 
     expect(settings.section).toEqual({ type: "longitudinalPlane", plane: "xy", offset: -1.2 });
+    expect(warn).toHaveBeenCalledWith("3d body longitudinal section offset clamped", expect.objectContaining({
+      requested: -4,
+      normalized: -1.2,
+    }));
   });
 });

@@ -26,6 +26,7 @@ function makeElements() {
 }
 
 const result: EquipmentBalanceResult = Object.freeze({
+  buoyancyModel: "equipmentDisplacedVolume",
   isValid: true,
   totalMassKg: 40,
   displacedVolumeM3: 0.1,
@@ -35,6 +36,13 @@ const result: EquipmentBalanceResult = Object.freeze({
   centerOfGravity: Object.freeze({ x: 4, y: 1.5, z: 2 }),
   centerOfBuoyancy: Object.freeze({ x: 4.2, y: 1.6, z: 2.2 }),
   momentArm: Object.freeze({ x: 0.2, y: 0.1, z: 0.2 }),
+  deltaX: 0.2,
+  deltaY: 0.1,
+  bgM: -0.2,
+  isVerticallyStable: false,
+  alignmentToleranceM: 0.001,
+  momentNm: Object.freeze({ x: -100, y: 200, z: 0 }),
+  restoringMomentNm: Object.freeze({ x: 0, y: 0, z: 0 }),
   warnings: Object.freeze([]),
 });
 

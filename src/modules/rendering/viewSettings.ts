@@ -51,10 +51,17 @@ function normalizePlane(plane: string | undefined): LongitudinalSectionPlane {
 
 function normalizeSection(input: Scene3dSettingsInput["section"], bounds: Scene3dNormalizationBounds): Scene3dSection {
   if (input?.type === "crossSectionX") {
-    const normalized = clampNumber(input.x, bounds.totalLength / 2, 0, bounds.totalLength);
+    const halfLength = bounds.totalLength / 2;
+    const normalized = clampNumber(input.x, 0, -halfLength, halfLength);
     const numeric = Number(input.x);
     if (input.x !== undefined && (!Number.isFinite(numeric) || numeric !== normalized)) {
-      logger.warn("3d cross section position clamped", { requested: input.x, normalized, totalLength: bounds.totalLength });
+      logger.warn("3d body cross section position clamped", {
+        sourceFrame: "Body/SNAME-NED",
+        requested: input.x,
+        normalized,
+        minBodyX: -halfLength,
+        maxBodyX: halfLength,
+      });
     }
     return Object.freeze({ type: "crossSectionX", x: normalized });
   }
@@ -63,7 +70,9 @@ function normalizeSection(input: Scene3dSettingsInput["section"], bounds: Scene3
     const normalized = clampNumber(input.offset, 0, -bounds.maxRadius, bounds.maxRadius);
     const numeric = Number(input.offset);
     if (input.offset !== undefined && (!Number.isFinite(numeric) || numeric !== normalized)) {
-      logger.warn("3d longitudinal section offset clamped", {
+      logger.warn("3d body longitudinal section offset clamped", {
+        sourceFrame: "Body/SNAME-NED",
+        plane: input.plane,
         requested: input.offset,
         normalized,
         maxRadius: bounds.maxRadius,

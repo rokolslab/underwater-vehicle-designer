@@ -18,8 +18,11 @@ export type BalanceWarningCode =
   | "invalidEquipment"
   | "invalidWaterDensity"
   | "invalidGravity"
+  | "equipmentOnlyBuoyancyModel"
   | "nonPositiveBuoyancy"
-  | "unstableVerticalCenters";
+  | "unstableVerticalCenters"
+  | "longitudinalCentersMisaligned"
+  | "transverseCentersMisaligned";
 
 export interface BalanceWarning {
   readonly code: BalanceWarningCode;
@@ -38,9 +41,14 @@ export interface EquipmentBalanceInput {
   readonly equipment: readonly EquipmentItem[];
   readonly waterDensityKgPerM3?: number;
   readonly gravityMPerS2?: number;
+  readonly momentOrigin?: BodyPoint3;
+  readonly rollRad?: number;
+  readonly pitchRad?: number;
+  readonly alignmentToleranceM?: number;
 }
 
 export interface EquipmentBalanceResult {
+  readonly buoyancyModel: "equipmentDisplacedVolume";
   readonly isValid: boolean;
   readonly totalMassKg: number;
   readonly displacedVolumeM3: number;
@@ -50,5 +58,12 @@ export interface EquipmentBalanceResult {
   readonly centerOfGravity: BodyPoint3;
   readonly centerOfBuoyancy: BodyPoint3;
   readonly momentArm: BalanceMomentArm;
+  readonly deltaX: number;
+  readonly deltaY: number;
+  readonly bgM: number;
+  readonly isVerticallyStable: boolean;
+  readonly alignmentToleranceM: number;
+  readonly momentNm: BodyVector3;
+  readonly restoringMomentNm: BodyVector3;
   readonly warnings: readonly BalanceWarning[];
 }

@@ -6,8 +6,13 @@ import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
 import { buildHullMeshData } from "./mesh";
 import { createEquipmentMaterial, createEquipmentMesh, equipmentSignature } from "./equipment3d";
-import type { Scene3dSection, Scene3dSettings } from "./model";
+import type { Scene3dSection, Scene3dSettings, SectionRetainedHalfSpace } from "./model";
 import { defaultScene3dSettings } from "./viewSettings";
+import {
+  bodyAxisToThree,
+  bodyClippingPlaneToThree,
+  type BodyClippingPlane,
+} from "./coordinate-adapter";
 
 export interface HullScene3d {
   readonly render: (
@@ -44,6 +49,7 @@ const initialRotationY = Math.PI / 4;
 const solidBodyOpacity = 0.9;
 const xrayWireOpacity = 0.44;
 const solidWireOpacity = 0.28;
+let axisSchemeLogged = false;
 
 function meshSignature(snapshot: ProfileSnapshot): MeshSignature {
   return {
@@ -75,9 +81,61 @@ function createGeometry(snapshot: ProfileSnapshot): THREE.BufferGeometry {
   geometry.setAttribute("normal", new THREE.BufferAttribute(mesh.normals, 3));
   geometry.setAttribute("uv", new THREE.BufferAttribute(mesh.uvs, 2));
   geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
-  geometry.translate(-snapshot.extents.totalLength / 2, 0, 0);
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+function createAxisLabel(text: string, color: string, position: THREE.Vector3, scale: number): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.font = "600 28px sans-serif";
+    context.fillStyle = color;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(text, canvas.width / 2, canvas.height / 2);
+  }
+  const material = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.name = `body-axis-label:${text}`;
+  sprite.position.copy(position);
+  sprite.scale.set(scale * 3.6, scale * 0.45, 1);
+  return sprite;
+}
+
+export function createBodyAxisHelper(length: number): THREE.Group {
+  const helper = new THREE.Group();
+  helper.name = "body-axis-helper";
+  const axisLength = Math.max(length, 0.1);
+  const labelOffset = axisLength * 1.15;
+  const axes = [
+    { axis: "x" as const, label: "X — нос", color: 0xdc2626 },
+    { axis: "y" as const, label: "Y — правый борт", color: 0x16a34a },
+    { axis: "z" as const, label: "Z — вниз", color: 0x2563eb },
+  ];
+
+  for (const { axis, label, color } of axes) {
+    const mapped = bodyAxisToThree(axis);
+    const direction = new THREE.Vector3(mapped.x, mapped.y, mapped.z);
+    const arrow = new THREE.ArrowHelper(direction, new THREE.Vector3(), axisLength, color, axisLength * 0.12, axisLength * 0.06);
+    arrow.name = `body-axis:${axis}`;
+    arrow.userData.bodyAxis = axis;
+    helper.add(arrow);
+    helper.add(createAxisLabel(label, `#${color.toString(16).padStart(6, "0")}`, direction.multiplyScalar(labelOffset), axisLength));
+  }
+
+  if (!axisSchemeLogged) {
+    logger.info("3d body axis scheme initialized", {
+      sourceFrame: "Body/SNAME-NED",
+      targetFrame: "Three.js",
+      axisMapping: "three=(body.x,-body.z,body.y)",
+      labels: axes.map(({ label }) => label),
+    });
+    axisSchemeLogged = true;
+  }
+  return helper;
 }
 
 function createRenderer(container: HTMLElement): THREE.WebGLRenderer | null {
@@ -120,19 +178,41 @@ function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, sn
   });
 }
 
-export function clippingPlanesForSection(section: Scene3dSection, totalLength: number): THREE.Plane[] {
-  if (section.type === "disabled") return [];
+export function retainedHalfSpaceForSection(section: Exclude<Scene3dSection, { type: "disabled" }>): SectionRetainedHalfSpace {
+  if (section.type === "crossSectionX") return "x<=offset";
+  return section.plane === "xy" ? "z<=offset" : "y<=offset";
+}
 
+export function bodyClippingPlaneForSection(
+  section: Exclude<Scene3dSection, { type: "disabled" }>,
+): BodyClippingPlane {
   if (section.type === "crossSectionX") {
-    const centeredX = section.x - totalLength / 2;
-    return [new THREE.Plane(new THREE.Vector3(-1, 0, 0), centeredX)];
+    return Object.freeze({ normal: Object.freeze({ x: -1, y: 0, z: 0 }), constant: section.x });
   }
 
   if (section.plane === "xy") {
-    return [new THREE.Plane(new THREE.Vector3(0, 0, -1), section.offset)];
+    return Object.freeze({ normal: Object.freeze({ x: 0, y: 0, z: -1 }), constant: section.offset });
   }
 
-  return [new THREE.Plane(new THREE.Vector3(0, -1, 0), section.offset)];
+  return Object.freeze({ normal: Object.freeze({ x: 0, y: -1, z: 0 }), constant: section.offset });
+}
+
+export function clippingPlanesForSection(section: Scene3dSection): THREE.Plane[] {
+  if (section.type === "disabled") return [];
+  const bodyPlane = bodyClippingPlaneForSection(section);
+  const threePlane = bodyClippingPlaneToThree(bodyPlane);
+  logger.debug("3d body clipping plane converted", {
+    sourceFrame: "Body/SNAME-NED",
+    targetFrame: "Three.js",
+    section,
+    retainedHalfSpace: retainedHalfSpaceForSection(section),
+    bodyPlane,
+    threePlane,
+  });
+  return [new THREE.Plane(
+    new THREE.Vector3(threePlane.normal.x, threePlane.normal.y, threePlane.normal.z),
+    threePlane.constant,
+  )];
 }
 
 export function transformClippingPlanesToWorld(
@@ -189,6 +269,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   };
   const hullGroup = new THREE.Group();
   const equipmentGroup = new THREE.Group();
+  const axisHelper = createBodyAxisHelper(0.75);
   const viewState: ViewState = {
     target: new THREE.Vector3(),
     rotationX: initialRotationX,
@@ -208,6 +289,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   scene.background = new THREE.Color(0xffffff);
   scene.add(hullGroup);
   scene.add(equipmentGroup);
+  scene.add(axisHelper);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa99c, 1.6));
 
   const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -271,11 +353,12 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       count: worldClippingPlanes.length,
       rotationX: currentHull?.rotation.x ?? null,
       rotationY: currentHull?.rotation.y ?? null,
+      planes: transformedPlanes.map((plane) => ({ normal: plane.normal.toArray(), constant: plane.constant })),
     });
   }
 
-  function updateClippingPlanes(settings: Scene3dSettings, totalLength: number): void {
-    localClippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section, totalLength);
+  function updateClippingPlanes(settings: Scene3dSettings): void {
+    localClippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section);
     worldClippingPlanes = localClippingPlanes.map((plane) => plane.clone());
     if (renderer) renderer.localClippingEnabled = worldClippingPlanes.length > 0;
     bodyMaterial.clippingPlanes = worldClippingPlanes;
@@ -286,7 +369,6 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   }
   function replaceEquipment(
     items: readonly EquipmentItem[],
-    snapshot: ProfileSnapshot,
     report: EquipmentConstraintReport | undefined,
   ): void {
     try {
@@ -299,7 +381,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       for (const item of items) {
         try {
           const status = equipmentStatus(report, item.id);
-          equipmentGroup.add(createEquipmentMesh(item, snapshot.extents.totalLength, equipmentMaterials[status]));
+          equipmentGroup.add(createEquipmentMesh(item, equipmentMaterials[status]));
         } catch (error) {
           logger.error("3d equipment mesh creation failed", {
             id: item.id,
@@ -312,6 +394,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       }
       equipmentGroup.rotation.x = viewState.rotationX;
       equipmentGroup.rotation.y = viewState.rotationY;
+      axisHelper.rotation.x = viewState.rotationX;
+      axisHelper.rotation.y = viewState.rotationY;
       currentEquipmentSignature = equipmentSignature(items, report);
       logger.debug("3d equipment meshes replaced", {
         count: items.length,
@@ -367,15 +451,15 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   ): void {
     if (!renderer) return;
     applyViewSettings(bodyMaterial, wireMaterial, settings);
-    updateClippingPlanes(settings, snapshot.extents.totalLength);
+    updateClippingPlanes(settings);
     const nextSignature = meshSignature(snapshot);
     if (!isSameSignature(currentSignature, nextSignature)) {
       replaceHull(snapshot);
-      replaceEquipment(equipment, snapshot, report);
+      replaceEquipment(equipment, report);
     } else {
       const nextEquipmentSignature = equipmentSignature(equipment, report);
       if (currentEquipmentSignature !== nextEquipmentSignature) {
-        replaceEquipment(equipment, snapshot, report);
+        replaceEquipment(equipment, report);
       }
     }
     resize();
@@ -400,6 +484,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     currentHull.rotation.y = viewState.rotationY;
     equipmentGroup.rotation.x = viewState.rotationX;
     equipmentGroup.rotation.y = viewState.rotationY;
+    axisHelper.rotation.x = viewState.rotationX;
+    axisHelper.rotation.y = viewState.rotationY;
     updateWorldClippingPlanes();
     draw();
   }
@@ -438,6 +524,12 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     bodyMaterial.dispose();
     wireMaterial.dispose();
     Object.values(equipmentMaterials).forEach((material) => material.dispose());
+    axisHelper.traverse((object) => {
+      if (object instanceof THREE.Sprite) {
+        object.material.map?.dispose();
+        object.material.dispose();
+      }
+    });
     renderer?.dispose();
     renderer?.domElement.remove();
     logger.debug("3d scene disposed");
