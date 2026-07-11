@@ -17,7 +17,7 @@ describe("csv export", () => {
     const csv = buildCsv(snapshot);
     const rows = csv.split("\n");
 
-    expect(rows[0]).toBe("N;x;y_top;y_bottom");
+    expect(rows[0]).toBe("N;s;radius_top;radius_bottom");
     expect(rows).toHaveLength(24);
     expect(rows[1]).toBe("1;0;0;0");
     expect(rows.at(-1)).toBe("23;6;0;0");

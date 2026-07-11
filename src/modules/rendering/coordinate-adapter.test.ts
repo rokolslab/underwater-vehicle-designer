@@ -3,6 +3,9 @@ import {
   bodyAxisToThree,
   bodyClippingPlaneToThree,
   bodyPointToThree,
+  bodyPointToXyProjection,
+  bodyPointToXzProjection,
+  bodyPointToYzProjection,
   bodyVectorToThree,
   threePointToBody,
   type ThreeVector3,
@@ -53,5 +56,24 @@ describe("Body to Three coordinate adapter", () => {
       normal: { x: 0, y: -0, z: -1 },
       constant: -0.3,
     });
+  });
+});
+
+describe("Body to screen projection adapters", () => {
+  const point = { x: 2, y: 3, z: 4 };
+
+  it("maps signed Body X/Z into the XZ side view", () => {
+    expect(bodyPointToXzProjection(point)).toEqual({ right: 2, down: 4 });
+    expect(bodyPointToXzProjection({ x: -2, y: -3, z: -4 })).toEqual({ right: -2, down: -4 });
+  });
+
+  it("maps signed Body X/Y into the XY top view", () => {
+    expect(bodyPointToXyProjection(point)).toEqual({ right: 2, down: 3 });
+    expect(bodyPointToXyProjection({ x: -2, y: -3, z: -4 })).toEqual({ right: -2, down: -3 });
+  });
+
+  it("maps signed Body Y/Z into the YZ section view", () => {
+    expect(bodyPointToYzProjection(point)).toEqual({ right: 3, down: 4 });
+    expect(bodyPointToYzProjection({ x: -2, y: -3, z: -4 })).toEqual({ right: -3, down: -4 });
   });
 });

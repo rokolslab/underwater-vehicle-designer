@@ -2,20 +2,20 @@ import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../eq
 import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import type { ProfileSnapshot } from "../geometry/model";
+import { bodyXFromProfileS } from "../../shared/body-coordinates";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
+import { bodyPointToXzProjection, type ScreenProjection2 } from "./coordinate-adapter";
 
 interface CanvasScale {
-  readonly mapX: (x: number) => number;
-  readonly mapY: (y: number) => number;
+  readonly map: (point: ScreenProjection2) => Readonly<{ x: number; y: number }>;
   readonly width: number;
   readonly height: number;
   readonly yLimit: number;
 }
 
-interface EquipmentProjection {
-  readonly x: number;
-  readonly y: number;
+export interface EquipmentXzProjection {
+  readonly center: ScreenProjection2;
   readonly halfWidth: number;
   readonly halfHeight: number;
 }
@@ -53,9 +53,12 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
   const innerH = height - padding.top - padding.bottom;
   const scale = Math.min(innerW / totalLength, innerH / (2 * yLimit));
   const drawingW = totalLength * scale;
-  const originX = padding.left + (innerW - drawingW) / 2;
+  const originX = padding.left + (innerW - drawingW) / 2 + drawingW / 2;
   const originY = padding.top + innerH / 2;
   logger.debug("canvas scale created", {
+    frame: "Body XZ: right=+X, down=+Z",
+    xExtents: [-totalLength / 2, totalLength / 2],
+    zExtents: [-yLimit, yLimit],
     totalLength,
     cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
     yLimit,
@@ -63,8 +66,7 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
   });
 
   return {
-    mapX: (x) => originX + x * scale,
-    mapY: (y) => originY - y * scale,
+    map: (point) => Object.freeze({ x: originX + point.right * scale, y: originY + point.down * scale }),
     width,
     height,
     yLimit,
@@ -79,8 +81,8 @@ function drawGrid(context: CanvasRenderingContext2D, scale: CanvasScale, totalLe
   context.font = "12px Segoe UI, Arial, sans-serif";
 
   for (let index = 0; index <= 10; index += 1) {
-    const x = (totalLength * index) / 10;
-    const px = scale.mapX(x);
+    const x = -totalLength / 2 + (totalLength * index) / 10;
+    const px = scale.map({ right: x, down: 0 }).x;
     context.beginPath();
     context.moveTo(px, 26);
     context.lineTo(px, scale.height - 36);
@@ -89,23 +91,23 @@ function drawGrid(context: CanvasRenderingContext2D, scale: CanvasScale, totalLe
   }
 
   for (let index = -4; index <= 4; index += 1) {
-    const y = (scale.yLimit * index) / 4;
-    const py = scale.mapY(y);
+    const z = (scale.yLimit * index) / 4;
+    const py = scale.map({ right: 0, down: z }).y;
     context.beginPath();
     context.moveTo(42, py);
     context.lineTo(scale.width - 24, py);
     context.stroke();
-    if (index !== 0) context.fillText(formatNumber(y, 1), 8, py + 4);
+    if (index !== 0) context.fillText(formatNumber(z, 1), 8, py + 4);
   }
 
   context.restore();
 }
 
-function equipmentProjection(item: EquipmentItem): EquipmentProjection {
+export function equipmentXzProjection(item: EquipmentItem): EquipmentXzProjection {
+  const center = bodyPointToXzProjection(item.position);
   if (item.shape === "sphere") {
     return Object.freeze({
-      x: item.position.x,
-      y: item.position.y,
+      center,
       halfWidth: item.dimensions.radius,
       halfHeight: item.dimensions.radius,
     });
@@ -113,16 +115,14 @@ function equipmentProjection(item: EquipmentItem): EquipmentProjection {
 
   if (item.shape === "cylinder") {
     return Object.freeze({
-      x: item.position.x,
-      y: item.position.y,
+      center,
       halfWidth: item.orientation === "x" ? item.dimensions.length / 2 : item.dimensions.radius,
-      halfHeight: item.orientation === "y" ? item.dimensions.length / 2 : item.dimensions.radius,
+      halfHeight: item.orientation === "z" ? item.dimensions.length / 2 : item.dimensions.radius,
     });
   }
 
   return Object.freeze({
-    x: item.position.x,
-    y: item.position.y,
+    center,
     halfWidth: item.dimensions.lengthX / 2,
     halfHeight: item.dimensions.heightZ / 2,
   });
@@ -144,11 +144,11 @@ function drawEquipmentOverlay(
   context.save();
   for (const item of equipment) {
     const status = equipmentStatus(report, item.id);
-    const projection = equipmentProjection(item);
-    const left = scale.mapX(projection.x - projection.halfWidth);
-    const right = scale.mapX(projection.x + projection.halfWidth);
-    const top = scale.mapY(projection.y + projection.halfHeight);
-    const bottom = scale.mapY(projection.y - projection.halfHeight);
+    const projection = equipmentXzProjection(item);
+    const left = scale.map({ right: projection.center.right - projection.halfWidth, down: projection.center.down }).x;
+    const right = scale.map({ right: projection.center.right + projection.halfWidth, down: projection.center.down }).x;
+    const top = scale.map({ right: projection.center.right, down: projection.center.down - projection.halfHeight }).y;
+    const bottom = scale.map({ right: projection.center.right, down: projection.center.down + projection.halfHeight }).y;
     const width = Math.max(4, right - left);
     const height = Math.max(4, bottom - top);
 
@@ -158,7 +158,8 @@ function drawEquipmentOverlay(
 
     if (item.shape === "sphere") {
       context.beginPath();
-      context.ellipse(scale.mapX(projection.x), scale.mapY(projection.y), width / 2, height / 2, 0, 0, Math.PI * 2);
+      const center = scale.map(projection.center);
+      context.ellipse(center.x, center.y, width / 2, height / 2, 0, 0, Math.PI * 2);
       context.fill();
       context.stroke();
     } else {
@@ -206,20 +207,32 @@ export function renderCanvasProfile(
   context.lineWidth = 1.4;
   context.setLineDash([8, 6]);
   context.beginPath();
-  context.moveTo(scale.mapX(0), scale.mapY(0));
-  context.lineTo(scale.mapX(totalLength), scale.mapY(0));
+  const axisStart = scale.map({ right: -totalLength / 2, down: 0 });
+  const axisEnd = scale.map({ right: totalLength / 2, down: 0 });
+  context.moveTo(axisStart.x, axisStart.y);
+  context.lineTo(axisEnd.x, axisEnd.y);
   context.stroke();
   context.restore();
 
   const shape = new Path2D();
   snapshot.smoothPoints.forEach((point, index) => {
-    const px = scale.mapX(point.s);
-    const py = scale.mapY(point.radius);
+    const projected = bodyPointToXzProjection({
+      x: bodyXFromProfileS(point.s, totalLength),
+      y: 0,
+      z: -point.radius,
+    });
+    const { x: px, y: py } = scale.map(projected);
     if (index === 0) shape.moveTo(px, py);
     else shape.lineTo(px, py);
   });
   [...snapshot.smoothPoints].reverse().forEach((point) => {
-    shape.lineTo(scale.mapX(point.s), scale.mapY(-point.radius));
+    const projected = bodyPointToXzProjection({
+      x: bodyXFromProfileS(point.s, totalLength),
+      y: 0,
+      z: point.radius,
+    });
+    const screen = scale.map(projected);
+    shape.lineTo(screen.x, screen.y);
   });
   shape.closePath();
 
@@ -236,9 +249,15 @@ export function renderCanvasProfile(
     context.strokeStyle = "#ffffff";
     context.lineWidth = 1.5;
     snapshot.stationPoints.forEach((point) => {
-      for (const y of [point.topRadius, point.bottomRadius]) {
+      for (const radius of [point.topRadius, point.bottomRadius]) {
+        const projected = bodyPointToXzProjection({
+          x: bodyXFromProfileS(point.s, totalLength),
+          y: 0,
+          z: -radius,
+        });
+        const screen = scale.map(projected);
         context.beginPath();
-        context.arc(scale.mapX(point.s), scale.mapY(y), 3.5, 0, Math.PI * 2);
+        context.arc(screen.x, screen.y, 3.5, 0, Math.PI * 2);
         context.fill();
         context.stroke();
       }
@@ -247,7 +266,9 @@ export function renderCanvasProfile(
 
   context.fillStyle = "#17212b";
   context.font = "600 13px Segoe UI, Arial, sans-serif";
-  context.fillText("L", scale.mapX(totalLength) - 8, scale.mapY(0) - 10);
-  context.fillText("x", scale.mapX(totalLength) + 10, scale.mapY(0) + 4);
-  context.fillText("y", scale.mapX(0) - 22, scale.mapY(scale.yLimit) + 4);
+  const nose = scale.map({ right: totalLength / 2, down: 0 });
+  const top = scale.map({ right: 0, down: -scale.yLimit });
+  context.fillText("нос +X", nose.x - 52, nose.y - 10);
+  context.fillText("X", nose.x + 10, nose.y + 4);
+  context.fillText("−Z", top.x - 22, top.y + 4);
 }

@@ -295,6 +295,13 @@ h1 {
   border: 1px solid transparent;
 }
 
+.projection-convention {
+  margin: 0 8px 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .scene3d {
   position: relative;
   min-height: 508px;

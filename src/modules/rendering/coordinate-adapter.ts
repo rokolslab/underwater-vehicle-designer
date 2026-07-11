@@ -10,6 +10,12 @@ export interface ThreeVector3 {
 
 export interface ThreePoint3 extends ThreeVector3 {}
 
+/** Screen-independent 2D projection coordinates: right and down are positive. */
+export interface ScreenProjection2 {
+  readonly right: number;
+  readonly down: number;
+}
+
 export interface BodyClippingPlane {
   readonly normal: BodyVector3;
   readonly constant: number;
@@ -56,6 +62,21 @@ export function bodyClippingPlaneToThree(plane: BodyClippingPlane): ThreeClippin
 
 export function threePointToBody(point: ThreePoint3): BodyPoint3 {
   return threeVectorToBody(point);
+}
+
+/** Side view: screen right is +Body X and screen down is +Body Z. */
+export function bodyPointToXzProjection(point: BodyPoint3): ScreenProjection2 {
+  return Object.freeze({ right: point.x, down: point.z });
+}
+
+/** Top view: screen right is +Body X and screen down is +Body Y. */
+export function bodyPointToXyProjection(point: BodyPoint3): ScreenProjection2 {
+  return Object.freeze({ right: point.x, down: point.y });
+}
+
+/** Body section: screen right is +Body Y and screen down is +Body Z. */
+export function bodyPointToYzProjection(point: BodyPoint3): ScreenProjection2 {
+  return Object.freeze({ right: point.y, down: point.z });
 }
 
 export function profilePointToThree(profileS: number, radiusY: number, radiusZ: number, length: number): ThreePoint3 {

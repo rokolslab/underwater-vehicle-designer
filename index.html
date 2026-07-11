@@ -73,6 +73,7 @@
                 <span class="details-action" aria-hidden="true"></span>
               </span>
             </summary>
+            <p class="projection-convention">Проекция XZ: вправо +X (нос), вниз +Z</p>
             <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата"></canvas>
           </details>
 
@@ -190,7 +191,7 @@
 
         <details class="data-band panel-details" open>
           <summary class="data-header">
-            <h2>Координаты точек</h2>
+            <h2>Параметрические станции профиля</h2>
             <span class="panel-actions coordinate-summary">
               <span id="point-count"></span>
               <button id="download-csv" class="compact-action summary-action" type="button">Скачать CSV</button>
@@ -202,9 +203,9 @@
               <thead>
                 <tr>
                   <th>№</th>
-                  <th>x</th>
-                  <th>y верх</th>
-                  <th>y низ</th>
+                  <th>s, м</th>
+                  <th>Верхний радиус, м</th>
+                  <th>Нижний радиус, м</th>
                 </tr>
               </thead>
               <tbody id="coordinate-rows"></tbody>
