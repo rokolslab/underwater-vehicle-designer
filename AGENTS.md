@@ -121,6 +121,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | Data and Export | `docs/data-and-export.md` | JSON, CSV, SVG |
 | Testing | `docs/testing.md` | Тесты и smoke checks |
 | Docker Workflow | `docs/docker.md` | Docker и production smoke |
+| Анализ ДСНП_ПА | `docs/legacy/` | Карта исторической системы, модели данных, расчётов и roadmap интеграции |
 | Техническое задание | `TECHNICAL_SPEC.md` | Целевой функционал следующих версий |
 | Описание проекта | `.ai-factory/DESCRIPTION.md` | Контекст AI Factory |
 | Архитектура AI Factory | `.ai-factory/ARCHITECTURE.md` | Архитектурные правила |

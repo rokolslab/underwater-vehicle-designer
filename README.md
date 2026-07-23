@@ -62,6 +62,7 @@ docker compose up app
 | [Data and Export](docs/data-and-export.md) | JSON, CSV, SVG, устойчивость данных |
 | [Testing](docs/testing.md) | Vitest, fixture, smoke checks |
 | [Docker Workflow](docs/docker.md) | Docker-разработка и production smoke |
+| [Legacy DSNP_PA Analysis](docs/legacy/dsnp-pa-system-map.md) | Карта исторической системы, данных, расчётов и интеграции |
 
 ## Project Status
 
