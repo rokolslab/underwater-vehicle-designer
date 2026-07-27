@@ -35,6 +35,15 @@ describe("app DOM contract", () => {
     }
   });
 
+  it("keeps the public demo product identity and technical hero preview", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain("Underwater Vehicle Designer");
+    expect(html).toContain('class="hull-blueprint"');
+    expect(html).toContain('id="visualization"');
+    expect(html).toContain('name="theme-color" content="#07191f"');
+  });
+
   it("keeps the Body axis memo and migration guidance in the app contract", () => {
     const html = readFileSync("index.html", "utf8");
     const main = readFileSync("src/app/main.ts", "utf8");

@@ -53,6 +53,7 @@ const mojibakePattern = new RegExp(mojibakeTokens.join("|"), "u");
 
 const expectedStrings = [
   { file: "index.html", value: "Обвод подводного аппарата" },
+  { file: "index.html", value: "Underwater Vehicle Designer" },
   { file: "index.html", value: "Public Demo v1" },
   { file: "index.html", value: "Открыть рабочий экран" },
   { file: "index.html", value: "3D недоступен в этом браузере" },

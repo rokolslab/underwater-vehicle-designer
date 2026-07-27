@@ -3,36 +3,104 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Обвод подводного аппарата</title>
+    <meta
+      name="description"
+      content="Интерактивный 2D/3D-конструктор геометрии корпуса подводного аппарата, компоновки оборудования и инженерного экспорта."
+    />
+    <meta name="theme-color" content="#07191f" />
+    <title>Underwater Vehicle Designer — Обвод подводного аппарата</title>
     <script type="module" src="/src/app/main.ts"></script>
   </head>
   <body>
-      <main class="app-shell">
+    <main class="app-shell">
       <header class="topbar">
+        <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-copy">
-          <p class="hero-kicker">Public Demo v1 · браузерный прототип</p>
-          <h1>Визуализация корпуса подводного аппарата</h1>
-          <p class="hero-lead">
-            Быстро задайте размерения, оцените 2D/3D-обвод и сохраните проект в JSON. Демо честно показывает готовую визуализацию, базовую компоновку оборудования и экспорт без обещания полноценного CAD.
-          </p>
-          <a class="hero-cta" href="#controls">Открыть рабочий экран</a>
-        </div>
-        <div class="hero-note">
-          <div class="hero-note-title">Готово в демо</div>
-          <div class="hero-tags" aria-label="Возможности демо">
-            <span>2D + 3D</span>
-            <span>ЦВК и сечения</span>
-            <span>Оборудование</span>
-            <span>JSON/SVG/CSV</span>
+          <div class="hero-meta">
+            <p class="hero-kicker"><span class="status-dot" aria-hidden="true"></span> Public Demo v1</p>
+            <span class="hero-code">UVD / MARINE GEOMETRY / 01</span>
           </div>
-          <p class="hero-limit">Полные расчетные модели корпуса, ходкость, энергетика и стоимость остаются backlog.</p>
-          <div class="formula-line">Y = +/- B/2 sqrt(f/fmax), Z = +/- H/2 sqrt(f/fmax)</div>
+          <p class="hero-product">Underwater Vehicle Designer</p>
+          <h1>Проектируйте корпус.<br /><span>Видьте результат сразу.</span></h1>
+          <p class="hero-lead">
+            Интерактивная инженерная среда для построения 2D/3D-обводов, проверки компоновки оборудования и экспорта проектных данных прямо в браузере.
+          </p>
+          <div class="hero-actions">
+            <a class="hero-cta" href="#controls">Открыть рабочий экран <span aria-hidden="true">↘</span></a>
+            <a class="hero-secondary" href="#visualization">Посмотреть визуализацию</a>
+          </div>
+          <div class="hero-proof" aria-label="Свойства приложения">
+            <span>Без установки</span>
+            <span>Расчет в реальном времени</span>
+            <span>JSON / SVG / CSV</span>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Схема корпуса и возможности демо">
+          <div class="blueprint-head">
+            <span>LIVE HULL PREVIEW</span>
+            <span class="blueprint-scale">SCALE 1:20</span>
+          </div>
+          <svg class="hull-blueprint" viewBox="0 0 640 300" role="img" aria-label="Технический эскиз корпуса подводного аппарата">
+            <defs>
+              <linearGradient id="hull-glow" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#75d9d0" stop-opacity="0.08" />
+                <stop offset="0.5" stop-color="#b8e24a" stop-opacity="0.26" />
+                <stop offset="1" stop-color="#75d9d0" stop-opacity="0.08" />
+              </linearGradient>
+            </defs>
+            <g class="blueprint-grid-lines">
+              <path d="M40 60H600M40 110H600M40 160H600M40 210H600M40 260H600" />
+              <path d="M80 35V270M160 35V270M240 35V270M320 35V270M400 35V270M480 35V270M560 35V270" />
+            </g>
+            <path class="hull-fill" d="M62 160C128 88 219 78 320 78C421 78 512 88 578 160C512 232 421 242 320 242C219 242 128 232 62 160Z" />
+            <path class="hull-outline" d="M62 160C128 88 219 78 320 78C421 78 512 88 578 160C512 232 421 242 320 242C219 242 128 232 62 160Z" />
+            <path class="hull-axis" d="M42 160H598" />
+            <g class="hull-sections">
+              <ellipse cx="160" cy="160" rx="18" ry="56" />
+              <ellipse cx="240" cy="160" rx="12" ry="76" />
+              <ellipse cx="320" cy="160" rx="8" ry="82" />
+              <ellipse cx="400" cy="160" rx="12" ry="76" />
+              <ellipse cx="480" cy="160" rx="18" ry="56" />
+            </g>
+            <g class="blueprint-points">
+              <circle cx="62" cy="160" r="4" />
+              <circle cx="320" cy="78" r="4" />
+              <circle cx="578" cy="160" r="4" />
+              <circle cx="320" cy="242" r="4" />
+            </g>
+            <g class="blueprint-labels">
+              <text x="52" y="148">AFT</text>
+              <text x="548" y="148">BOW +X</text>
+              <text x="334" y="70">H / Z</text>
+              <text x="272" y="180">BODY / SNAME-NED</text>
+            </g>
+          </svg>
+          <div class="blueprint-metrics">
+            <div><span>GEOMETRY</span><strong>2 MODES</strong></div>
+            <div><span>VIEW</span><strong>2D + 3D</strong></div>
+            <div><span>OUTPUT</span><strong>4 FORMATS</strong></div>
+          </div>
+          <div class="hero-note">
+            <div>
+              <div class="hero-note-title">Готово в демо</div>
+              <div class="hero-tags" aria-label="Возможности демо">
+                <span>ЦВК и сечения</span>
+                <span>Оборудование</span>
+                <span>Баланс</span>
+              </div>
+            </div>
+            <div class="formula-line">Y = ± B/2 sqrt(f/fmax)<br />Z = ± H/2 sqrt(f/fmax)</div>
+          </div>
         </div>
       </header>
-        <aside class="axis-convention" aria-label="Система координат Body/SNAME-NED">
-          <strong>Body/SNAME-NED:</strong> X — нос; Y — правый борт; Z — вниз. Координаты заданы в метрах от центра корпуса.
-        </aside>
-        <div id="project-import-notice" class="project-import-notice is-hidden" role="status" aria-live="polite" tabindex="-1"></div>
+
+      <aside class="axis-convention" aria-label="Система координат Body/SNAME-NED">
+        <span class="axis-label">Система координат</span>
+        <span><strong>Body/SNAME-NED</strong> X — нос; Y — правый борт; Z — вниз</span>
+        <span class="axis-unit">Единицы: метры от центра корпуса</span>
+      </aside>
+      <div id="project-import-notice" class="project-import-notice is-hidden" role="status" aria-live="polite" tabindex="-1"></div>
 
       <section class="workbench" aria-label="Построение обводов">
         <details class="control-panel panel-details" open>
@@ -87,7 +155,7 @@
           </div>
         </details>
 
-        <section class="visualization-panels">
+        <section id="visualization" class="visualization-panels">
           <details class="drawing-panel panel-details" open>
             <summary class="data-header">
               <h2>Боковой вид</h2>
