@@ -46,6 +46,8 @@ Docker-вариант:
 docker compose up app
 ```
 
+Production smoke для `Public Demo v1` описан в [Docker Workflow](docs/docker.md). Техническое Docker-имя `airship` можно переопределить через `COMPOSE_PROJECT_NAME`/`APP_IMAGE`; публичное название сайта остается Underwater Vehicle Designer.
+
 ## Key Features
 
 - **Body/SNAME-NED** — единые инженерные оси: X к носу, Y на правый борт, Z вниз; начало в центре корпуса.

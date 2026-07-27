@@ -37,16 +37,20 @@ docker compose run --rm app npm run check:encoding
 Сборка и запуск production container локально:
 
 ```bash
-docker compose -f compose.yml -f compose.production.yml build app
-docker compose -f compose.yml -f compose.production.yml up -d
+APP_IMAGE=underwater-vehicle-demo:local docker compose -f compose.yml -f compose.production.yml build app
+APP_IMAGE=underwater-vehicle-demo:local docker compose -f compose.yml -f compose.production.yml up -d
+curl -fsS http://127.0.0.1/healthz
+curl -fsSI http://127.0.0.1/
 ```
 
 По умолчанию production публикует приложение на host port `80` и обслуживает собранный `dist/` через nginx на container port `8080`.
 
-Порты и параметры image можно переопределить через environment variables:
+Всегда выполняйте `build app` перед production smoke, если локальный `APP_IMAGE` уже существует: иначе Docker может переиспользовать stale development image, и `/healthz` на production port не будет доступен. Используйте отдельный `APP_IMAGE` для production smoke, чтобы не перезаписать development image tag, который нужен `docker compose run --rm app npm run ...`.
+
+Порты и параметры image можно переопределить через environment variables. Значение `airship` в `compose.yml` остается техническим legacy-именем Docker project/image и не является публичным названием сайта; для публикации `Public Demo v1` используйте явные значения `COMPOSE_PROJECT_NAME` и `APP_IMAGE`:
 
 ```bash
-COMPOSE_PROJECT_NAME=airship APP_PORT=8080 APP_IMAGE=airship:local docker compose -f compose.yml -f compose.production.yml up -d
+COMPOSE_PROJECT_NAME=underwater-vehicle-demo APP_PORT=8080 APP_IMAGE=underwater-vehicle-demo:local docker compose -f compose.yml -f compose.production.yml up -d
 ```
 
 ## Compose Files

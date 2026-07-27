@@ -103,13 +103,15 @@ Rationale: `Public Demo v1` является практической точко
 
 ### Фаза 4: Документация, smoke и deploy readiness
 
-- [ ] Task 13: Проверить production branding/deploy notes: `README.md`, `docs/docker.md`, `compose.yml`, `Dockerfile`, `docker/nginx/default.conf`. Не переименовывать image/service без необходимости; если `airship` naming остается, документировать как техническое имя или запланировать follow-up. Logging: не требуется.
+- [x] Task 13: Проверить production branding/deploy notes: `README.md`, `docs/docker.md`, `compose.yml`, `Dockerfile`, `docker/nginx/default.conf`. Не переименовывать image/service без необходимости; если `airship` naming остается, документировать как техническое имя или запланировать follow-up. Logging: не требуется.
 
-- [ ] Task 14: Выполнить финальные автоматические проверки через Docker: `docker compose run --rm app npm run check:encoding`, `docker compose run --rm app npm run test`, `docker compose run --rm app npm run build`. Зафиксировать Vite chunk-size warning как non-blocking, если он остается без новых ошибок. Logging: не требуется.
+- [x] Task 14: Выполнить финальные автоматические проверки через Docker: `docker compose run --rm app npm run check:encoding`, `docker compose run --rm app npm run test`, `docker compose run --rm app npm run build`. Зафиксировать Vite chunk-size warning как non-blocking, если он остается без новых ошибок. Logging: не требуется.
 
-- [ ] Task 15: Выполнить production/mobile smoke по checklist: production container `/healthz` и `/`, desktop browser smoke, smartphone/emulated viewport smoke. Если браузер/устройство недоступны в окружении, записать точный blocker в итоговую заметку пользователю и не считать manual smoke полностью пройденным. Logging: не требуется.
+- [x] Task 15: Выполнить production/mobile smoke по checklist: production container `/healthz` и `/`, desktop browser smoke, smartphone/emulated viewport smoke. Если браузер/устройство недоступны в окружении, записать точный blocker в итоговую заметку пользователю и не считать manual smoke полностью пройденным. Logging: не требуется.
 
-- [ ] Task 16: Создать или обновить документацию public demo smoke после Task 15: `docs/testing.md`, `docs/docker.md` или новый `docs/public-demo.md`. Включить desktop и smartphone checklist: 360/390/412px viewports, 2D/3D, controls, geometry mode, downloads, JSON round-trip, equipment warnings, theoretical drawing, production container `/healthz`, а также фактический результат smoke или точный blocker из текущего окружения. Logging: не требуется.
+- [x] Task 16: Создать или обновить документацию public demo smoke после Task 15: `docs/testing.md`, `docs/docker.md` или новый `docs/public-demo.md`. Включить desktop и smartphone checklist: 360/390/412px viewports, 2D/3D, controls, geometry mode, downloads, JSON round-trip, equipment warnings, theoretical drawing, production container `/healthz`, а также фактический результат smoke или точный blocker из текущего окружения. Logging: не требуется.
+
+  Result: production container smoke passed for `/healthz`, `/` and Docker `healthy`; desktop browser and smartphone/emulated viewport smoke blocked in this environment because there is no browser/device access and no browser smoke harness in the repository.
 
 ## Критерии приемки
 
