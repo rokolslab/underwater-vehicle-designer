@@ -69,6 +69,7 @@ const scene3dControls: Scene3dControlElements = {
 const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
 const theoreticalDrawingCanvas = requiredElement("#theoretical-drawing-canvas", HTMLCanvasElement);
 const scene3dContainer = requiredElement("#hull-scene-3d", HTMLElement);
+const scene3dFallback = requiredElement("#scene3d-fallback", HTMLElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
 const equipmentList = requiredElement("#equipment-list", HTMLElement);
@@ -105,6 +106,10 @@ for (const action of document.querySelectorAll<HTMLElement>(".summary-action, .v
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
 
+if (!hullScene3d.isAvailable) {
+  scene3dFallback.classList.remove("is-hidden");
+}
+
 function writeGeometryModePresentation(geometryMode: unknown): void {
   const normalizedMode = normalizeGeometryMode(geometryMode);
   for (const option of inputs.geometryMode.options) {
@@ -113,19 +118,48 @@ function writeGeometryModePresentation(geometryMode: unknown): void {
   geometryFormula.textContent = geometryModePresentation(normalizedMode).formulaText;
 }
 
-for (const details of document.querySelectorAll<HTMLDetailsElement>(".panel-details")) {
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      window.requestAnimationFrame(() => hullScene3d.resize());
-    }
-  });
-}
+const panelDetails = Array.from(document.querySelectorAll<HTMLDetailsElement>(".panel-details"));
 let equipmentItems: readonly EquipmentItem[] = [];
 let currentSnapshot: ProfileSnapshot;
 let currentTheoreticalDrawing: TheoreticalDrawing;
 let currentConstraintReport: EquipmentConstraintReport | undefined;
 let currentBalanceResult: EquipmentBalanceResult;
 let currentProjectState: ProjectState;
+let hasRenderedProfile = false;
+let resizeFrame: number | null = null;
+
+function renderCurrentViewsForSize(): void {
+  if (!hasRenderedProfile) {
+    hullScene3d.resize();
+    return;
+  }
+
+  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
+  hullScene3d.resize();
+}
+
+function scheduleRenderResize(): void {
+  if (resizeFrame !== null) return;
+  resizeFrame = window.requestAnimationFrame(() => {
+    resizeFrame = null;
+    renderCurrentViewsForSize();
+  });
+}
+
+const resizeObserver = typeof ResizeObserver === "undefined"
+  ? null
+  : new ResizeObserver(() => scheduleRenderResize());
+
+resizeObserver?.observe(canvas);
+resizeObserver?.observe(theoreticalDrawingCanvas);
+resizeObserver?.observe(scene3dContainer);
+
+for (const details of panelDetails) {
+  details.addEventListener("toggle", () => {
+    if (details.open) scheduleRenderResize();
+  });
+}
 
 function focusedEquipmentField(): { id: string; field: string; selectionStart: number | null; selectionEnd: number | null } | null {
   const active = document.activeElement;
@@ -323,6 +357,7 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   renderTable(tableBody, pointCountEl, currentSnapshot);
   renderBalanceMetrics(balanceMetrics, currentBalanceResult);
   hullScene3d.render(currentSnapshot, currentProjectState.equipment, currentProjectState.scene3dSettings, currentConstraintReport);
+  hasRenderedProfile = true;
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
@@ -336,12 +371,15 @@ inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()
 inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
 waterDensityInput.addEventListener("input", () => update(appState.getLastEdited()));
 bindScene3dControls(scene3dControls, () => update(appState.getLastEdited()));
-window.addEventListener("resize", () => {
-  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
-  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
-  hullScene3d.resize();
+window.addEventListener("resize", scheduleRenderResize);
+window.addEventListener("beforeunload", () => {
+  if (resizeFrame !== null) {
+    window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = null;
+  }
+  resizeObserver?.disconnect();
+  hullScene3d.dispose();
 });
-window.addEventListener("beforeunload", () => hullScene3d.dispose());
 
 addEquipmentButton.addEventListener("click", () => {
   const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");

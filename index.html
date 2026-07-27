@@ -153,6 +153,9 @@
               </div>
             </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
+            <div id="scene3d-fallback" class="scene3d-fallback is-hidden" role="status">
+              3D недоступен в этом браузере. 2D-визуализация и экспорт остаются доступными.
+            </div>
           </details>
         </section>
 
@@ -229,7 +232,9 @@
               <span class="details-action" aria-hidden="true"></span>
             </span>
           </summary>
-          <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+          <div class="theoretical-drawing-scroll" aria-label="Прокручиваемая область теоретического чертежа">
+            <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+          </div>
         </details>
 
         <details class="data-band panel-details" open>

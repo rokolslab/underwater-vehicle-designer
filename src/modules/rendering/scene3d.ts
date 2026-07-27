@@ -15,6 +15,8 @@ import {
 } from "./coordinate-adapter";
 
 export interface HullScene3d {
+  readonly isAvailable: boolean;
+  readonly failureReason: string | null;
   readonly render: (
     snapshot: ProfileSnapshot,
     equipment?: readonly EquipmentItem[],
@@ -31,6 +33,7 @@ interface ViewState {
   rotationY: number;
   distance: number;
   isDragging: boolean;
+  activePointerId: number | null;
   lastPointerX: number;
   lastPointerY: number;
 }
@@ -106,19 +109,25 @@ export function createBodyAxisHelper(length: number): THREE.Group {
   return helper;
 }
 
-function createRenderer(container: HTMLElement): THREE.WebGLRenderer | null {
+interface RendererResult {
+  readonly renderer: THREE.WebGLRenderer | null;
+  readonly failureReason: string | null;
+}
+
+function createRenderer(container: HTMLElement): RendererResult {
   try {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0xffffff, 1);
     container.append(renderer.domElement);
     renderer.domElement.className = "scene3d-canvas";
-    return renderer;
+    return { renderer, failureReason: null };
   } catch (error) {
+    const failureReason = error instanceof Error ? error.message : String(error);
     logger.warn("3d renderer initialization failed", {
-      error: error instanceof Error ? error.message : String(error),
+      error: failureReason,
     });
-    return null;
+    return { renderer: null, failureReason };
   }
 }
 
@@ -223,7 +232,8 @@ function applyViewSettings(
 }
 
 export function createHullScene3d(container: HTMLElement): HullScene3d {
-  const renderer = createRenderer(container);
+  const rendererResult = createRenderer(container);
+  const renderer = rendererResult.renderer;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
   const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -250,6 +260,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     rotationY: initialRotationY,
     distance: 6,
     isDragging: false,
+    activePointerId: null,
     lastPointerX: 0,
     lastPointerY: 0,
   };
@@ -440,14 +451,17 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   }
 
   function onPointerDown(event: PointerEvent): void {
+    if (!event.isPrimary || viewState.isDragging) return;
     viewState.isDragging = true;
+    viewState.activePointerId = event.pointerId;
     viewState.lastPointerX = event.clientX;
     viewState.lastPointerY = event.clientY;
     container.setPointerCapture(event.pointerId);
   }
 
   function onPointerMove(event: PointerEvent): void {
-    if (!viewState.isDragging || !currentHull) return;
+    if (!viewState.isDragging || viewState.activePointerId !== event.pointerId || !currentHull) return;
+    event.preventDefault();
     const dx = event.clientX - viewState.lastPointerX;
     const dy = event.clientY - viewState.lastPointerY;
     viewState.lastPointerX = event.clientX;
@@ -465,7 +479,9 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   }
 
   function onPointerUp(event: PointerEvent): void {
+    if (viewState.activePointerId !== event.pointerId) return;
     viewState.isDragging = false;
+    viewState.activePointerId = null;
     if (container.hasPointerCapture(event.pointerId)) {
       container.releasePointerCapture(event.pointerId);
     }
@@ -509,5 +525,11 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     logger.debug("3d scene disposed");
   }
 
-  return { render, resize, dispose };
+  return {
+    isAvailable: Boolean(renderer),
+    failureReason: rendererResult.failureReason,
+    render,
+    resize,
+    dispose,
+  };
 }
