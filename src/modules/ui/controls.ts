@@ -2,8 +2,9 @@ import { formatInput } from "../../shared/format";
 
 export interface ControlElements {
   readonly length: HTMLInputElement;
+  readonly breadth: HTMLInputElement;
+  readonly height: HTMLInputElement;
   readonly slenderness: HTMLInputElement;
-  readonly diameter: HTMLInputElement;
   readonly cylindricalInsertLength: HTMLInputElement;
   readonly geometryMode: HTMLSelectElement;
   readonly stations: HTMLInputElement;

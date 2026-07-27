@@ -22,7 +22,7 @@ import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
-import { normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
+import { geometryModePresentation, normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
@@ -47,8 +47,9 @@ function readWaterDensity(input: HTMLInputElement): number {
 
 const inputs: ControlElements = {
   length: requiredElement("#length", HTMLInputElement),
+  breadth: requiredElement("#breadth", HTMLInputElement),
+  height: requiredElement("#height", HTMLInputElement),
   slenderness: requiredElement("#slenderness", HTMLInputElement),
-  diameter: requiredElement("#diameter", HTMLInputElement),
   cylindricalInsertLength: requiredElement("#cylindrical-insert-length", HTMLInputElement),
   geometryMode: requiredElement("#geometry-mode", HTMLSelectElement),
   stations: requiredElement("#stations", HTMLInputElement),
@@ -88,6 +89,7 @@ const balanceMetrics = {
   warnings: requiredElement("#balance-warnings", HTMLElement),
 };
 const projectImportNotice = requiredElement("#project-import-notice", HTMLElement);
+const geometryFormula = requiredElement("#geometry-formula", HTMLElement);
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
 const downloadProjectJsonButton = requiredElement("#download-project-json", HTMLButtonElement);
@@ -102,6 +104,14 @@ for (const action of document.querySelectorAll<HTMLElement>(".summary-action, .v
 
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
+
+function writeGeometryModePresentation(geometryMode: unknown): void {
+  const normalizedMode = normalizeGeometryMode(geometryMode);
+  for (const option of inputs.geometryMode.options) {
+    option.textContent = geometryModePresentation(option.value).label;
+  }
+  geometryFormula.textContent = geometryModePresentation(normalizedMode).formulaText;
+}
 
 for (const details of document.querySelectorAll<HTMLDetailsElement>(".panel-details")) {
   details.addEventListener("toggle", () => {
@@ -170,16 +180,20 @@ function readFileText(file: File): Promise<string> {
 
 function writeProfileControls(profile: SerializableProjectState["profile"]): void {
   writeNumericInput(inputs.length, profile.length);
+  writeNumericInput(inputs.breadth, profile.breadth);
+  writeNumericInput(inputs.height, profile.height);
   writeNumericInput(inputs.slenderness, profile.slenderness);
-  writeNumericInput(inputs.diameter, profile.diameter);
   writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
   inputs.geometryMode.value = normalizeGeometryMode(profile.geometryMode);
+  writeGeometryModePresentation(profile.geometryMode);
   writeIntegerInput(inputs.stations, profile.stations);
   inputs.showGrid.checked = profile.showGrid;
   inputs.showPoints.checked = profile.showPoints;
   logger.debug("profile controls written from project json", {
     length: profile.length,
     geometryMode: normalizeGeometryMode(profile.geometryMode),
+    breadth: profile.breadth,
+    height: profile.height,
     slenderness: profile.slenderness,
     stations: profile.stations,
   });
@@ -194,7 +208,7 @@ function applyImportedProject(project: SerializableProjectState): void {
   equipmentItems = project.equipment;
   writeScene3dControls(scene3dControls, project.scene3dSettings);
   writeNumericInput(waterDensityInput, project.balanceSettings.waterDensityKgPerM3);
-  update("slenderness");
+  update("height");
   logger.info("project json import applied", {
     equipmentCount: project.equipment.length,
     waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
@@ -240,6 +254,7 @@ function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: r
 function update(source: LastEdited = appState.getLastEdited()): void {
   logger.debug("profile update started", { source, equipmentCount: equipmentItems.length });
   const profile = appState.readState(source);
+  writeGeometryModePresentation(profile.geometryMode);
   currentSnapshot = makeProfileSnapshot(profile);
   currentTheoreticalDrawing = makeTheoreticalDrawing(currentSnapshot);
   logger.debug("theoretical drawing data updated", { sectionCount: currentTheoreticalDrawing.sections.length });
@@ -284,6 +299,8 @@ function update(source: LastEdited = appState.getLastEdited()): void {
 
   logger.debug("profile snapshot created", {
     length: profile.length,
+    breadth: profile.breadth,
+    height: profile.height,
     cylindricalInsertLength: profile.cylindricalInsertLength,
     totalLength: currentSnapshot.extents.totalLength,
     stations: profile.stations,
@@ -303,8 +320,9 @@ function update(source: LastEdited = appState.getLastEdited()): void {
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.breadth.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.slenderness.addEventListener("input", () => update("slenderness"));
-inputs.diameter.addEventListener("input", () => update("diameter"));
+inputs.height.addEventListener("input", () => update("height"));
 inputs.cylindricalInsertLength.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.geometryMode.addEventListener("change", () => update(appState.getLastEdited()));
 inputs.stations.addEventListener("input", () => update(appState.getLastEdited()));

@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 const requiredIds = [
   "profile-canvas",
+  "breadth",
+  "height",
+  "geometry-formula",
   "theoretical-drawing-canvas",
   "download-theoretical-drawing-svg",
   "hull-scene-3d",
@@ -39,5 +42,16 @@ describe("app DOM contract", () => {
     expect(html).toContain("Body-сечение");
     expect(main).toContain("result.migratedFromVersion");
     expect(main).toContain("правом или левом");
+  });
+
+  it("exposes B/H controls and removes the standalone diameter input", () => {
+    const html = readFileSync("index.html", "utf8");
+    const main = readFileSync("src/app/main.ts", "utf8");
+
+    expect(html).toContain("Ширина B");
+    expect(html).toContain("Высота H");
+    expect(html).toContain("Удлинение λ = L / H");
+    expect(html).not.toContain('id="diameter"');
+    expect(main).toContain('requiredElement("#geometry-formula"');
   });
 });

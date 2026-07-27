@@ -13,8 +13,9 @@ function select(value: string): HTMLSelectElement {
 function makeControls(): ControlElements {
   return {
     length: input("6"),
+    breadth: input("2"),
+    height: input("2"),
     slenderness: input("3"),
-    diameter: input("2"),
     cylindricalInsertLength: input("0"),
     geometryMode: select("current-formula"),
     stations: input("20"),
@@ -30,7 +31,24 @@ describe("app state", () => {
     const state = createAppStateController(controls).readState("slenderness");
 
     expect(state.geometryMode).toBe("current-formula");
+    expect(state.breadth).toBe(2);
+    expect(state.height).toBe(2);
+    expect(state.diameter).toBe(2);
     expect(controls.geometryMode.value).toBe("current-formula");
+  });
+
+  it("keeps breadth independent while slenderness controls height", () => {
+    const controls = makeControls();
+    controls.length.value = "8";
+    controls.breadth.value = "3";
+    controls.slenderness.value = "4";
+
+    const state = createAppStateController(controls).readState("slenderness");
+
+    expect(state.breadth).toBe(3);
+    expect(state.height).toBe(2);
+    expect(state.diameter).toBe(2);
+    expect(state.slenderness).toBe(4);
   });
 
   it("reads legacy geometry mode from controls", () => {
@@ -60,19 +78,54 @@ describe("app state", () => {
 
     const state = createAppStateController(controls).readState("slenderness");
 
+    expect(state.height).toBe(2);
     expect(state.diameter).toBe(2);
-    expect(controls.diameter.value).toBe("2");
+    expect(controls.height.value).toBe("2");
   });
 
-  it("keeps diameter authoritative when it was edited last", () => {
+  it("keeps height authoritative when it was edited last", () => {
     const controls = makeControls();
     controls.length.value = "8";
-    controls.diameter.value = "2";
+    controls.height.value = "2";
 
-    const state = createAppStateController(controls).readState("diameter");
+    const state = createAppStateController(controls).readState("height");
 
     expect(state.slenderness).toBe(4);
+    expect(state.diameter).toBe(state.height);
     expect(controls.slenderness.value).toBe("4");
+  });
+
+  it("preserves imported height by making height authoritative", () => {
+    const controls = makeControls();
+    controls.length.value = "10";
+    controls.breadth.value = "3";
+    controls.height.value = "4";
+    controls.slenderness.value = "2";
+
+    const state = createAppStateController(controls).readState("height");
+
+    expect(state.breadth).toBe(3);
+    expect(state.height).toBe(4);
+    expect(state.diameter).toBe(4);
+    expect(state.slenderness).toBe(2.5);
+    expect(controls.slenderness.value).toBe("2.5");
+  });
+
+  it("normalizes invalid breadth and height inputs", () => {
+    const controls = makeControls();
+    controls.length.value = "6";
+    controls.breadth.value = "bad";
+    controls.height.value = "bad";
+    controls.slenderness.value = "3";
+
+    const state = createAppStateController(controls).readState("height");
+
+    expect(state.breadth).toBe(2);
+    expect(state.height).toBe(2);
+    expect(state.diameter).toBe(2);
+    expect(state.slenderness).toBe(3);
+    expect(controls.breadth.value).toBe("2");
+    expect(controls.slenderness.value).toBe("3");
   });
 
   it("normalizes cylindrical insert length as a non-negative meter value", () => {
@@ -123,6 +176,9 @@ describe("app state", () => {
     expect(state.stations).toBe(80);
 
     const reset = controller.reset();
+    expect(reset.breadth).toBe(2);
+    expect(reset.height).toBe(2);
+    expect(reset.diameter).toBe(2);
     expect(reset.cylindricalInsertLength).toBe(0);
     expect(reset.geometryMode).toBe("current-formula");
     expect(controls.geometryMode.value).toBe("current-formula");

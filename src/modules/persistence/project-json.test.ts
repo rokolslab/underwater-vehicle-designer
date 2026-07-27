@@ -24,7 +24,7 @@ describe("project json persistence", () => {
       schemaVersion: number;
       coordinateSystem: string;
       exportedAt: string;
-      project: { profile: { geometryMode?: string } };
+      project: { profile: { breadth?: number; height?: number; diameter?: number; geometryMode?: string } };
     };
     const roundTrip = parseProjectJson(json);
 
@@ -32,6 +32,9 @@ describe("project json persistence", () => {
     expect(raw.coordinateSystem).toBe(projectJsonCoordinateSystem);
     expect(Date.parse(raw.exportedAt)).not.toBeNaN();
     expect(initial.project.profile.geometryMode).toBe("current-formula");
+    expect(raw.project.profile.breadth).toBe(2);
+    expect(raw.project.profile.height).toBe(2);
+    expect(raw.project.profile.diameter).toBe(2);
     expect(raw.project.profile.geometryMode).toBe("current-formula");
     expect(roundTrip.ok).toBe(true);
     if (!roundTrip.ok) return;
@@ -58,6 +61,40 @@ describe("project json persistence", () => {
     expect(roundTrip.warnings).toHaveLength(0);
     expect(roundTrip.project.profile.geometryMode).toBe("legacy-dsnp-pa");
     expect(roundTrip.project).toEqual(initial.project);
+  });
+
+  it("imports old v2 profile dimensions from diameter without warning", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    delete source.project.profile.breadth;
+    delete source.project.profile.height;
+    source.project.profile.diameter = 3;
+
+    const parsed = parseFixture(source);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.warnings).toHaveLength(0);
+    expect(parsed.project.profile.breadth).toBe(3);
+    expect(parsed.project.profile.height).toBe(3);
+    expect(parsed.project.profile.diameter).toBe(3);
+    expect(parsed.project.profile.slenderness).toBeCloseTo(10 / 3, 12);
+  });
+
+  it("normalizes invalid breadth and height with warnings", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    source.project.profile.breadth = 0;
+    source.project.profile.height = "bad";
+
+    const parsed = parseFixture(source);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.warnings).toContain("project.profile.breadth normalized");
+    expect(parsed.warnings).toContain("project.profile.height normalized");
+    expect(parsed.project.profile.breadth).toBe(0.01);
+    expect(parsed.project.profile.height).toBe(2);
+    expect(parsed.project.profile.diameter).toBe(2);
+    expect(parsed.project.profile.slenderness).toBe(5);
   });
 
   it("defaults missing v2 geometry mode without warning", () => {
@@ -167,7 +204,7 @@ describe("project json persistence", () => {
     if (!parsed.ok) return;
     expect(parsed.migratedFromVersion).toBeUndefined();
     expect(parsed.warnings.length).toBeGreaterThan(0);
-    expect(parsed.project.profile).toMatchObject({ length: 0.1, slenderness: 0.1, diameter: 1, stations: 80 });
+    expect(parsed.project.profile).toMatchObject({ length: 0.1, breadth: 2, height: 2, slenderness: 0.05, diameter: 2, stations: 80 });
     expect(parsed.project.equipment[0].position.x).toBe(0);
     expect(parsed.project.scene3dSettings.section).toEqual({ type: "crossSectionX", x: 0.05 });
   });

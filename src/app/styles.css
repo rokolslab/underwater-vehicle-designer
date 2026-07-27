@@ -823,6 +823,23 @@ tbody tr:hover {
   width: 100%;
 }
 
+.control-note {
+  align-self: stretch;
+  min-height: 36px;
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #155e55;
+  background: #edf8f5;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.geometry-formula {
+  grid-column: span 2;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+}
+
 .toggle-row {
   align-content: end;
   grid-template-columns: 18px minmax(0, max-content) !important;
@@ -890,6 +907,10 @@ tbody tr:hover {
     grid-template-columns: repeat(4, minmax(126px, 1fr));
   }
 
+  .geometry-formula {
+    grid-column: span 2;
+  }
+
   .visualization-panels {
     grid-template-columns: 1fr;
   }
@@ -921,6 +942,10 @@ tbody tr:hover {
   .control-grid,
   .scene3d-controls {
     grid-template-columns: 1fr;
+  }
+
+  .geometry-formula {
+    grid-column: 1;
   }
 
   .toggle-row {
