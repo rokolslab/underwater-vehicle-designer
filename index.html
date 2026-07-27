@@ -8,16 +8,31 @@
   </head>
   <body>
       <main class="app-shell">
+      <header class="topbar">
+        <div class="hero-copy">
+          <p class="hero-kicker">Public Demo v1 · браузерный прототип</p>
+          <h1>Визуализация корпуса подводного аппарата</h1>
+          <p class="hero-lead">
+            Быстро задайте размерения, оцените 2D/3D-обвод и сохраните проект в JSON. Демо честно показывает готовую визуализацию, базовую компоновку оборудования и экспорт без обещания полноценного CAD.
+          </p>
+          <a class="hero-cta" href="#controls">Открыть рабочий экран</a>
+        </div>
+        <div class="hero-note">
+          <div class="hero-note-title">Готово в демо</div>
+          <div class="hero-tags" aria-label="Возможности демо">
+            <span>2D + 3D</span>
+            <span>ЦВК и сечения</span>
+            <span>Оборудование</span>
+            <span>JSON/SVG/CSV</span>
+          </div>
+          <p class="hero-limit">Полные расчетные модели корпуса, ходкость, энергетика и стоимость остаются backlog.</p>
+          <div class="formula-line">Y = +/- B/2 sqrt(f/fmax), Z = +/- H/2 sqrt(f/fmax)</div>
+        </div>
+      </header>
         <aside class="axis-convention" aria-label="Система координат Body/SNAME-NED">
           <strong>Body/SNAME-NED:</strong> X — нос; Y — правый борт; Z — вниз. Координаты заданы в метрах от центра корпуса.
         </aside>
         <div id="project-import-notice" class="project-import-notice is-hidden" role="status" aria-live="polite" tabindex="-1"></div>
-      <header class="topbar">
-        <h1>Обвод подводного аппарата</h1>
-        <div class="formula-line">
-          Y = +/- B/2 sqrt(f/fmax), Z = +/- H/2 sqrt(f/fmax)
-        </div>
-      </header>
 
       <section class="workbench" aria-label="Построение обводов">
         <details class="control-panel panel-details" open>
