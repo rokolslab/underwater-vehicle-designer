@@ -1,5 +1,4 @@
-import type { ProfilePoint } from "../geometry/model";
-import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalPoint, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 import { bodyXFromProfileS } from "../../shared/body-coordinates";
@@ -74,17 +73,18 @@ function makeLayout(width: number, height: number): DrawingLayout {
 
 function makeProjectionScale(layout: DrawingLayout, drawing: TheoreticalDrawing): ProjectionScale {
   const totalLength = Math.max(drawing.totalLength, minimumLength);
-  const maxRadius = Math.max(drawing.maxRadius, minimumRadius);
-  const yLimit = Math.max(drawing.maxRadius * 1.12, minimumRadius);
-  const bodyRadiusLimit = Math.max(4, Math.min(layout.bodyPlan.width / 2 - 18, layout.bodyPlan.height / 2 - 18));
+  const maxHalfBreadthY = Math.max(drawing.maxHalfBreadthY, minimumRadius);
+  const maxHalfHeightZ = Math.max(drawing.maxHalfHeightZ, minimumRadius);
+  const yLimit = Math.max(drawing.maxHalfHeightZ * 1.12, minimumRadius);
   const unit = Math.max(
     1e-6,
     Math.min(
       layout.profile.width / totalLength,
       layout.profile.height / (2 * yLimit),
       layout.halfBreadth.width / totalLength,
-      (layout.halfBreadth.height - 22) / maxRadius,
-      bodyRadiusLimit / maxRadius,
+      (layout.halfBreadth.height - 22) / maxHalfBreadthY,
+      (layout.bodyPlan.width / 2 - 18) / maxHalfBreadthY,
+      (layout.bodyPlan.height / 2 - 18) / maxHalfHeightZ,
     ),
   );
   return Object.freeze({
@@ -129,7 +129,7 @@ function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {
 
 function drawPolyline(
   context: CanvasRenderingContext2D,
-  points: readonly ProfilePoint[],
+  points: readonly TheoreticalPoint[],
   mapX: (x: number) => number,
   mapY: (y: number) => number,
 ): void {
@@ -290,7 +290,7 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.fillStyle = muted;
   context.font = "11px Segoe UI, Arial, sans-serif";
   context.fillText("CL", rect.x - 28, mapY(0) + 4);
-  context.fillText("B/2", rect.x - 32, mapY(drawing.maxRadius) + 4);
+  context.fillText("B/2", rect.x - 32, mapY(drawing.maxHalfBreadthY) + 4);
   context.fillText("+Y правый борт", rect.x + 8, rect.y + rect.height - 8);
   context.restore();
 }
@@ -302,16 +302,17 @@ function drawBodySectionArc(
   cy: number,
   unit: number,
 ): void {
-  const radius = Math.max(0.6, section.radius * unit);
+  const radiusY = Math.max(0.6, section.halfBreadthY * unit);
+  const radiusZ = Math.max(0.6, section.halfHeightZ * unit);
   context.beginPath();
   if (section.side === "aft") {
-    context.arc(cx, cy, radius, Math.PI / 2, Math.PI * 1.5);
+    context.ellipse(cx, cy, radiusY, radiusZ, 0, Math.PI / 2, Math.PI * 1.5);
   } else if (section.side === "forward") {
-    context.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2);
+    context.ellipse(cx, cy, radiusY, radiusZ, 0, -Math.PI / 2, Math.PI / 2);
   } else {
-    context.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2);
-    context.moveTo(cx, cy + radius);
-    context.arc(cx, cy, radius, Math.PI / 2, Math.PI * 1.5);
+    context.ellipse(cx, cy, radiusY, radiusZ, 0, -Math.PI / 2, Math.PI / 2);
+    context.moveTo(cx, cy + radiusZ);
+    context.ellipse(cx, cy, radiusY, radiusZ, 0, Math.PI / 2, Math.PI * 1.5);
   }
   context.stroke();
 }
@@ -365,11 +366,12 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.lineWidth = 2;
   for (const section of drawing.midshipSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
   if (drawing.midshipSections.length === 0) {
-    const maxRadius = drawing.maxRadius * scale.unit;
+    const maxHalfBreadthY = drawing.maxHalfBreadthY * scale.unit;
+    const maxHalfHeightZ = drawing.maxHalfHeightZ * scale.unit;
     context.beginPath();
-    context.arc(cx, cy, maxRadius, -Math.PI / 2, Math.PI / 2);
-    context.moveTo(cx, cy + maxRadius);
-    context.arc(cx, cy, maxRadius, Math.PI / 2, Math.PI * 1.5);
+    context.ellipse(cx, cy, maxHalfBreadthY, maxHalfHeightZ, 0, -Math.PI / 2, Math.PI / 2);
+    context.moveTo(cx, cy + maxHalfHeightZ);
+    context.ellipse(cx, cy, maxHalfBreadthY, maxHalfHeightZ, 0, Math.PI / 2, Math.PI * 1.5);
     context.stroke();
   }
   context.restore();
@@ -379,8 +381,8 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.font = "11px Segoe UI, Arial, sans-serif";
   context.fillText("левый борт", rect.x + 12, rect.y + 18);
   context.fillText("правый борт (+Y)", rect.x + rect.width - 112, rect.y + 18);
-  context.fillText("+Y", cx + drawing.maxRadius * scale.unit + 8, cy + 4);
-  context.fillText("+Z вниз", cx + 6, cy + drawing.maxRadius * scale.unit + 14);
+  context.fillText("+Y", cx + drawing.maxHalfBreadthY * scale.unit + 8, cy + 4);
+  context.fillText("+Z вниз", cx + 6, cy + drawing.maxHalfHeightZ * scale.unit + 14);
   context.restore();
 }
 
@@ -391,7 +393,7 @@ export function renderTheoreticalDrawing(canvas: HTMLCanvasElement, drawing: The
     logger.warn("theoretical drawing canvas context unavailable", { canvasId: canvas.id });
     return;
   }
-  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxRadius <= 0) {
+  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxHalfHeightZ <= 0) {
     logger.warn("theoretical drawing canvas has empty or invalid geometry", {
       exportView: "theoretical-drawing",
       projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],

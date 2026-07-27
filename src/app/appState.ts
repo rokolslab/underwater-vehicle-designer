@@ -1,4 +1,4 @@
-import type { ProfileState } from "../modules/geometry/model";
+import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../modules/geometry/model";
 import { clampNumber } from "../shared/math";
 import { logger } from "../shared/logger";
 import type { ControlElements } from "../modules/ui/controls";
@@ -7,6 +7,7 @@ import { writeIntegerInput, writeNumericInput } from "../modules/ui/controls";
 export type LastEdited = "slenderness" | "diameter";
 
 const defaults = {
+  geometryMode: defaultGeometryMode,
   length: 6,
   slenderness: 3,
   cylindricalInsertLength: 0,
@@ -29,6 +30,7 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     let diameter = clampNumber(inputs.diameter.value, length / slenderness, 0.01);
     const maxCylindricalInsertLength = length / 2;
     const requestedCylindricalInsertLength = Number(inputs.cylindricalInsertLength.value);
+    const geometryMode = normalizeGeometryMode(inputs.geometryMode.value);
     const cylindricalInsertLength = clampNumber(
       inputs.cylindricalInsertLength.value,
       defaults.cylindricalInsertLength,
@@ -57,11 +59,13 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
 
     const stations = Math.round(clampNumber(inputs.stations.value, defaults.stations, 8, 80));
     writeNumericInput(inputs.length, length);
+    inputs.geometryMode.value = geometryMode;
     inputs.cylindricalInsertLength.max = String(maxCylindricalInsertLength);
     writeNumericInput(inputs.cylindricalInsertLength, cylindricalInsertLength);
     writeIntegerInput(inputs.stations, stations);
 
     const state = {
+      geometryMode,
       length,
       slenderness,
       diameter,
@@ -79,6 +83,7 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     inputs.length.value = String(defaults.length);
     inputs.slenderness.value = String(defaults.slenderness);
     inputs.cylindricalInsertLength.value = String(defaults.cylindricalInsertLength);
+    inputs.geometryMode.value = defaults.geometryMode;
     inputs.stations.value = String(defaults.stations);
     inputs.showGrid.checked = true;
     inputs.showPoints.checked = true;

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import formulaFixture from "../../../tests/fixtures/formula-profile.json";
 import {
+  cylindricalInsertLengthToLegacyLc,
+  legacyDsnpPaMaxHalfBreadth,
+  legacyDsnpPaMaxHalfHeight,
+  legacyDsnpPaSectionExtentsAt,
+  profileStationToLegacyX,
+} from "./legacy-dsnp-pa";
+import {
   getExtents,
   makeProfileSnapshot,
   makeProfilePoints,
@@ -10,6 +17,16 @@ import {
   radiusAt,
   totalProfileLength,
 } from "./profile";
+
+function expectedLegacyHalfAxis(normalizedX: number, normalizedLc: number, fullAxis: number): number {
+  const plateauStart = 0.4 * (1 - normalizedLc);
+  const plateauEnd = 0.4 + 0.6 * normalizedLc;
+  if (normalizedX > plateauStart && normalizedX < plateauEnd) return fullAxis / 2;
+
+  const profileX =
+    normalizedX <= plateauStart ? normalizedX / (1 - normalizedLc) : (normalizedX - normalizedLc) / (1 - normalizedLc);
+  return 0.9731 * fullAxis * Math.sqrt(profileX * (1 - profileX) * (1.5 - profileX));
+}
 
 describe("profile geometry", () => {
   it("treats diameter as the physical maximum hull height", () => {
@@ -39,6 +56,8 @@ describe("profile geometry", () => {
     const extents = getExtents(makeProfilePoints(formulaFixture.length, formulaFixture.diameter));
 
     expect(extents.maxRadius).toBeCloseTo(formulaFixture.extents.maxRadius, 12);
+    expect(extents.maxHalfBreadthY).toBeCloseTo(formulaFixture.extents.maxRadius, 12);
+    expect(extents.maxHalfHeightZ).toBeCloseTo(formulaFixture.extents.maxRadius, 12);
     expect(extents.maxHeight).toBeCloseTo(formulaFixture.extents.maxHeight, 12);
     expect(extents.maxRadiusS).toBeCloseTo(formulaFixture.extents.maxRadiusS, 12);
     expect(extents.totalLength).toBe(formulaFixture.length);
@@ -86,8 +105,80 @@ describe("profile geometry", () => {
     expect(snapshot.state.diameter).toBe(2);
     expect(snapshot.state.cylindricalInsertLength).toBe(2);
     expect(snapshot.extents.totalLength).toBe(6);
+    expect(snapshot.extents.maxHalfBreadthY).toBeCloseTo(snapshot.extents.maxRadius, 12);
+    expect(snapshot.extents.maxHalfHeightZ).toBeCloseTo(snapshot.extents.maxRadius, 12);
     expect(snapshot.smoothPoints).toHaveLength(321);
     expect(snapshot.stationPoints).toHaveLength(23);
     expect(Object.isFrozen(snapshot)).toBe(true);
+  });
+
+  // Legacy regressions trace to docs/legacy/dsnp-pa-calculation-catalog.md and do not validate DSNP_PA coefficients.
+  it("normalizes profile stations and cylindrical insert length for legacy DSNP_PA regressions", () => {
+    expect(profileStationToLegacyX(2.5, 10)).toBeCloseTo(0.25, 12);
+    expect(cylindricalInsertLengthToLegacyLc(2, 10)).toBeCloseTo(0.2, 12);
+  });
+
+  it("regresses documented legacy MaxWl/MaxBt nose, tail and plateau branches without validating DSNP_PA coefficients", () => {
+    // Traceability: docs/legacy/dsnp-pa-calculation-catalog.md, APPAUNIT.PAS MaxBt/MaxWl.
+    const normalizedLc = 0.2;
+    const noseX = 0.16;
+    const plateauX = 0.4;
+    const tailX = 0.76;
+
+    expect(legacyDsnpPaMaxHalfBreadth(noseX, normalizedLc, 3)).toBeCloseTo(
+      expectedLegacyHalfAxis(noseX, normalizedLc, 3),
+      12,
+    );
+    expect(legacyDsnpPaMaxHalfHeight(noseX, normalizedLc, 2)).toBeCloseTo(
+      expectedLegacyHalfAxis(noseX, normalizedLc, 2),
+      12,
+    );
+    expect(legacyDsnpPaMaxHalfBreadth(plateauX, normalizedLc, 3)).toBeCloseTo(1.5, 12);
+    expect(legacyDsnpPaMaxHalfHeight(plateauX, normalizedLc, 2)).toBeCloseTo(1, 12);
+    expect(legacyDsnpPaMaxHalfBreadth(tailX, normalizedLc, 3)).toBeCloseTo(
+      expectedLegacyHalfAxis(tailX, normalizedLc, 3),
+      12,
+    );
+    expect(legacyDsnpPaMaxHalfHeight(tailX, normalizedLc, 2)).toBeCloseTo(
+      expectedLegacyHalfAxis(tailX, normalizedLc, 2),
+      12,
+    );
+  });
+
+  it("maps legacy MaxWl/MaxBt to exact section axes in the section extents API", () => {
+    const section = legacyDsnpPaSectionExtentsAt({
+      s: 4,
+      length: 10,
+      maxBreadth: 4,
+      maxHeight: 2,
+      cylindricalInsertLength: 2,
+    });
+
+    expect(section.halfBreadthY).toBeCloseTo(2, 12);
+    expect(section.halfHeightZ).toBeCloseTo(1, 12);
+    expect(section.radius).toBeCloseTo(section.halfHeightZ, 12);
+  });
+
+  it("keeps legacy cylindrical insert plateau and extents as regression traceability, not engineering validation", () => {
+    const snapshot = makeProfileSnapshot({
+      geometryMode: "legacy-dsnp-pa",
+      length: 10,
+      slenderness: 5,
+      diameter: 2,
+      cylindricalInsertLength: 2,
+      stations: 10,
+      showGrid: true,
+      showPoints: true,
+    });
+    const plateauPoint = snapshot.smoothPoints.find((point) => point.s === 4);
+
+    expect(plateauPoint?.halfBreadthY).toBeCloseTo(1, 12);
+    expect(plateauPoint?.halfHeightZ).toBeCloseTo(1, 12);
+    expect(plateauPoint?.radius).toBeCloseTo(1, 12);
+    expect(snapshot.extents.maxRadius).toBeCloseTo(Math.max(...snapshot.smoothPoints.map((point) => point.radius)), 12);
+    expect(snapshot.extents.maxHalfBreadthY).toBeCloseTo(Math.max(...snapshot.smoothPoints.map((point) => point.halfBreadthY)), 12);
+    expect(snapshot.extents.maxHalfHeightZ).toBeCloseTo(Math.max(...snapshot.smoothPoints.map((point) => point.halfHeightZ)), 12);
+    expect(snapshot.extents.maxHeight).toBeCloseTo(snapshot.extents.maxHalfHeightZ * 2, 12);
+    expect(snapshot.extents.totalLength).toBe(10);
   });
 });

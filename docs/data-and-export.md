@@ -8,7 +8,7 @@
 
 | Data | Owner |
 | --- | --- |
-| Параметры корпуса | `ProfileState` через `appState.ts` |
+| Параметры корпуса и `geometryMode` | `ProfileState` через `appState.ts` |
 | Оборудование | `EquipmentItem[]` через `equipment/placement.ts` |
 | Настройки 3D | `Scene3dSettings` через `viewSettings.ts` |
 | Настройки баланса | `BalanceSettings` |
@@ -35,12 +35,13 @@ Root document:
 }
 ```
 
-Новый экспорт использует `schemaVersion: 2` и обязательный marker `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Поддерживаются импорт v2 и односторонняя миграция v1; остальные версии отклоняются.
+Новый экспорт использует `schemaVersion: 2` и обязательный marker `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Поддерживаются импорт v2 и односторонняя миграция v1; остальные версии отклоняются. Добавление `profile.geometryMode` не меняет версию схемы: поле optional/backward-compatible для старых v2 проектов.
 
 ## Profile JSON
 
 ```json
 {
+  "geometryMode": "current-formula",
   "length": 6,
   "slenderness": 3,
   "diameter": 2,
@@ -52,6 +53,22 @@ Root document:
 ```
 
 При импорте `diameter` восстанавливается как `length / slenderness`, чтобы сохранить текущую связь параметров.
+
+`profile.geometryMode` задает режим геометрии корпуса:
+
+| Value | Meaning |
+| --- | --- |
+| `current-formula` | Текущая формула проекта, default. |
+| `legacy-dsnp-pa` | DSNP_PA regression/traceability mode с эллиптическими сечениями первого slice. |
+
+Контракт совместимости:
+
+- новый экспорт всегда записывает нормализованный `profile.geometryMode`;
+- старые v2 JSON без `profile.geometryMode` импортируются как `current-formula` без warning;
+- неподдерживаемое значение импортируется как `current-formula` с warning `project.profile.geometryMode normalized`;
+- schema остается `2`, потому что изменение backward-compatible.
+
+Legacy-режим не добавляет в JSON параметры `Priam`/`Kr`; скругленно-прямоугольные сечения остаются follow-up. ЦВК в JSON означает `cylindricalInsertLength`; ЦВ как center of buoyancy хранится только как расчетный результат/термин баланса и не является этим полем.
 
 ## Equipment JSON
 
@@ -102,6 +119,7 @@ body.z = -old.y
 | --- | --- |
 | `profile.length` | `>= 0.1` |
 | `profile.slenderness` | `>= 0.1` |
+| `profile.geometryMode` | missing -> `current-formula`; unsupported -> `current-formula` + warning |
 | `profile.cylindricalInsertLength` | `0..length/2` |
 | `profile.stations` | `8..80`, округляется |
 | `equipment.shape` | неизвестное значение -> `sphere` |
@@ -132,11 +150,15 @@ Rows:
 
 Разделитель — `;`. CSV соответствует панели `Параметрические точки профиля`.
 
+В `legacy-dsnp-pa` колонки `radius_top` и `radius_bottom` остаются совместимым XZ-представлением по `halfHeightZ`. Полуширина `halfBreadthY` в этот CSV не добавляется, чтобы не менять существующий формат; точная эллиптическая геометрия доступна в `ProfileSnapshot` и 3D mesh.
+
 ## SVG Export: Side View
 
 `buildSvg(snapshot)` экспортирует текущий боковой профиль. Он использует тот же `ProfileSnapshot`, что Canvas и таблица.
 
 Экспорт располагается в панели `Боковой вид`, потому что относится к этой проекции.
+
+Для legacy-режима это XZ-силуэт по `halfHeightZ`, а не полный набор эллиптических сечений.
 
 ## SVG Export: Theoretical Drawing
 
@@ -148,6 +170,8 @@ Rows:
 - сетки, подписи, ватерлинии, батоксы и сечения.
 
 Экспорт располагается в панели `Теоретический чертеж`.
+
+Теоретический чертеж получает `halfBreadthY`/`halfHeightZ` из `ProfileSnapshot`, поэтому legacy-режим отображает эллиптический first-slice contract. 3D export как отдельный файл не реализован; интерактивная Three.js-сцена строит exact elliptical ring mesh из тех же полуосей, не compatibility approximation.
 
 ## Downloads
 
@@ -164,6 +188,7 @@ Rows:
 
 - Не менять `schemaVersion` или `coordinateSystem` без миграции.
 - Новые поля JSON должны иметь fallback при импорте.
+- `profile.geometryMode` остается optional в JSON v2; missing defaults to `current-formula`, unsupported values normalize with warning.
 - CSV должен оставаться построенным из `stationPoints`.
 - SVG не должен пересчитывать геометрию независимо от `ProfileSnapshot`.
 - Русские UI-строки должны проходить `npm run check:encoding`.

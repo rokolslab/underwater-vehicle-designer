@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { ProfileSnapshot } from "../geometry/model";
 import { makeProfileSnapshot } from "../geometry/profile";
-import { buildHullMeshData, readVertexRadius } from "./mesh";
+import { buildHullMeshData, hullMeshSignature, isSameHullMeshSignature, readVertexRadius } from "./mesh";
 
 function makeSnapshot(cylindricalInsertLength = 0) {
   return makeProfileSnapshot({
@@ -11,6 +12,35 @@ function makeSnapshot(cylindricalInsertLength = 0) {
     stations: 20,
     showGrid: true,
     showPoints: true,
+  });
+}
+
+function makeEllipticalSnapshot(): ProfileSnapshot {
+  return Object.freeze({
+    state: Object.freeze({
+      geometryMode: "legacy-dsnp-pa" as const,
+      length: 4,
+      slenderness: 2,
+      diameter: 2,
+      cylindricalInsertLength: 0,
+      stations: 8,
+      showGrid: true,
+      showPoints: true,
+    }),
+    smoothPoints: Object.freeze([
+      Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+      Object.freeze({ s: 2, radius: 1, halfBreadthY: 2, halfHeightZ: 1 }),
+      Object.freeze({ s: 4, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+    ]),
+    stationPoints: Object.freeze([]),
+    extents: Object.freeze({
+      maxRadius: 1,
+      maxHalfBreadthY: 2,
+      maxHalfHeightZ: 1,
+      maxHeight: 2,
+      maxRadiusS: 2,
+      totalLength: 4,
+    }),
   });
 }
 
@@ -67,5 +97,41 @@ describe("hull mesh data", () => {
       expect(radius).toBeGreaterThanOrEqual(0);
       expect(radius).toBeCloseTo(snapshot.smoothPoints[ringIndex].radius, 6);
     }
+  });
+
+  it("builds exact elliptical rings from section half-breadth and half-height", () => {
+    const snapshot = makeEllipticalSnapshot();
+    const mesh = buildHullMeshData(snapshot, { radialSegments: 8 });
+    const verticesPerRing = mesh.radialSegments + 1;
+    const centerRingStart = verticesPerRing;
+    const starboardOffset = (centerRingStart + 0) * 3;
+    const downOffset = (centerRingStart + 2) * 3;
+    const portOffset = (centerRingStart + 4) * 3;
+    const upOffset = (centerRingStart + 6) * 3;
+
+    expect(mesh.positions[starboardOffset + 1]).toBeCloseTo(0, 12);
+    expect(mesh.positions[starboardOffset + 2]).toBeCloseTo(2, 12);
+    expect(mesh.positions[downOffset + 1]).toBeCloseTo(-1, 12);
+    expect(mesh.positions[downOffset + 2]).toBeCloseTo(0, 12);
+    expect(mesh.positions[portOffset + 1]).toBeCloseTo(0, 12);
+    expect(mesh.positions[portOffset + 2]).toBeCloseTo(-2, 12);
+    expect(mesh.positions[upOffset + 1]).toBeCloseTo(1, 12);
+    expect(mesh.positions[upOffset + 2]).toBeCloseTo(0, 12);
+  });
+
+  it("changes hull mesh signature when geometry mode or section extents change", () => {
+    const circular = makeSnapshot();
+    const elliptical = makeEllipticalSnapshot();
+    const changedExtents = Object.freeze({
+      ...elliptical,
+      smoothPoints: Object.freeze([
+        elliptical.smoothPoints[0],
+        Object.freeze({ ...elliptical.smoothPoints[1], halfBreadthY: 1.5 }),
+        elliptical.smoothPoints[2],
+      ]),
+    });
+
+    expect(isSameHullMeshSignature(hullMeshSignature(circular), hullMeshSignature(elliptical))).toBe(false);
+    expect(isSameHullMeshSignature(hullMeshSignature(elliptical), hullMeshSignature(changedExtents))).toBe(false);
   });
 });

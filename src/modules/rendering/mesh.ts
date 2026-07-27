@@ -1,6 +1,19 @@
-import type { ProfileSnapshot } from "../geometry/model";
+import { normalizeGeometryMode, type GeometryMode, type ProfileSnapshot } from "../geometry/model";
 import { logger } from "../../shared/logger";
 import { profilePointToThree } from "./coordinate-adapter";
+
+export interface HullMeshSignature {
+  readonly geometryMode: GeometryMode;
+  readonly length: number;
+  readonly diameter: number;
+  readonly cylindricalInsertLength: number;
+  readonly totalLength: number;
+  readonly maxRadius: number;
+  readonly maxHalfBreadthY: number;
+  readonly maxHalfHeightZ: number;
+  readonly smoothPointCount: number;
+  readonly sectionExtentsSignature: string;
+}
 
 export interface HullMeshData {
   readonly positions: Float32Array;
@@ -25,6 +38,43 @@ function radiusFromPosition(threeY: number, threeZ: number): number {
   return Math.hypot(threeY, threeZ);
 }
 
+export function hullSectionExtentsSignature(snapshot: ProfileSnapshot): string {
+  return snapshot.smoothPoints
+    .map((point) => `${point.s}:${point.halfBreadthY}:${point.halfHeightZ}`)
+    .join("|");
+}
+
+export function hullMeshSignature(snapshot: ProfileSnapshot): HullMeshSignature {
+  return {
+    geometryMode: normalizeGeometryMode(snapshot.state.geometryMode),
+    length: snapshot.state.length,
+    diameter: snapshot.state.diameter,
+    cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
+    totalLength: snapshot.extents.totalLength,
+    maxRadius: snapshot.extents.maxRadius,
+    maxHalfBreadthY: snapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: snapshot.extents.maxHalfHeightZ,
+    smoothPointCount: snapshot.smoothPoints.length,
+    sectionExtentsSignature: hullSectionExtentsSignature(snapshot),
+  };
+}
+
+export function isSameHullMeshSignature(a: HullMeshSignature | null, b: HullMeshSignature): boolean {
+  return (
+    a !== null &&
+    a.geometryMode === b.geometryMode &&
+    a.length === b.length &&
+    a.diameter === b.diameter &&
+    a.cylindricalInsertLength === b.cylindricalInsertLength &&
+    a.totalLength === b.totalLength &&
+    a.maxRadius === b.maxRadius &&
+    a.maxHalfBreadthY === b.maxHalfBreadthY &&
+    a.maxHalfHeightZ === b.maxHalfHeightZ &&
+    a.smoothPointCount === b.smoothPointCount &&
+    a.sectionExtentsSignature === b.sectionExtentsSignature
+  );
+}
+
 export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOptions = {}): HullMeshData {
   const radialSegments = normalizeSegments(options.radialSegments);
   const rings = snapshot.smoothPoints;
@@ -37,7 +87,7 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
   const totalLength = Math.max(snapshot.extents.totalLength, 1);
 
   logger.debug("3d hull mesh data creation started", {
-    sourceFrame: "profile(s,radius)",
+    sourceFrame: "profile(s,section extents)",
     targetFrame: "Three(x,y,z)",
     axisMapping: "three=(body.x,-body.z,body.y)",
     ringCount,
@@ -46,18 +96,24 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
 
   for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
     const point = rings[ringIndex];
-    const radius = Math.max(0, point.radius);
+    const halfBreadthY = Math.max(0, point.halfBreadthY);
+    const halfHeightZ = Math.max(0, point.halfHeightZ);
 
     for (let radialIndex = 0; radialIndex <= radialSegments; radialIndex += 1) {
       const angle = (radialIndex / radialSegments) * Math.PI * 2;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
+      const normalY = halfBreadthY > 0 ? cos / halfBreadthY : 0;
+      const normalZ = halfHeightZ > 0 ? sin / halfHeightZ : 0;
+      const normalLength = Math.hypot(normalY, normalZ);
+      const normalizedNormalY = normalLength > 0 ? normalY / normalLength : cos;
+      const normalizedNormalZ = normalLength > 0 ? normalZ / normalLength : sin;
       const vertexIndex = ringIndex * verticesPerRing + radialIndex;
       const positionOffset = vertexIndex * 3;
       const uvOffset = vertexIndex * 2;
 
-      const position = profilePointToThree(point.s, radius * cos, radius * sin, totalLength);
-      const normal = profilePointToThree(totalLength / 2, cos, sin, totalLength);
+      const position = profilePointToThree(point.s, halfBreadthY * cos, halfHeightZ * sin, totalLength);
+      const normal = profilePointToThree(totalLength / 2, normalizedNormalY, normalizedNormalZ, totalLength);
       positions[positionOffset] = position.x;
       positions[positionOffset + 1] = position.y;
       positions[positionOffset + 2] = position.z;
@@ -96,7 +152,7 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
     longitudinalSegments: Math.max(0, ringCount - 1),
   };
   logger.debug("3d hull mesh data creation completed", {
-    sourceFrame: "profile(s,radius)",
+    sourceFrame: "profile(s,section extents)",
     targetFrame: "Three(x,y,z)",
     vertices: ringCount * verticesPerRing,
     triangles: indices.length / 3,

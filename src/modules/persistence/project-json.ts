@@ -3,7 +3,7 @@ import type { BalanceSettings } from "../balance/model";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentAxis, EquipmentItem, EquipmentShape } from "../equipment/model";
 import { createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
-import type { ProfileState } from "../geometry/model";
+import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../geometry/model";
 import type { Scene3dSettings } from "../rendering/model";
 import { defaultScene3dSettings, normalizeScene3dSettings } from "../rendering/viewSettings";
 import { logger } from "../../shared/logger";
@@ -37,6 +37,7 @@ export type ProjectJsonParseResult =
   | { readonly ok: false; readonly error: string; readonly warnings: readonly string[] };
 
 const defaultProfile: ProfileState = Object.freeze({
+  geometryMode: defaultGeometryMode,
   length: 6,
   slenderness: 3,
   diameter: 2,
@@ -76,6 +77,15 @@ function readString(value: unknown, fallback: string): string {
   return trimmed || fallback;
 }
 
+function readGeometryMode(value: unknown, warnings: string[]): ProfileState["geometryMode"] {
+  const normalized = normalizeGeometryMode(value);
+  if (value !== undefined && value !== normalized) {
+    warnings.push("project.profile.geometryMode normalized");
+    logger.warn("project json geometry mode normalized", { requested: value, normalized });
+  }
+  return normalized;
+}
+
 function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   const source = readRecord(value, warnings, "project.profile");
   const length = readNumber(source.length, defaultProfile.length, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.length");
@@ -91,6 +101,7 @@ function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   const stations = Math.round(readNumber(source.stations, defaultProfile.stations, 8, 80, warnings, "project.profile.stations"));
 
   return Object.freeze({
+    geometryMode: readGeometryMode(source.geometryMode, warnings),
     length,
     slenderness,
     diameter: length / slenderness,
@@ -225,11 +236,18 @@ export function buildProjectJson(project: SerializableProjectState): string {
     equipmentCount: project.equipment.length,
     scene3dMode: project.scene3dSettings.mode,
   });
+  const normalizedProject = Object.freeze({
+    ...project,
+    profile: Object.freeze({
+      ...project.profile,
+      geometryMode: normalizeGeometryMode(project.profile.geometryMode),
+    }),
+  });
   const document: ProjectJsonDocument = Object.freeze({
     schemaVersion: projectJsonSchemaVersion,
     coordinateSystem: projectJsonCoordinateSystem,
     exportedAt: new Date().toISOString(),
-    project,
+    project: normalizedProject,
   });
   const json = JSON.stringify(document, null, 2);
   logger.debug("project json export completed", { bytes: json.length, equipmentCount: project.equipment.length });

@@ -5,6 +5,7 @@ export interface ControlElements {
   readonly slenderness: HTMLInputElement;
   readonly diameter: HTMLInputElement;
   readonly cylindricalInsertLength: HTMLInputElement;
+  readonly geometryMode: HTMLSelectElement;
   readonly stations: HTMLInputElement;
   readonly showGrid: HTMLInputElement;
   readonly showPoints: HTMLInputElement;

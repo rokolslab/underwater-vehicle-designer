@@ -17,6 +17,39 @@ function snapshot(overrides: Partial<ProfileSnapshot["state"]> = {}): ProfileSna
   });
 }
 
+function ellipticalSnapshot(): ProfileSnapshot {
+  const state = Object.freeze({
+    geometryMode: "legacy-dsnp-pa" as const,
+    length: 10,
+    slenderness: 2.5,
+    diameter: 4,
+    cylindricalInsertLength: 0,
+    stations: 2,
+    showGrid: true,
+    showPoints: true,
+  });
+  const smoothPoints = Object.freeze(
+    [0, 5, 10].map((s) => Object.freeze({ s, radius: 1, halfBreadthY: 2, halfHeightZ: 1 })),
+  );
+  const stationPoints = Object.freeze(
+    smoothPoints.map((point) => Object.freeze({ ...point, topRadius: point.halfHeightZ, bottomRadius: -point.halfHeightZ })),
+  );
+
+  return Object.freeze({
+    state,
+    smoothPoints,
+    stationPoints,
+    extents: Object.freeze({
+      maxRadius: 1,
+      maxHalfBreadthY: 2,
+      maxHalfHeightZ: 1,
+      maxHeight: 2,
+      maxRadiusS: 0,
+      totalLength: 10,
+    }),
+  });
+}
+
 function sphere(id: string, position: EquipmentItem["position"], radius = 0.15): EquipmentItem {
   return Object.freeze({
     id,
@@ -168,6 +201,37 @@ describe("equipment constraints", () => {
     ]);
 
     expect(equipmentStatus(report, "s1")).toBe("ok");
+  });
+
+  it("checks legacy elliptical box corners instead of only the center offset", () => {
+    const item: EquipmentItem = Object.freeze({
+      id: "wide-box",
+      name: "wide-box",
+      shape: "box",
+      massKg: 1,
+      position: Object.freeze({ x: 0, y: 0, z: 0.8 }),
+      orientation: "x",
+      dimensions: Object.freeze({ lengthX: 0.2, breadthY: 1.8, heightZ: 0.2 }),
+    });
+    const report = evaluateEquipmentConstraints(ellipticalSnapshot(), [item]);
+
+    expect(equipmentStatus(report, "wide-box")).toBe("outsideHull");
+    expect(equipmentIssues(report, "wide-box").some((issue) => issue.reason === "outsideHull")).toBe(true);
+  });
+
+  it("checks legacy elliptical cylinder control points instead of only the center offset", () => {
+    const item: EquipmentItem = Object.freeze({
+      id: "wide-cylinder",
+      name: "wide-cylinder",
+      shape: "cylinder",
+      massKg: 1,
+      position: Object.freeze({ x: 0, y: 0, z: 0.94 }),
+      orientation: "y",
+      dimensions: Object.freeze({ radius: 0.12, length: 0.8 }),
+    });
+    const report = evaluateEquipmentConstraints(ellipticalSnapshot(), [item]);
+
+    expect(equipmentStatus(report, "wide-cylinder")).toBe("outsideHull");
   });
 
   it("uses deterministic severity priority for display status", () => {

@@ -1,5 +1,4 @@
-import type { ProfilePoint } from "../geometry/model";
-import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalPoint, TheoreticalSection } from "../geometry/theoretical-drawing";
 import { bodyXFromProfileS } from "../../shared/body-coordinates";
 import { logger } from "../../shared/logger";
 import { bodyPointToXyProjection, bodyPointToXzProjection, bodyPointToYzProjection } from "../rendering/coordinate-adapter";
@@ -29,23 +28,24 @@ const bodyPlanRect: Rect = Object.freeze({ x: 900, y: 82, width: 250, height: 24
 const minimumLength = 0.1;
 const minimumRadius = 0.1;
 
-function svgPath(points: readonly ProfilePoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
+function svgPath(points: readonly TheoreticalPoint[], mapX: (value: number) => number, mapY: (value: number) => number): string {
   return points.map((point, index) => `${index === 0 ? "M" : "L"}${mapX(point.s).toFixed(2)} ${mapY(point.radius).toFixed(2)}`).join(" ");
 }
 
 function makeProjectionScale(drawing: TheoreticalDrawing): ProjectionScale {
   const totalLength = Math.max(drawing.totalLength, minimumLength);
-  const maxRadius = Math.max(drawing.maxRadius, minimumRadius);
-  const yLimit = Math.max(drawing.maxRadius * 1.12, minimumRadius);
-  const bodyRadiusLimit = Math.max(4, Math.min(bodyPlanRect.width / 2 - 18, bodyPlanRect.height / 2 - 18));
+  const maxHalfBreadthY = Math.max(drawing.maxHalfBreadthY, minimumRadius);
+  const maxHalfHeightZ = Math.max(drawing.maxHalfHeightZ, minimumRadius);
+  const yLimit = Math.max(drawing.maxHalfHeightZ * 1.12, minimumRadius);
   const unit = Math.max(
     1e-6,
     Math.min(
       profileRect.width / totalLength,
       profileRect.height / (2 * yLimit),
       halfBreadthRect.width / totalLength,
-      (halfBreadthRect.height - 22) / maxRadius,
-      bodyRadiusLimit / maxRadius,
+      (halfBreadthRect.height - 22) / maxHalfBreadthY,
+      (bodyPlanRect.width / 2 - 18) / maxHalfBreadthY,
+      (bodyPlanRect.height / 2 - 18) / maxHalfHeightZ,
     ),
   );
   return Object.freeze({
@@ -145,20 +145,28 @@ function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale):
 }
 
 function sectionArcPath(section: TheoreticalSection, cx: number, cy: number, unit: number): string {
-  const radius = Math.max(0.6, section.radius * unit);
-  const topY = cy - radius;
-  const bottomY = cy + radius;
+  const radiusY = Math.max(0.6, section.halfBreadthY * unit);
+  const radiusZ = Math.max(0.6, section.halfHeightZ * unit);
+  const topY = cy - radiusZ;
+  const bottomY = cy + radiusZ;
   if (section.side === "aft") {
-    return `M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
+    return `M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
   }
   if (section.side === "forward") {
-    return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)}`;
+    return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)}`;
   }
-  return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)} M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
+  return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)} M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
 }
 
 function maxBodyArcPath(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const section = Object.freeze({ index: 0, s: drawing.midshipS, radius: drawing.maxRadius, side: "midship" as const });
+  const section = Object.freeze({
+    index: 0,
+    s: drawing.midshipS,
+    radius: drawing.maxHalfHeightZ,
+    halfBreadthY: drawing.maxHalfBreadthY,
+    halfHeightZ: drawing.maxHalfHeightZ,
+    side: "midship" as const,
+  });
   return sectionArcPath(section, scale.bodyCenterX, scale.bodyCenterY, scale.unit);
 }
 
@@ -206,7 +214,7 @@ function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): st
 export function buildTheoreticalDrawingSvg(drawing: TheoreticalDrawing): string {
   const scale = makeProjectionScale(drawing);
 
-  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxRadius <= 0) {
+  if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxHalfHeightZ <= 0) {
     logger.warn("theoretical drawing SVG has empty or invalid geometry", {
       exportView: "theoretical-drawing", projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
       totalLength: drawing.totalLength, maxRadius: drawing.maxRadius,

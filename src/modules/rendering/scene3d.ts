@@ -4,7 +4,7 @@ import type { EquipmentConstraintReport } from "../equipment/constraints";
 import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
-import { buildHullMeshData } from "./mesh";
+import { buildHullMeshData, hullMeshSignature, isSameHullMeshSignature, type HullMeshSignature } from "./mesh";
 import { createEquipmentMaterial, createEquipmentMesh, equipmentSignature } from "./equipment3d";
 import type { Scene3dSection, Scene3dSettings, SectionRetainedHalfSpace } from "./model";
 import { defaultScene3dSettings } from "./viewSettings";
@@ -35,44 +35,12 @@ interface ViewState {
   lastPointerY: number;
 }
 
-interface MeshSignature {
-  readonly length: number;
-  readonly diameter: number;
-  readonly cylindricalInsertLength: number;
-  readonly totalLength: number;
-  readonly maxRadius: number;
-  readonly smoothPointCount: number;
-}
-
 const initialRotationX = -Math.atan(1 / Math.sqrt(2));
 const initialRotationY = Math.PI / 4;
 const solidBodyOpacity = 0.9;
 const xrayWireOpacity = 0.44;
 const solidWireOpacity = 0.28;
 let axisSchemeLogged = false;
-
-function meshSignature(snapshot: ProfileSnapshot): MeshSignature {
-  return {
-    length: snapshot.state.length,
-    diameter: snapshot.state.diameter,
-    cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
-    totalLength: snapshot.extents.totalLength,
-    maxRadius: snapshot.extents.maxRadius,
-    smoothPointCount: snapshot.smoothPoints.length,
-  };
-}
-
-function isSameSignature(a: MeshSignature | null, b: MeshSignature): boolean {
-  return (
-    a !== null &&
-    a.length === b.length &&
-    a.diameter === b.diameter &&
-    a.cylindricalInsertLength === b.cylindricalInsertLength &&
-    a.totalLength === b.totalLength &&
-    a.maxRadius === b.maxRadius &&
-    a.smoothPointCount === b.smoothPointCount
-  );
-}
 
 function createGeometry(snapshot: ProfileSnapshot): THREE.BufferGeometry {
   const mesh = buildHullMeshData(snapshot);
@@ -161,7 +129,12 @@ function updateCamera(camera: THREE.PerspectiveCamera, viewState: ViewState): vo
 }
 
 function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, snapshot: ProfileSnapshot): void {
-  const boundingRadius = Math.hypot(snapshot.extents.totalLength / 2, snapshot.extents.maxRadius);
+  const maxSectionAxis = Math.max(
+    snapshot.extents.maxRadius,
+    snapshot.extents.maxHalfBreadthY,
+    snapshot.extents.maxHalfHeightZ,
+  );
+  const boundingRadius = Math.hypot(snapshot.extents.totalLength / 2, maxSectionAxis);
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(camera.aspect, 0.1));
   const limitingFov = Math.max(0.1, Math.min(verticalFov, horizontalFov));
@@ -173,6 +146,7 @@ function frameSnapshot(camera: THREE.PerspectiveCamera, viewState: ViewState, sn
   logger.debug("[FIX] 3d camera framed to full hull", {
     totalLength: snapshot.extents.totalLength,
     maxRadius: snapshot.extents.maxRadius,
+    maxSectionAxis,
     aspect: camera.aspect,
     distance: viewState.distance,
   });
@@ -280,7 +254,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     lastPointerY: 0,
   };
   let currentHull: THREE.Object3D | null = null;
-  let currentSignature: MeshSignature | null = null;
+  let currentSignature: HullMeshSignature | null = null;
   let currentEquipmentSignature: string | null = null;
   let localClippingPlanes: THREE.Plane[] = [];
   let framedSnapshot: ProfileSnapshot | null = null;
@@ -423,7 +397,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       group.rotation.x = viewState.rotationX;
       group.rotation.y = viewState.rotationY;
       currentHull = group;
-      currentSignature = meshSignature(snapshot);
+      currentSignature = hullMeshSignature(snapshot);
       hullGroup.add(group);
       updateWorldClippingPlanes();
       framedSnapshot = snapshot;
@@ -452,8 +426,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     if (!renderer) return;
     applyViewSettings(bodyMaterial, wireMaterial, settings);
     updateClippingPlanes(settings);
-    const nextSignature = meshSignature(snapshot);
-    if (!isSameSignature(currentSignature, nextSignature)) {
+    const nextSignature = hullMeshSignature(snapshot);
+    if (!isSameHullMeshSignature(currentSignature, nextSignature)) {
       replaceHull(snapshot);
       replaceEquipment(equipment, report);
     } else {

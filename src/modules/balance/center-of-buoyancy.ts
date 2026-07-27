@@ -1,4 +1,4 @@
-import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/profile";
+import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/current-formula";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { HullBuoyancyInput, HullBuoyancyResult } from "./model";
 
@@ -17,7 +17,10 @@ function isPositiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
-/** @deprecated Legacy internal hull-volume calculation. Do not use for ЦВК geometry. */
+/**
+ * @deprecated Current-formula-only historical hull-volume estimate.
+ * Do not use as legacy DSNP_PA or full external hull center-of-buoyancy implementation.
+ */
 export function calculateHullCenterOfBuoyancy(input: HullBuoyancyInput): HullBuoyancyResult {
   if (!isPositiveFinite(input.length)) {
     return invalidResult("length must be a positive finite number");

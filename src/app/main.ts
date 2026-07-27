@@ -22,7 +22,7 @@ import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
-import type { ProfileSnapshot } from "../modules/geometry/model";
+import { normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
@@ -50,6 +50,7 @@ const inputs: ControlElements = {
   slenderness: requiredElement("#slenderness", HTMLInputElement),
   diameter: requiredElement("#diameter", HTMLInputElement),
   cylindricalInsertLength: requiredElement("#cylindrical-insert-length", HTMLInputElement),
+  geometryMode: requiredElement("#geometry-mode", HTMLSelectElement),
   stations: requiredElement("#stations", HTMLInputElement),
   showGrid: requiredElement("#show-grid", HTMLInputElement),
   showPoints: requiredElement("#show-points", HTMLInputElement),
@@ -172,11 +173,13 @@ function writeProfileControls(profile: SerializableProjectState["profile"]): voi
   writeNumericInput(inputs.slenderness, profile.slenderness);
   writeNumericInput(inputs.diameter, profile.diameter);
   writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
+  inputs.geometryMode.value = normalizeGeometryMode(profile.geometryMode);
   writeIntegerInput(inputs.stations, profile.stations);
   inputs.showGrid.checked = profile.showGrid;
   inputs.showPoints.checked = profile.showPoints;
   logger.debug("profile controls written from project json", {
     length: profile.length,
+    geometryMode: normalizeGeometryMode(profile.geometryMode),
     slenderness: profile.slenderness,
     stations: profile.stations,
   });
@@ -303,6 +306,7 @@ inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.slenderness.addEventListener("input", () => update("slenderness"));
 inputs.diameter.addEventListener("input", () => update("diameter"));
 inputs.cylindricalInsertLength.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.geometryMode.addEventListener("change", () => update(appState.getLastEdited()));
 inputs.stations.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()));
 inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));

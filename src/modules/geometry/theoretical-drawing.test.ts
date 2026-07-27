@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeProfileSnapshot } from "./profile";
-import type { ProfileState } from "./model";
+import type { ProfileSnapshot, ProfileState } from "./model";
 import { makeTheoreticalDrawing } from "./theoretical-drawing";
 
 const baseState: ProfileState = Object.freeze({
@@ -12,6 +12,23 @@ const baseState: ProfileState = Object.freeze({
   showGrid: true,
   showPoints: true,
 });
+
+function makeEllipticalSnapshot(): ProfileSnapshot {
+  const snapshot = makeProfileSnapshot(baseState);
+  return Object.freeze({
+    ...snapshot,
+    smoothPoints: Object.freeze(
+      snapshot.smoothPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+    ),
+    stationPoints: Object.freeze(
+      snapshot.stationPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+    ),
+    extents: Object.freeze({
+      ...snapshot.extents,
+      maxHalfBreadthY: snapshot.extents.maxHalfBreadthY * 2,
+    }),
+  });
+}
 
 describe("theoretical drawing geometry", () => {
   it("uses profile snapshot points without changing extents", () => {
@@ -36,7 +53,34 @@ describe("theoretical drawing geometry", () => {
       expect(section.index).toBe(index + 1);
       expect(section.s).toBeCloseTo(station.s, 12);
       expect(section.radius).toBeCloseTo(station.topRadius, 12);
+      expect(section.halfBreadthY).toBeCloseTo(station.halfBreadthY, 12);
+      expect(section.halfHeightZ).toBeCloseTo(station.halfHeightZ, 12);
     });
+  });
+
+  it("uses exact breadth and height axes from the snapshot for legacy-style sections", () => {
+    const snapshot = makeEllipticalSnapshot();
+    const drawing = makeTheoreticalDrawing(snapshot);
+
+    expect(drawing.maxHalfBreadthY).toBeCloseTo(snapshot.extents.maxHalfBreadthY, 12);
+    expect(drawing.maxHalfHeightZ).toBeCloseTo(snapshot.extents.maxHalfHeightZ, 12);
+    drawing.halfBreadthPoints.forEach((point, index) => {
+      expect(point.radius).toBeCloseTo(snapshot.smoothPoints[index].halfBreadthY, 12);
+    });
+    drawing.sections.forEach((section, index) => {
+      expect(section.halfBreadthY).toBeCloseTo(snapshot.stationPoints[index].halfBreadthY, 12);
+      expect(section.halfHeightZ).toBeCloseTo(snapshot.stationPoints[index].halfHeightZ, 12);
+    });
+
+    const curve = drawing.profileButtockCurves[0];
+    const point = curve.points[Math.floor(curve.points.length / 2)];
+    const sourcePoint = snapshot.smoothPoints.find((source) => source.s === point.s);
+    expect(sourcePoint).toBeDefined();
+    if (sourcePoint) {
+      const ratio = curve.value / sourcePoint.halfBreadthY;
+      const expected = sourcePoint.halfHeightZ * Math.sqrt(1 - ratio * ratio);
+      expect(point.radius).toBeCloseTo(expected, 12);
+    }
   });
 
   it("splits body-plan sections around midship", () => {
@@ -77,10 +121,10 @@ describe("theoretical drawing geometry", () => {
 
     expect(drawing.waterlines).toHaveLength(9);
     expect(drawing.buttocks).toHaveLength(5);
-    expect(drawing.waterlines[0].value).toBeCloseTo(-drawing.maxRadius, 12);
-    expect(drawing.waterlines.at(-1)?.value).toBeCloseTo(drawing.maxRadius, 12);
+    expect(drawing.waterlines[0].value).toBeCloseTo(-drawing.maxHalfHeightZ, 12);
+    expect(drawing.waterlines.at(-1)?.value).toBeCloseTo(drawing.maxHalfHeightZ, 12);
     expect(drawing.waterlines[4].value).toBe(0);
     expect(drawing.buttocks[0].value).toBe(0);
-    expect(drawing.buttocks.at(-1)?.value).toBeCloseTo(drawing.maxRadius, 12);
+    expect(drawing.buttocks.at(-1)?.value).toBeCloseTo(drawing.maxHalfBreadthY, 12);
   });
 });

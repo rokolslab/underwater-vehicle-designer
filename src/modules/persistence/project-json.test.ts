@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import v1Fixture from "../../../tests/fixtures/project-v1-coordinate-migration.json";
 import v2Fixture from "../../../tests/fixtures/project-v2-sname-ned.json";
 import type { SerializableProjectState } from "./project-json";
@@ -20,17 +20,79 @@ describe("project json persistence", () => {
     if (!initial.ok) return;
 
     const json = buildProjectJson(initial.project);
-    const raw = JSON.parse(json) as { schemaVersion: number; coordinateSystem: string; exportedAt: string };
+    const raw = JSON.parse(json) as {
+      schemaVersion: number;
+      coordinateSystem: string;
+      exportedAt: string;
+      project: { profile: { geometryMode?: string } };
+    };
     const roundTrip = parseProjectJson(json);
 
     expect(raw.schemaVersion).toBe(projectJsonSchemaVersion);
     expect(raw.coordinateSystem).toBe(projectJsonCoordinateSystem);
     expect(Date.parse(raw.exportedAt)).not.toBeNaN();
+    expect(initial.project.profile.geometryMode).toBe("current-formula");
+    expect(raw.project.profile.geometryMode).toBe("current-formula");
     expect(roundTrip.ok).toBe(true);
     if (!roundTrip.ok) return;
     expect(roundTrip.migratedFromVersion).toBeUndefined();
     expect(roundTrip.warnings).toHaveLength(0);
     expect(roundTrip.project).toEqual(initial.project);
+  });
+
+  it("round-trips legacy geometry mode in v2", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    source.project.profile.geometryMode = "legacy-dsnp-pa";
+    const initial = parseFixture(source);
+    expect(initial.ok).toBe(true);
+    if (!initial.ok) return;
+
+    const json = buildProjectJson(initial.project);
+    const raw = JSON.parse(json) as { project: { profile: { geometryMode?: string } } };
+    const roundTrip = parseProjectJson(json);
+
+    expect(initial.warnings).toHaveLength(0);
+    expect(raw.project.profile.geometryMode).toBe("legacy-dsnp-pa");
+    expect(roundTrip.ok).toBe(true);
+    if (!roundTrip.ok) return;
+    expect(roundTrip.warnings).toHaveLength(0);
+    expect(roundTrip.project.profile.geometryMode).toBe("legacy-dsnp-pa");
+    expect(roundTrip.project).toEqual(initial.project);
+  });
+
+  it("defaults missing v2 geometry mode without warning", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const parsed = parseFixture(v2Fixture);
+
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.warnings).toHaveLength(0);
+      expect(parsed.project.profile.geometryMode).toBe("current-formula");
+      expect(consoleWarn).not.toHaveBeenCalled();
+    } finally {
+      consoleWarn.mockRestore();
+    }
+  });
+
+  it("normalizes unsupported v2 geometry mode with warning", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    source.project.profile.geometryMode = "unsupported-mode";
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const parsed = parseFixture(source);
+
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.warnings).toEqual(["project.profile.geometryMode normalized"]);
+      expect(parsed.project.profile.geometryMode).toBe("current-formula");
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "[WARN] project json geometry mode normalized",
+        expect.objectContaining({ requested: "unsupported-mode", normalized: "current-formula" }),
+      );
+    } finally {
+      consoleWarn.mockRestore();
+    }
   });
 
   it("migrates known v1 points, cylinder axes, and non-cubic box dimensions", () => {
@@ -40,6 +102,7 @@ describe("project json persistence", () => {
 
     expect(result.migratedFromVersion).toBe(1);
     expect(result.warnings).toContainEqual(expect.stringContaining("старая ось z"));
+    expect(result.project.profile.geometryMode).toBe("current-formula");
     expect(result.project.equipment[0]).toMatchObject({ position: { x: 5, y: 3, z: -2 }, orientation: "x" });
     expect(result.project.equipment[1]).toMatchObject({ position: { x: -5, y: -3, z: 2 }, orientation: "z" });
     expect(result.project.equipment[2]).toMatchObject({ position: { x: 0, y: -2.5, z: -1.5 }, orientation: "y" });

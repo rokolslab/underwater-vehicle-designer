@@ -1,5 +1,5 @@
-import { profileRadiusAt } from "../geometry/profile";
-import type { ProfileSnapshot } from "../geometry/model";
+import { sectionExtentsAt } from "../geometry/profile";
+import { normalizeGeometryMode, type GeometryMode, type ProfileSnapshot, type SectionExtents } from "../geometry/model";
 import { profileSFromBodyX } from "../../shared/body-coordinates";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentItem } from "./model";
@@ -39,6 +39,18 @@ interface ContainmentSample {
   readonly stationS: number;
   readonly radialOffset: number;
   readonly localRadius: number;
+}
+
+interface ContainmentPointSample {
+  readonly bodyX: number;
+  readonly stationS: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+interface ProfileSectionEvaluator {
+  readonly geometryMode: GeometryMode;
+  sectionExtentsAtS(s: number): SectionExtents;
 }
 
 const statusSeverity: Record<EquipmentConstraintStatus, number> = {
@@ -196,7 +208,208 @@ function containmentSample(item: EquipmentItem, extents: AxisExtents, bodyX: num
   });
 }
 
-function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): readonly EquipmentConstraintIssue[] {
+function makeProfileSectionEvaluator(snapshot: ProfileSnapshot): ProfileSectionEvaluator {
+  const geometryMode = normalizeGeometryMode(snapshot.state.geometryMode);
+
+  return Object.freeze({
+    geometryMode,
+    sectionExtentsAtS(s: number): SectionExtents {
+      if (geometryMode === "legacy-dsnp-pa") return sectionExtentsFromSnapshot(snapshot, s);
+      return sectionExtentsAt(snapshot.state, s);
+    },
+  });
+}
+
+function interpolateSectionExtents(first: SectionExtents, second: SectionExtents, ratio: number): SectionExtents {
+  return Object.freeze({
+    radius: first.radius + (second.radius - first.radius) * ratio,
+    halfBreadthY: first.halfBreadthY + (second.halfBreadthY - first.halfBreadthY) * ratio,
+    halfHeightZ: first.halfHeightZ + (second.halfHeightZ - first.halfHeightZ) * ratio,
+  });
+}
+
+function sectionExtentsFromSnapshot(snapshot: ProfileSnapshot, s: number): SectionExtents {
+  const firstPoint = snapshot.smoothPoints[0];
+  if (!firstPoint) return sectionExtentsAt(snapshot.state, s);
+  if (s <= firstPoint.s) return firstPoint;
+
+  for (let index = 1; index < snapshot.smoothPoints.length; index += 1) {
+    const nextPoint = snapshot.smoothPoints[index];
+    if (s > nextPoint.s) continue;
+
+    const previousPoint = snapshot.smoothPoints[index - 1];
+    const span = nextPoint.s - previousPoint.s;
+    if (span <= 0) return nextPoint;
+    return interpolateSectionExtents(previousPoint, nextPoint, (s - previousPoint.s) / span);
+  }
+
+  return snapshot.smoothPoints[snapshot.smoothPoints.length - 1];
+}
+
+function ellipseValue(y: number, z: number, sectionExtents: SectionExtents): number {
+  if (sectionExtents.halfBreadthY <= 0 || sectionExtents.halfHeightZ <= 0) {
+    return y === 0 && z === 0 ? 0 : Number.POSITIVE_INFINITY;
+  }
+
+  return (y / sectionExtents.halfBreadthY) ** 2 + (z / sectionExtents.halfHeightZ) ** 2;
+}
+
+function circleControlOffsets(radius: number): readonly { readonly y: number; readonly z: number }[] {
+  const diagonal = radius / Math.SQRT2;
+  return Object.freeze([
+    { y: 0, z: 0 },
+    { y: radius, z: 0 },
+    { y: -radius, z: 0 },
+    { y: 0, z: radius },
+    { y: 0, z: -radius },
+    { y: diagonal, z: diagonal },
+    { y: diagonal, z: -diagonal },
+    { y: -diagonal, z: diagonal },
+    { y: -diagonal, z: -diagonal },
+  ]);
+}
+
+function boxSectionPointSamples(item: EquipmentItem, extents: AxisExtents, bodyX: number, length: number): readonly ContainmentPointSample[] {
+  const stationS = profileSFromBodyX(bodyX, length);
+  return Object.freeze([
+    { bodyX, stationS, y: item.position.y - extents.y, z: item.position.z - extents.z },
+    { bodyX, stationS, y: item.position.y - extents.y, z: item.position.z + extents.z },
+    { bodyX, stationS, y: item.position.y + extents.y, z: item.position.z - extents.z },
+    { bodyX, stationS, y: item.position.y + extents.y, z: item.position.z + extents.z },
+  ]);
+}
+
+function sphereSectionPointSamples(item: EquipmentItem, bodyX: number, length: number): readonly ContainmentPointSample[] {
+  if (item.shape !== "sphere") return Object.freeze([]);
+
+  const stationS = profileSFromBodyX(bodyX, length);
+  const dx = Math.abs(bodyX - item.position.x);
+  const localRadius = Math.sqrt(Math.max(0, item.dimensions.radius ** 2 - dx ** 2));
+  return Object.freeze(
+    circleControlOffsets(localRadius).map((offset) => ({
+      bodyX,
+      stationS,
+      y: item.position.y + offset.y,
+      z: item.position.z + offset.z,
+    })),
+  );
+}
+
+function cylinderSectionPointSamples(item: EquipmentItem, bodyX: number, length: number): readonly ContainmentPointSample[] {
+  if (item.shape !== "cylinder") return Object.freeze([]);
+
+  const stationS = profileSFromBodyX(bodyX, length);
+  if (item.orientation === "x") {
+    return Object.freeze(
+      circleControlOffsets(item.dimensions.radius).map((offset) => ({
+        bodyX,
+        stationS,
+        y: item.position.y + offset.y,
+        z: item.position.z + offset.z,
+      })),
+    );
+  }
+
+  const dx = Math.abs(bodyX - item.position.x);
+  const localRadius = Math.sqrt(Math.max(0, item.dimensions.radius ** 2 - dx ** 2));
+  const halfLength = item.dimensions.length / 2;
+  const yOffsets = item.orientation === "y" ? [-halfLength, 0, halfLength] : [-localRadius, 0, localRadius];
+  const zOffsets = item.orientation === "z" ? [-halfLength, 0, halfLength] : [-localRadius, 0, localRadius];
+  const samples: ContainmentPointSample[] = [];
+
+  for (const yOffset of yOffsets) {
+    for (const zOffset of zOffsets) {
+      samples.push({ bodyX, stationS, y: item.position.y + yOffset, z: item.position.z + zOffset });
+    }
+  }
+
+  return Object.freeze(samples);
+}
+
+function containmentPointSamples(
+  item: EquipmentItem,
+  extents: AxisExtents,
+  bodyX: number,
+  length: number,
+): readonly ContainmentPointSample[] {
+  if (item.shape === "sphere") return sphereSectionPointSamples(item, bodyX, length);
+  if (item.shape === "cylinder") return cylinderSectionPointSamples(item, bodyX, length);
+  return boxSectionPointSamples(item, extents, bodyX, length);
+}
+
+function evaluateCircularContainmentSample(
+  evaluator: ProfileSectionEvaluator,
+  item: EquipmentItem,
+  extents: AxisExtents,
+  bodyX: number,
+  bodyMinX: number,
+  bodyMaxX: number,
+  length: number,
+): EquipmentConstraintIssue | null {
+  const sample = containmentSample(item, extents, bodyX, length);
+  const requiredRadius = sample.radialOffset + sample.localRadius;
+  const hullRadius = bodyX < bodyMinX || bodyX > bodyMaxX ? 0 : evaluator.sectionExtentsAtS(sample.stationS).radius;
+
+  if (requiredRadius <= hullRadius) return null;
+
+  logger.warn("equipment outside hull radius", {
+    id: item.id,
+    shape: item.shape,
+    geometryMode: evaluator.geometryMode,
+    bodyX: sample.bodyX,
+    bodyY: item.position.y,
+    bodyZ: item.position.z,
+    stationS: sample.stationS,
+    requiredRadius,
+    hullRadius,
+  });
+  return makeIssue(
+    item.id,
+    "outsideHull",
+    `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при body.x=${bodyX.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
+  );
+}
+
+function evaluateEllipticalContainmentSample(
+  evaluator: ProfileSectionEvaluator,
+  item: EquipmentItem,
+  sample: ContainmentPointSample,
+  bodyMinX: number,
+  bodyMaxX: number,
+): EquipmentConstraintIssue | null {
+  const sectionExtents = sample.bodyX < bodyMinX || sample.bodyX > bodyMaxX
+    ? { radius: 0, halfBreadthY: 0, halfHeightZ: 0 }
+    : evaluator.sectionExtentsAtS(sample.stationS);
+  const value = ellipseValue(sample.y, sample.z, sectionExtents);
+
+  if (value <= 1 + 1e-12) return null;
+
+  const requiredRadius = Math.hypot(sample.y, sample.z);
+  logger.warn("equipment outside hull radius", {
+    id: item.id,
+    shape: item.shape,
+    geometryMode: evaluator.geometryMode,
+    bodyX: sample.bodyX,
+    bodyY: sample.y,
+    bodyZ: sample.z,
+    stationS: sample.stationS,
+    requiredRadius,
+    hullRadius: sectionExtents.radius,
+    sectionExtents,
+    ellipseValue: value,
+  });
+  return makeIssue(
+    item.id,
+    "outsideHull",
+    `Оборудование выходит за эллиптическое сечение корпуса при body.x=${sample.bodyX.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
+  );
+}
+
+function evaluateContainment(
+  snapshot: ProfileSnapshot,
+  evaluator: ProfileSectionEvaluator,
+  item: EquipmentItem,
+): readonly EquipmentConstraintIssue[] {
   const extents = itemAxisExtents(item);
   if (!extents) {
     return Object.freeze([
@@ -214,6 +427,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
   logger.debug("equipment body bounds resolved", {
     id: item.id,
     shape: item.shape,
+    geometryMode: evaluator.geometryMode,
     bodyPosition: item.position,
     bodyBounds: { minX, maxX },
     hullBodyBounds: { minX: bodyMinX, maxX: bodyMaxX },
@@ -223,6 +437,7 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
     logger.warn("equipment outside length bounds", {
       id: item.id,
       shape: item.shape,
+      geometryMode: evaluator.geometryMode,
       bodyX: item.position.x,
       bodyY: item.position.y,
       bodyZ: item.position.z,
@@ -237,37 +452,28 @@ function evaluateContainment(snapshot: ProfileSnapshot, item: EquipmentItem): re
   }
 
   for (const x of controlXs(item, extents)) {
-    const sample = containmentSample(item, extents, x, snapshot.state.length);
-    const requiredRadius = sample.radialOffset + sample.localRadius;
-    const hullRadius =
-      x < bodyMinX || x > bodyMaxX
-        ? 0
-        : profileRadiusAt(
-            sample.stationS,
-            snapshot.state.length,
-            snapshot.state.diameter,
-            snapshot.state.cylindricalInsertLength,
-          );
-
-    if (requiredRadius > hullRadius) {
-      logger.warn("equipment outside hull radius", {
-        id: item.id,
-        shape: item.shape,
-        bodyX: sample.bodyX,
-        bodyY: item.position.y,
-        bodyZ: item.position.z,
-        stationS: sample.stationS,
-        requiredRadius,
-        hullRadius,
-      });
-      issues.push(
-        makeIssue(
-          item.id,
-          "outsideHull",
-          `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при body.x=${x.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
-        ),
+    if (evaluator.geometryMode === "legacy-dsnp-pa") {
+      for (const sample of containmentPointSamples(item, extents, x, snapshot.state.length)) {
+        const issue = evaluateEllipticalContainmentSample(evaluator, item, sample, bodyMinX, bodyMaxX);
+        if (issue) {
+          issues.push(issue);
+          return freezeIssues(issues);
+        }
+      }
+    } else {
+      const issue = evaluateCircularContainmentSample(
+        evaluator,
+        item,
+        extents,
+        x,
+        bodyMinX,
+        bodyMaxX,
+        snapshot.state.length,
       );
-      break;
+      if (issue) {
+        issues.push(issue);
+        break;
+      }
     }
   }
 
@@ -305,7 +511,7 @@ function equipmentDisplayName(item: EquipmentItem): string {
   return item.name.trim() || item.id;
 }
 
-function evaluateIntersections(items: readonly EquipmentItem[]): readonly EquipmentConstraintIssue[] {
+function evaluateIntersections(items: readonly EquipmentItem[], geometryMode: GeometryMode): readonly EquipmentConstraintIssue[] {
   const issues: EquipmentConstraintIssue[] = [];
   const aabbs = new Map<string, Aabb>();
   let checkedPairs = 0;
@@ -331,8 +537,8 @@ function evaluateIntersections(items: readonly EquipmentItem[]): readonly Equipm
       const method = first.shape === "sphere" && second.shape === "sphere" ? "sphere-distance" : "conservative-aabb";
       const firstName = equipmentDisplayName(first);
       const secondName = equipmentDisplayName(second);
-      logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, firstName, secondName, method });
-      logger.debug("[FIX] equipment intersection warning uses display names", { id: first.id, otherId: second.id });
+      logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, firstName, secondName, method, geometryMode });
+      logger.debug("[FIX] equipment intersection warning uses display names", { id: first.id, otherId: second.id, geometryMode });
       issues.push(makeIssue(first.id, "intersects", `Пересекается с оборудованием ${secondName}.`, second.id));
       issues.push(makeIssue(second.id, "intersects", `Пересекается с оборудованием ${firstName}.`, first.id));
     }
@@ -341,6 +547,7 @@ function evaluateIntersections(items: readonly EquipmentItem[]): readonly Equipm
   logger.debug("equipment intersection checks completed", {
     checkedPairs,
     intersections: issues.length / 2,
+    geometryMode,
   });
 
   return freezeIssues(issues);
@@ -364,9 +571,10 @@ export function evaluateEquipmentConstraints(
   snapshot: ProfileSnapshot,
   items: readonly EquipmentItem[],
 ): EquipmentConstraintReport {
-  logger.debug("equipment constraints evaluation started", { equipmentCount: items.length });
+  const evaluator = makeProfileSectionEvaluator(snapshot);
+  logger.debug("equipment constraints evaluation started", { equipmentCount: items.length, geometryMode: evaluator.geometryMode });
   if (items.length === 0) {
-    logger.debug("equipment constraints evaluation completed", { equipmentCount: 0, issueCount: 0 });
+    logger.debug("equipment constraints evaluation completed", { equipmentCount: 0, issueCount: 0, geometryMode: evaluator.geometryMode });
     return emptyReport(items);
   }
 
@@ -379,6 +587,7 @@ export function evaluateEquipmentConstraints(
       logger.warn("invalid equipment item in constraints", {
         id: item.id,
         shape: item.shape,
+        geometryMode: evaluator.geometryMode,
         reason: validation.reason,
       });
       issues.push(makeIssue(item.id, "invalidEquipment", validation.reason ?? "Данные оборудования некорректны."));
@@ -386,19 +595,20 @@ export function evaluateEquipmentConstraints(
     }
 
     validItems.push(item);
-    issues.push(...evaluateContainment(snapshot, item));
+    issues.push(...evaluateContainment(snapshot, evaluator, item));
   }
 
-  issues.push(...evaluateIntersections(validItems));
+  issues.push(...evaluateIntersections(validItems, evaluator.geometryMode));
 
   const report = buildReport(items, issues);
   const outsideCount = issues.filter((issue) => issue.reason === "outsideHull" || issue.reason === "outsideLength").length;
   const invalidCount = issues.filter((issue) => issue.reason === "invalidEquipment").length;
-  logger.debug("equipment containment checks completed", { checked: validItems.length, outsideCount });
+  logger.debug("equipment containment checks completed", { checked: validItems.length, outsideCount, geometryMode: evaluator.geometryMode });
   logger.debug("equipment constraints evaluation completed", {
     equipmentCount: items.length,
     issueCount: report.issues.length,
     invalidCount,
+    geometryMode: evaluator.geometryMode,
   });
 
   return report;

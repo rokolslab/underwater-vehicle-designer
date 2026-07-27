@@ -6,12 +6,17 @@ function input(value: string, checked = false): HTMLInputElement {
   return { value, checked } as HTMLInputElement;
 }
 
+function select(value: string): HTMLSelectElement {
+  return { value } as HTMLSelectElement;
+}
+
 function makeControls(): ControlElements {
   return {
     length: input("6"),
     slenderness: input("3"),
     diameter: input("2"),
     cylindricalInsertLength: input("0"),
+    geometryMode: select("current-formula"),
     stations: input("20"),
     showGrid: input("", true),
     showPoints: input("", true),
@@ -19,6 +24,35 @@ function makeControls(): ControlElements {
 }
 
 describe("app state", () => {
+  it("uses current formula geometry mode by default", () => {
+    const controls = makeControls();
+
+    const state = createAppStateController(controls).readState("slenderness");
+
+    expect(state.geometryMode).toBe("current-formula");
+    expect(controls.geometryMode.value).toBe("current-formula");
+  });
+
+  it("reads legacy geometry mode from controls", () => {
+    const controls = makeControls();
+    controls.geometryMode.value = "legacy-dsnp-pa";
+
+    const state = createAppStateController(controls).readState("slenderness");
+
+    expect(state.geometryMode).toBe("legacy-dsnp-pa");
+    expect(controls.geometryMode.value).toBe("legacy-dsnp-pa");
+  });
+
+  it("normalizes invalid geometry mode to current formula", () => {
+    const controls = makeControls();
+    controls.geometryMode.value = "bad-mode";
+
+    const state = createAppStateController(controls).readState("slenderness");
+
+    expect(state.geometryMode).toBe("current-formula");
+    expect(controls.geometryMode.value).toBe("current-formula");
+  });
+
   it("keeps slenderness authoritative when it was edited last", () => {
     const controls = makeControls();
     controls.length.value = "8";
@@ -90,6 +124,8 @@ describe("app state", () => {
 
     const reset = controller.reset();
     expect(reset.cylindricalInsertLength).toBe(0);
+    expect(reset.geometryMode).toBe("current-formula");
+    expect(controls.geometryMode.value).toBe("current-formula");
     expect(reset.stations).toBe(20);
     expect(reset.showGrid).toBe(true);
     expect(reset.showPoints).toBe(true);

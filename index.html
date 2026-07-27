@@ -47,6 +47,13 @@
               <input id="cylindrical-insert-length" type="number" min="0" max="3" step="0.1" value="0" />
             </label>
             <label>
+              <span>Режим геометрии корпуса</span>
+              <select id="geometry-mode" title="ЦВК — цилиндрическая вставка; ЦВ — центр величины">
+                <option value="current-formula">Текущая формула</option>
+                <option value="legacy-dsnp-pa">Legacy ДСНП_ПА (ЦВК — цилиндрическая вставка; ЦВ — центр величины)</option>
+              </select>
+            </label>
+            <label>
               <span>Плотность воды, кг/м3</span>
               <input id="water-density" type="number" min="1" step="1" value="1025" />
             </label>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/profile";
+import { PROFILE_RADIUS_NORMALIZATION } from "../geometry/current-formula";
 import { calculateHullCenterOfBuoyancy } from "./center-of-buoyancy";
 
-describe("legacy hull center of buoyancy", () => {
+describe("deprecated current-formula hull center of buoyancy", () => {
   it("calculates displaced volume and center for the current formula", () => {
     const result = calculateHullCenterOfBuoyancy({ length: 6, diameter: 2 });
 
