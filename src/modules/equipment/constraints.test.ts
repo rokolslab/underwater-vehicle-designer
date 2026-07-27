@@ -7,6 +7,8 @@ import { equipmentIssues, equipmentStatus, evaluateEquipmentConstraints } from "
 function snapshot(overrides: Partial<ProfileSnapshot["state"]> = {}): ProfileSnapshot {
   return makeProfileSnapshot({
     length: 10,
+    breadth: 2,
+    height: 2,
     slenderness: 5,
     diameter: 2,
     cylindricalInsertLength: 0,
@@ -21,6 +23,8 @@ function ellipticalSnapshot(): ProfileSnapshot {
   const state = Object.freeze({
     geometryMode: "legacy-dsnp-pa" as const,
     length: 10,
+    breadth: 4,
+    height: 2,
     slenderness: 2.5,
     diameter: 4,
     cylindricalInsertLength: 0,
@@ -232,6 +236,16 @@ describe("equipment constraints", () => {
     const report = evaluateEquipmentConstraints(ellipticalSnapshot(), [item]);
 
     expect(equipmentStatus(report, "wide-cylinder")).toBe("outsideHull");
+  });
+
+  it("checks current-formula elliptical sections with the common containment path", () => {
+    const report = evaluateEquipmentConstraints(snapshot({ breadth: 4, height: 2, diameter: 2 }), [
+      sphere("inside-y", { x: 0, y: 1.4, z: 0 }, 0.15),
+      sphere("outside-z", { x: 0, y: 0, z: 1.05 }, 0.05),
+    ]);
+
+    expect(equipmentStatus(report, "inside-y")).toBe("ok");
+    expect(equipmentStatus(report, "outside-z")).toBe("outsideHull");
   });
 
   it("uses deterministic severity priority for display status", () => {

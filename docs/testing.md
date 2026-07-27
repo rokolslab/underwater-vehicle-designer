@@ -38,7 +38,9 @@ docker compose run --rm app npm run build
 
 `profile.test.ts` проверяет:
 
-- диаметр `D` является полной максимальной высотой;
+- `height`/compatibility `diameter` являются полной максимальной высотой;
+- current-formula масштабирует эллиптические сечения по независимым `B`/`H`;
+- legacy mode передает `B` в `MaxWl`, `H` в `MaxBt`;
 - `radiusAt` совпадает с fixture из `tests/fixtures/formula-profile.json`;
 - contract станций: `0`, half-step, равномерные станции, `L - halfStep`, `L`;
 - ЦВК дает постоянный радиус на вставке;
@@ -62,7 +64,7 @@ docker compose run --rm app npm run build
 - валидация id, name, mass, dimensions, displaced volume;
 - создание, update, rename, delete;
 - сохранение пробелов в `Наименование`;
-- выход за радиус корпуса;
+- выход за эллиптическое сечение корпуса;
 - выход за продольные границы;
 - пересечения sphere-sphere;
 - консервативная AABB-проверка для остальных форм;
@@ -132,6 +134,49 @@ docker compose run --rm app npm run build
 8. Ввести наименование из двух слов.
 9. Скачать SVG, CSV и JSON.
 10. Загрузить JSON обратно.
+
+## Public Demo v1 Smoke
+
+Перед публикацией `Public Demo v1` проверьте production container и браузерные сценарии.
+
+Automated/container checks:
+
+```bash
+docker compose run --rm app npm run check:encoding
+docker compose run --rm app npm run test
+docker compose run --rm app npm run build
+APP_IMAGE=underwater-vehicle-demo:local docker compose -f compose.yml -f compose.production.yml build app
+APP_IMAGE=underwater-vehicle-demo:local docker compose -f compose.yml -f compose.production.yml up -d
+curl -fsS http://127.0.0.1/healthz
+curl -fsSI http://127.0.0.1/
+```
+
+Desktop browser smoke:
+
+- первый экран объясняет `Public Demo v1` без длинного marketing copy;
+- 2D canvas и 3D scene видны и реагируют на изменение `L`, `B`, `H`, `lambda`, `ЦВК`;
+- переключение geometry mode обновляет профиль и formula display;
+- 3D modes `Сплошной`, `Рентген`, `Вырез` работают, а WebGL fallback не блокирует 2D;
+- SVG, CSV, JSON и theoretical SVG скачиваются;
+- JSON round-trip сохраняет профиль, оборудование и 3D settings;
+- добавление оборудования показывает warnings для пересечения и выхода за корпус;
+- theoretical drawing читается и прокручивается без поломки layout.
+
+Mobile viewport smoke:
+
+- проверить ширины `360px`, `390px`, `412px`;
+- controls, action buttons, equipment editor, таблицы и theoretical drawing не создают нежелательный horizontal overflow страницы;
+- 3D drag работает внутри сцены, вертикальная прокрутка страницы остается доступной вне сцены;
+- 2D/3D panels, downloads и JSON import/export доступны без перекрытия элементов.
+
+Current run, 2026-07-27:
+
+- `check:encoding`, `test`, `build` passed через Docker;
+- Vite chunk-size warning остался non-blocking, без build errors;
+- production image build passed после явного production build; checklist выше использует отдельный `APP_IMAGE`, чтобы не перезаписывать development image tag;
+- production `/healthz` returned `ok` and `/` returned `HTTP/1.1 200 OK` on `127.0.0.1:80`;
+- Docker health status reached `healthy`;
+- desktop browser and smartphone/emulated viewport smoke were not completed in this environment: no browser/device access and no Playwright/Puppeteer smoke harness exists in the repository.
 
 ## When to Add Tests
 

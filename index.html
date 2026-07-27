@@ -8,16 +8,31 @@
   </head>
   <body>
       <main class="app-shell">
+      <header class="topbar">
+        <div class="hero-copy">
+          <p class="hero-kicker">Public Demo v1 · браузерный прототип</p>
+          <h1>Визуализация корпуса подводного аппарата</h1>
+          <p class="hero-lead">
+            Быстро задайте размерения, оцените 2D/3D-обвод и сохраните проект в JSON. Демо честно показывает готовую визуализацию, базовую компоновку оборудования и экспорт без обещания полноценного CAD.
+          </p>
+          <a class="hero-cta" href="#controls">Открыть рабочий экран</a>
+        </div>
+        <div class="hero-note">
+          <div class="hero-note-title">Готово в демо</div>
+          <div class="hero-tags" aria-label="Возможности демо">
+            <span>2D + 3D</span>
+            <span>ЦВК и сечения</span>
+            <span>Оборудование</span>
+            <span>JSON/SVG/CSV</span>
+          </div>
+          <p class="hero-limit">Полные расчетные модели корпуса, ходкость, энергетика и стоимость остаются backlog.</p>
+          <div class="formula-line">Y = +/- B/2 sqrt(f/fmax), Z = +/- H/2 sqrt(f/fmax)</div>
+        </div>
+      </header>
         <aside class="axis-convention" aria-label="Система координат Body/SNAME-NED">
           <strong>Body/SNAME-NED:</strong> X — нос; Y — правый борт; Z — вниз. Координаты заданы в метрах от центра корпуса.
         </aside>
         <div id="project-import-notice" class="project-import-notice is-hidden" role="status" aria-live="polite" tabindex="-1"></div>
-      <header class="topbar">
-        <h1>Обвод подводного аппарата</h1>
-        <div class="formula-line">
-          y = +/- D/2 sqrt(f(x/L) / fmax), f(t)=t(1-t)(1-0.5t)
-        </div>
-      </header>
 
       <section class="workbench" aria-label="Построение обводов">
         <details class="control-panel panel-details" open>
@@ -31,12 +46,16 @@
               <input id="length" type="number" min="0.1" step="0.1" value="6" />
             </label>
             <label>
-              <span>Удлинение λ = L / D</span>
+              <span>Удлинение λ = L / H</span>
               <input id="slenderness" type="number" min="0.1" step="0.1" value="3" />
             </label>
             <label>
-              <span>Диаметр D</span>
-              <input id="diameter" type="number" min="0.01" step="0.01" value="2" />
+              <span>Ширина B</span>
+              <input id="breadth" type="number" min="0.01" step="0.01" value="2" />
+            </label>
+            <label>
+              <span>Высота H</span>
+              <input id="height" type="number" min="0.01" step="0.01" value="2" />
             </label>
             <label>
               <span>Точек обвода</span>
@@ -49,10 +68,11 @@
             <label>
               <span>Режим геометрии корпуса</span>
               <select id="geometry-mode" title="ЦВК — цилиндрическая вставка; ЦВ — центр величины">
-                <option value="current-formula">Текущая формула</option>
-                <option value="legacy-dsnp-pa">Legacy ДСНП_ПА (ЦВК — цилиндрическая вставка; ЦВ — центр величины)</option>
+                <option value="current-formula">Текущая</option>
+                <option value="legacy-dsnp-pa">ДСНП_ПА</option>
               </select>
             </label>
+            <div id="geometry-formula" class="control-note geometry-formula" aria-live="polite"></div>
             <label>
               <span>Плотность воды, кг/м3</span>
               <input id="water-density" type="number" min="1" step="1" value="1025" />
@@ -133,6 +153,9 @@
               </div>
             </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
+            <div id="scene3d-fallback" class="scene3d-fallback is-hidden" role="status">
+              3D недоступен в этом браузере. 2D-визуализация и экспорт остаются доступными.
+            </div>
           </details>
         </section>
 
@@ -209,7 +232,9 @@
               <span class="details-action" aria-hidden="true"></span>
             </span>
           </summary>
-          <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+          <div class="theoretical-drawing-scroll" aria-label="Прокручиваемая область теоретического чертежа">
+            <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+          </div>
         </details>
 
         <details class="data-band panel-details" open>

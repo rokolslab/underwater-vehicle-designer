@@ -59,6 +59,8 @@ describe("equipment 3d helpers", () => {
   it("changes signature when constraint status changes", () => {
     const snapshot = makeProfileSnapshot({
       length: 10,
+      breadth: 2,
+      height: 2,
       slenderness: 5,
       diameter: 2,
       cylindricalInsertLength: 0,

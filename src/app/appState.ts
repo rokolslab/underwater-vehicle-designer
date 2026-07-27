@@ -4,11 +4,12 @@ import { logger } from "../shared/logger";
 import type { ControlElements } from "../modules/ui/controls";
 import { writeIntegerInput, writeNumericInput } from "../modules/ui/controls";
 
-export type LastEdited = "slenderness" | "diameter";
+export type LastEdited = "slenderness" | "height";
 
 const defaults = {
   geometryMode: defaultGeometryMode,
   length: 6,
+  breadth: 2,
   slenderness: 3,
   cylindricalInsertLength: 0,
   stations: 20,
@@ -26,8 +27,9 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
   function readState(source: LastEdited = lastEdited): ProfileState {
     lastEdited = source;
     const length = clampNumber(inputs.length.value, defaults.length, 0.1);
+    const breadth = clampNumber(inputs.breadth.value, defaults.breadth, 0.01);
     let slenderness = clampNumber(inputs.slenderness.value, defaults.slenderness, 0.1);
-    let diameter = clampNumber(inputs.diameter.value, length / slenderness, 0.01);
+    let height = clampNumber(inputs.height.value, length / slenderness, 0.01);
     const maxCylindricalInsertLength = length / 2;
     const requestedCylindricalInsertLength = Number(inputs.cylindricalInsertLength.value);
     const geometryMode = normalizeGeometryMode(inputs.geometryMode.value);
@@ -49,16 +51,17 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
       });
     }
 
-    if (lastEdited === "diameter") {
-      slenderness = length / diameter;
+    if (lastEdited === "height") {
+      slenderness = length / height;
       writeNumericInput(inputs.slenderness, slenderness);
     } else {
-      diameter = length / slenderness;
-      writeNumericInput(inputs.diameter, diameter);
+      height = length / slenderness;
+      writeNumericInput(inputs.height, height);
     }
 
     const stations = Math.round(clampNumber(inputs.stations.value, defaults.stations, 8, 80));
     writeNumericInput(inputs.length, length);
+    writeNumericInput(inputs.breadth, breadth);
     inputs.geometryMode.value = geometryMode;
     inputs.cylindricalInsertLength.max = String(maxCylindricalInsertLength);
     writeNumericInput(inputs.cylindricalInsertLength, cylindricalInsertLength);
@@ -67,8 +70,10 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     const state = {
       geometryMode,
       length,
+      breadth,
+      height,
       slenderness,
-      diameter,
+      diameter: height,
       cylindricalInsertLength,
       stations,
       showGrid: inputs.showGrid.checked,
@@ -81,7 +86,9 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
   function reset(): ProfileState {
     logger.debug("app state reset");
     inputs.length.value = String(defaults.length);
+    inputs.breadth.value = String(defaults.breadth);
     inputs.slenderness.value = String(defaults.slenderness);
+    inputs.height.value = String(defaults.length / defaults.slenderness);
     inputs.cylindricalInsertLength.value = String(defaults.cylindricalInsertLength);
     inputs.geometryMode.value = defaults.geometryMode;
     inputs.stations.value = String(defaults.stations);

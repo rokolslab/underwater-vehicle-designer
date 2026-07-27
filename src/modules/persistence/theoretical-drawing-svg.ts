@@ -217,14 +217,17 @@ export function buildTheoreticalDrawingSvg(drawing: TheoreticalDrawing): string 
   if (drawing.profilePoints.length < 2 || drawing.totalLength <= 0 || drawing.maxHalfHeightZ <= 0) {
     logger.warn("theoretical drawing SVG has empty or invalid geometry", {
       exportView: "theoretical-drawing", projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
-      totalLength: drawing.totalLength, maxRadius: drawing.maxRadius,
+      totalLength: drawing.totalLength,
+      maxHalfBreadthY: drawing.maxHalfBreadthY,
+      maxHalfHeightZ: drawing.maxHalfHeightZ,
       pointCount: drawing.profilePoints.length,
     });
   }
   logger.debug("theoretical drawing SVG built", {
     exportView: "theoretical-drawing", projectionFrames: ["Body/XZ", "Body/XY", "Body/YZ"],
     bodyXRange: [-drawing.totalLength / 2, drawing.totalLength / 2],
-    radialRange: [-drawing.maxRadius, drawing.maxRadius],
+    bodyYRange: [-drawing.maxHalfBreadthY, drawing.maxHalfBreadthY],
+    bodyZRange: [-drawing.maxHalfHeightZ, drawing.maxHalfHeightZ],
     sectionCount: drawing.sections.length,
     curveCount: drawing.profileButtockCurves.length + drawing.halfBreadthWaterlineCurves.length,
   });
@@ -249,7 +252,7 @@ export function buildTheoreticalDrawingSvg(drawing: TheoreticalDrawing): string 
   </style>
   <rect x="10" y="10" width="${width - 20}" height="${height - 20}" class="sheet" />
   <text x="24" y="38" class="title">${drawing.title}</text>
-  <text x="955" y="38" class="meta">L=${drawing.totalLength.toFixed(3)} м; D=${drawing.maxHeight.toFixed(3)} м</text>
+  <text x="905" y="38" class="meta">L=${drawing.totalLength.toFixed(3)} м; B=${(drawing.maxHalfBreadthY * 2).toFixed(3)} м; H=${(drawing.maxHalfHeightZ * 2).toFixed(3)} м</text>
   ${renderProfile(drawing, scale)}
   ${renderHalfBreadth(drawing, scale)}
   ${renderBodyPlan(drawing, scale)}

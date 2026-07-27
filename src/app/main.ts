@@ -22,7 +22,7 @@ import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
-import { normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
+import { geometryModePresentation, normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
@@ -47,8 +47,9 @@ function readWaterDensity(input: HTMLInputElement): number {
 
 const inputs: ControlElements = {
   length: requiredElement("#length", HTMLInputElement),
+  breadth: requiredElement("#breadth", HTMLInputElement),
+  height: requiredElement("#height", HTMLInputElement),
   slenderness: requiredElement("#slenderness", HTMLInputElement),
-  diameter: requiredElement("#diameter", HTMLInputElement),
   cylindricalInsertLength: requiredElement("#cylindrical-insert-length", HTMLInputElement),
   geometryMode: requiredElement("#geometry-mode", HTMLSelectElement),
   stations: requiredElement("#stations", HTMLInputElement),
@@ -68,6 +69,7 @@ const scene3dControls: Scene3dControlElements = {
 const canvas = requiredElement("#profile-canvas", HTMLCanvasElement);
 const theoreticalDrawingCanvas = requiredElement("#theoretical-drawing-canvas", HTMLCanvasElement);
 const scene3dContainer = requiredElement("#hull-scene-3d", HTMLElement);
+const scene3dFallback = requiredElement("#scene3d-fallback", HTMLElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
 const equipmentList = requiredElement("#equipment-list", HTMLElement);
@@ -88,6 +90,7 @@ const balanceMetrics = {
   warnings: requiredElement("#balance-warnings", HTMLElement),
 };
 const projectImportNotice = requiredElement("#project-import-notice", HTMLElement);
+const geometryFormula = requiredElement("#geometry-formula", HTMLElement);
 const downloadSvgButton = requiredElement("#download-svg", HTMLButtonElement);
 const downloadCsvButton = requiredElement("#download-csv", HTMLButtonElement);
 const downloadProjectJsonButton = requiredElement("#download-project-json", HTMLButtonElement);
@@ -103,19 +106,60 @@ for (const action of document.querySelectorAll<HTMLElement>(".summary-action, .v
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
 
-for (const details of document.querySelectorAll<HTMLDetailsElement>(".panel-details")) {
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      window.requestAnimationFrame(() => hullScene3d.resize());
-    }
-  });
+if (!hullScene3d.isAvailable) {
+  scene3dFallback.classList.remove("is-hidden");
 }
+
+function writeGeometryModePresentation(geometryMode: unknown): void {
+  const normalizedMode = normalizeGeometryMode(geometryMode);
+  for (const option of inputs.geometryMode.options) {
+    option.textContent = geometryModePresentation(option.value).label;
+  }
+  geometryFormula.textContent = geometryModePresentation(normalizedMode).formulaText;
+}
+
+const panelDetails = Array.from(document.querySelectorAll<HTMLDetailsElement>(".panel-details"));
 let equipmentItems: readonly EquipmentItem[] = [];
 let currentSnapshot: ProfileSnapshot;
 let currentTheoreticalDrawing: TheoreticalDrawing;
 let currentConstraintReport: EquipmentConstraintReport | undefined;
 let currentBalanceResult: EquipmentBalanceResult;
 let currentProjectState: ProjectState;
+let hasRenderedProfile = false;
+let resizeFrame: number | null = null;
+
+function renderCurrentViewsForSize(): void {
+  if (!hasRenderedProfile) {
+    hullScene3d.resize();
+    return;
+  }
+
+  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
+  hullScene3d.resize();
+}
+
+function scheduleRenderResize(): void {
+  if (resizeFrame !== null) return;
+  resizeFrame = window.requestAnimationFrame(() => {
+    resizeFrame = null;
+    renderCurrentViewsForSize();
+  });
+}
+
+const resizeObserver = typeof ResizeObserver === "undefined"
+  ? null
+  : new ResizeObserver(() => scheduleRenderResize());
+
+resizeObserver?.observe(canvas);
+resizeObserver?.observe(theoreticalDrawingCanvas);
+resizeObserver?.observe(scene3dContainer);
+
+for (const details of panelDetails) {
+  details.addEventListener("toggle", () => {
+    if (details.open) scheduleRenderResize();
+  });
+}
 
 function focusedEquipmentField(): { id: string; field: string; selectionStart: number | null; selectionEnd: number | null } | null {
   const active = document.activeElement;
@@ -170,16 +214,20 @@ function readFileText(file: File): Promise<string> {
 
 function writeProfileControls(profile: SerializableProjectState["profile"]): void {
   writeNumericInput(inputs.length, profile.length);
+  writeNumericInput(inputs.breadth, profile.breadth);
+  writeNumericInput(inputs.height, profile.height);
   writeNumericInput(inputs.slenderness, profile.slenderness);
-  writeNumericInput(inputs.diameter, profile.diameter);
   writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
   inputs.geometryMode.value = normalizeGeometryMode(profile.geometryMode);
+  writeGeometryModePresentation(profile.geometryMode);
   writeIntegerInput(inputs.stations, profile.stations);
   inputs.showGrid.checked = profile.showGrid;
   inputs.showPoints.checked = profile.showPoints;
   logger.debug("profile controls written from project json", {
     length: profile.length,
     geometryMode: normalizeGeometryMode(profile.geometryMode),
+    breadth: profile.breadth,
+    height: profile.height,
     slenderness: profile.slenderness,
     stations: profile.stations,
   });
@@ -194,7 +242,7 @@ function applyImportedProject(project: SerializableProjectState): void {
   equipmentItems = project.equipment;
   writeScene3dControls(scene3dControls, project.scene3dSettings);
   writeNumericInput(waterDensityInput, project.balanceSettings.waterDensityKgPerM3);
-  update("slenderness");
+  update("height");
   logger.info("project json import applied", {
     equipmentCount: project.equipment.length,
     waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
@@ -240,6 +288,7 @@ function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: r
 function update(source: LastEdited = appState.getLastEdited()): void {
   logger.debug("profile update started", { source, equipmentCount: equipmentItems.length });
   const profile = appState.readState(source);
+  writeGeometryModePresentation(profile.geometryMode);
   currentSnapshot = makeProfileSnapshot(profile);
   currentTheoreticalDrawing = makeTheoreticalDrawing(currentSnapshot);
   logger.debug("theoretical drawing data updated", { sectionCount: currentTheoreticalDrawing.sections.length });
@@ -256,10 +305,16 @@ function update(source: LastEdited = appState.getLastEdited()): void {
     });
   }
 
-  updateScene3dControlBounds(scene3dControls, currentSnapshot.extents.totalLength, currentSnapshot.extents.maxRadius);
+  const scene3dBounds = {
+    totalLength: currentSnapshot.extents.totalLength,
+    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
+  };
+  updateScene3dControlBounds(scene3dControls, scene3dBounds);
   const scene3dSettings = normalizeScene3dSettings(readScene3dControls(scene3dControls), {
     totalLength: currentSnapshot.extents.totalLength,
-    maxRadius: currentSnapshot.extents.maxRadius,
+    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
   });
   const balanceSettings = {
     waterDensityKgPerM3: readWaterDensity(waterDensityInput),
@@ -284,6 +339,8 @@ function update(source: LastEdited = appState.getLastEdited()): void {
 
   logger.debug("profile snapshot created", {
     length: profile.length,
+    breadth: profile.breadth,
+    height: profile.height,
     cylindricalInsertLength: profile.cylindricalInsertLength,
     totalLength: currentSnapshot.extents.totalLength,
     stations: profile.stations,
@@ -300,11 +357,13 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   renderTable(tableBody, pointCountEl, currentSnapshot);
   renderBalanceMetrics(balanceMetrics, currentBalanceResult);
   hullScene3d.render(currentSnapshot, currentProjectState.equipment, currentProjectState.scene3dSettings, currentConstraintReport);
+  hasRenderedProfile = true;
 }
 
 inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
+inputs.breadth.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.slenderness.addEventListener("input", () => update("slenderness"));
-inputs.diameter.addEventListener("input", () => update("diameter"));
+inputs.height.addEventListener("input", () => update("height"));
 inputs.cylindricalInsertLength.addEventListener("input", () => update(appState.getLastEdited()));
 inputs.geometryMode.addEventListener("change", () => update(appState.getLastEdited()));
 inputs.stations.addEventListener("input", () => update(appState.getLastEdited()));
@@ -312,12 +371,15 @@ inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()
 inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
 waterDensityInput.addEventListener("input", () => update(appState.getLastEdited()));
 bindScene3dControls(scene3dControls, () => update(appState.getLastEdited()));
-window.addEventListener("resize", () => {
-  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
-  renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
-  hullScene3d.resize();
+window.addEventListener("resize", scheduleRenderResize);
+window.addEventListener("beforeunload", () => {
+  if (resizeFrame !== null) {
+    window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = null;
+  }
+  resizeObserver?.disconnect();
+  hullScene3d.dispose();
 });
-window.addEventListener("beforeunload", () => hullScene3d.dispose());
 
 addEquipmentButton.addEventListener("click", () => {
   const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");

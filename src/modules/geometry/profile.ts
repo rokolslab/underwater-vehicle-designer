@@ -3,9 +3,9 @@ import { logger } from "../../shared/logger";
 import { uniqueSorted } from "../../shared/math";
 import {
   getExtents as getCurrentFormulaExtents,
-  makeProfilePoints as makeCurrentFormulaProfilePoints,
-  makeStationPoints as makeCurrentFormulaStationPoints,
-  profileRadiusAt as currentFormulaProfileRadiusAt,
+  makeProfilePointsForSectionDimensions as makeCurrentFormulaProfilePointsForSectionDimensions,
+  makeStationPointsForSectionDimensions as makeCurrentFormulaStationPointsForSectionDimensions,
+  profileSectionExtentsAt as currentFormulaProfileSectionExtentsAt,
 } from "./current-formula";
 import { legacyDsnpPaSectionExtentsAt } from "./legacy-dsnp-pa";
 import {
@@ -22,11 +22,16 @@ import {
 export {
   PROFILE_RADIUS_NORMALIZATION,
   getExtents,
+  makeProfilePointsForSectionDimensions,
   makeProfilePoints,
+  makeStationPointsForSectionDimensions,
   makeStationPoints,
   maxRadiusS,
+  profileSectionExtentsAt,
+  profileShapeFactorAt,
   profileRadiusAt,
   radiusAt,
+  shapeFactorAt,
   totalProfileLength,
 } from "./current-formula";
 
@@ -50,8 +55,8 @@ function makeLegacyDsnpPaSectionExtents(state: ProfileState, s: number): Section
   return legacyDsnpPaSectionExtentsAt({
     s,
     length: state.length,
-    maxBreadth: state.diameter,
-    maxHeight: state.diameter,
+    maxBreadth: state.breadth,
+    maxHeight: state.height,
     cylindricalInsertLength: state.cylindricalInsertLength,
   });
 }
@@ -59,8 +64,13 @@ function makeLegacyDsnpPaSectionExtents(state: ProfileState, s: number): Section
 export function sectionExtentsAt(state: ProfileState, s: number): SectionExtents {
   if (normalizeGeometryMode(state.geometryMode) === "legacy-dsnp-pa") return makeLegacyDsnpPaSectionExtents(state, s);
 
-  const radius = currentFormulaProfileRadiusAt(s, state.length, state.diameter, state.cylindricalInsertLength);
-  return { radius, halfBreadthY: radius, halfHeightZ: radius };
+  return currentFormulaProfileSectionExtentsAt(
+    s,
+    state.length,
+    state.breadth,
+    state.height,
+    state.cylindricalInsertLength,
+  );
 }
 
 function makeLegacyDsnpPaProfilePoints(state: ProfileState): ProfilePoint[] {
@@ -118,12 +128,18 @@ function makeModeAwareProfileData(
     };
   }
 
-  const smoothPoints = makeCurrentFormulaProfilePoints(state.length, state.diameter, state.cylindricalInsertLength);
+  const smoothPoints = makeCurrentFormulaProfilePointsForSectionDimensions(
+    state.length,
+    state.breadth,
+    state.height,
+    state.cylindricalInsertLength,
+  );
   return {
     smoothPoints,
-    stationPoints: makeCurrentFormulaStationPoints(
+    stationPoints: makeCurrentFormulaStationPointsForSectionDimensions(
       state.length,
-      state.diameter,
+      state.breadth,
+      state.height,
       state.stations,
       state.cylindricalInsertLength,
     ),
@@ -149,6 +165,10 @@ export function makeProfileSnapshot(state: ProfileState): ProfileSnapshot {
       maxHalfBreadthY: extents.maxHalfBreadthY,
       maxHalfHeightZ: extents.maxHalfHeightZ,
       maxHeight: extents.maxHeight,
+    },
+    profileDimensions: {
+      breadth: state.breadth,
+      height: state.height,
     },
     smoothPointCount: smoothPoints.length,
     stationPointCount: stationPoints.length,

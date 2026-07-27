@@ -82,7 +82,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | --- | --- |
 | `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
 | `src/app/main.ts` | Инициализация DOM, сборка ProjectState, canvas/table/metrics/3D/export orchestration |
-| `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `D = L / lambda`, `lastEdited` |
+| `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `H = L / lambda`, `lastEdited` |
 | `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings` |
 | `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
@@ -159,6 +159,6 @@ Docker является предпочтительным окружением д
 - Расчетная геометрия должна оставаться в чистых TypeScript-модулях без DOM/canvas/browser side effects.
 - UI/appState отвечает за пользовательский ввод, clamp/round, `lastEdited` и форматирование; geometry получает уже нормализованное состояние.
 - Canvas, SVG, CSV, table и metrics должны использовать общий `ProfileSnapshot`, а не пересчитывать геометрию самостоятельно.
-- 3D hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot; legacy mode — exact elliptical ring mesh, не тело вращения по compatibility `radius`.
+- 3D hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot; оба geometry modes строятся как exact elliptical ring mesh, не тело вращения по compatibility `radius`.
 - Производные инженерные расчеты вроде ЦВ держите в `balance`, а не в `geometry` или UI.
 - При изменении формулы или координатной системы обновляйте Vitest-регрессии и fixture по `formula.xlsx`.

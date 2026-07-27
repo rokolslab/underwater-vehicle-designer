@@ -7,7 +7,7 @@ function projectProfilePoint(point: ProfilePoint, zSign: 1 | -1, totalLength: nu
   return bodyPointToXzProjection({
     x: bodyXFromProfileS(point.s, totalLength),
     y: 0,
-    z: zSign * point.radius,
+    z: zSign * point.halfHeightZ,
   });
 }
 
@@ -22,7 +22,7 @@ function svgPath(points: readonly ProfilePoint[], zSign: 1 | -1, totalLength: nu
 
 export function buildSvg(snapshot: ProfileSnapshot): string {
   const totalLength = snapshot.extents.totalLength;
-  const yLimit = Math.max(snapshot.extents.maxRadius * 1.24, 0.1);
+  const yLimit = Math.max(snapshot.extents.maxHalfHeightZ * 1.24, 0.1);
   const top = svgPath(snapshot.smoothPoints, -1, totalLength);
   const bottom = svgPath([...snapshot.smoothPoints].reverse(), 1, totalLength).replace(/^M/, "L");
   const bodyPath = `${top} ${bottom} Z`;
@@ -44,7 +44,7 @@ export function buildSvg(snapshot: ProfileSnapshot): string {
   logger.debug("XZ profile SVG built", {
     exportView: "profile", projectionFrame: "Body/XZ",
     bodyXRange: [-totalLength / 2, totalLength / 2],
-    bodyZRange: [-snapshot.extents.maxRadius, snapshot.extents.maxRadius],
+    bodyZRange: [-snapshot.extents.maxHalfHeightZ, snapshot.extents.maxHalfHeightZ],
     pointCount: snapshot.smoothPoints.length,
     stationCount: snapshot.stationPoints.length,
   });

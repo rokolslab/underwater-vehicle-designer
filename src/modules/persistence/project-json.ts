@@ -39,6 +39,8 @@ export type ProjectJsonParseResult =
 const defaultProfile: ProfileState = Object.freeze({
   geometryMode: defaultGeometryMode,
   length: 6,
+  breadth: 2,
+  height: 2,
   slenderness: 3,
   diameter: 2,
   cylindricalInsertLength: 0,
@@ -89,7 +91,18 @@ function readGeometryMode(value: unknown, warnings: string[]): ProfileState["geo
 function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   const source = readRecord(value, warnings, "project.profile");
   const length = readNumber(source.length, defaultProfile.length, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.length");
-  const slenderness = readNumber(source.slenderness, defaultProfile.slenderness, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.slenderness");
+  const sourceSlenderness = readNumber(source.slenderness, defaultProfile.slenderness, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.slenderness");
+  const heightSource = source.height ?? source.diameter;
+  const height = readNumber(
+    heightSource,
+    length / sourceSlenderness,
+    0.01,
+    Number.POSITIVE_INFINITY,
+    warnings,
+    source.height === undefined && source.diameter !== undefined ? "project.profile.diameter" : "project.profile.height",
+  );
+  const breadth = readNumber(source.breadth, height, 0.01, Number.POSITIVE_INFINITY, warnings, "project.profile.breadth");
+  const slenderness = length / height;
   const cylindricalInsertLength = readNumber(
     source.cylindricalInsertLength,
     defaultProfile.cylindricalInsertLength,
@@ -103,8 +116,10 @@ function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   return Object.freeze({
     geometryMode: readGeometryMode(source.geometryMode, warnings),
     length,
+    breadth,
+    height,
     slenderness,
-    diameter: length / slenderness,
+    diameter: height,
     cylindricalInsertLength,
     stations,
     showGrid: readBoolean(source.showGrid, defaultProfile.showGrid),
@@ -216,7 +231,8 @@ function normalizeBalanceSettings(value: unknown, warnings: string[]): BalanceSe
 function normalizeSceneSettings(value: unknown, profile: ProfileState): Scene3dSettings {
   return normalizeScene3dSettings(isRecord(value) ? value : defaultScene3dSettings, {
     totalLength: profile.length,
-    maxRadius: profile.diameter / 2,
+    maxHalfBreadthY: profile.breadth / 2,
+    maxHalfHeightZ: profile.height / 2,
   });
 }
 
@@ -241,6 +257,8 @@ export function buildProjectJson(project: SerializableProjectState): string {
     profile: Object.freeze({
       ...project.profile,
       geometryMode: normalizeGeometryMode(project.profile.geometryMode),
+      slenderness: project.profile.length / project.profile.height,
+      diameter: project.profile.height,
     }),
   });
   const document: ProjectJsonDocument = Object.freeze({

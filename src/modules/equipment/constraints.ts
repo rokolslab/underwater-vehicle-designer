@@ -34,13 +34,6 @@ interface Aabb {
   readonly max: BodyPoint3;
 }
 
-interface ContainmentSample {
-  readonly bodyX: number;
-  readonly stationS: number;
-  readonly radialOffset: number;
-  readonly localRadius: number;
-}
-
 interface ContainmentPointSample {
   readonly bodyX: number;
   readonly stationS: number;
@@ -190,24 +183,6 @@ function controlXs(item: EquipmentItem, extents: AxisExtents): readonly number[]
   ]);
 }
 
-function containmentSample(item: EquipmentItem, extents: AxisExtents, bodyX: number, length: number): ContainmentSample {
-  const radialOffset = Math.hypot(item.position.y, item.position.z);
-  const stationS = profileSFromBodyX(bodyX, length);
-
-  if (item.shape === "sphere") {
-    const dx = Math.abs(bodyX - item.position.x);
-    const localRadius = Math.sqrt(Math.max(0, item.dimensions.radius ** 2 - dx ** 2));
-    return Object.freeze({ bodyX, stationS, radialOffset, localRadius });
-  }
-
-  return Object.freeze({
-    bodyX,
-    stationS,
-    radialOffset,
-    localRadius: Math.hypot(extents.y, extents.z),
-  });
-}
-
 function makeProfileSectionEvaluator(snapshot: ProfileSnapshot): ProfileSectionEvaluator {
   const geometryMode = normalizeGeometryMode(snapshot.state.geometryMode);
 
@@ -337,39 +312,6 @@ function containmentPointSamples(
   return boxSectionPointSamples(item, extents, bodyX, length);
 }
 
-function evaluateCircularContainmentSample(
-  evaluator: ProfileSectionEvaluator,
-  item: EquipmentItem,
-  extents: AxisExtents,
-  bodyX: number,
-  bodyMinX: number,
-  bodyMaxX: number,
-  length: number,
-): EquipmentConstraintIssue | null {
-  const sample = containmentSample(item, extents, bodyX, length);
-  const requiredRadius = sample.radialOffset + sample.localRadius;
-  const hullRadius = bodyX < bodyMinX || bodyX > bodyMaxX ? 0 : evaluator.sectionExtentsAtS(sample.stationS).radius;
-
-  if (requiredRadius <= hullRadius) return null;
-
-  logger.warn("equipment outside hull radius", {
-    id: item.id,
-    shape: item.shape,
-    geometryMode: evaluator.geometryMode,
-    bodyX: sample.bodyX,
-    bodyY: item.position.y,
-    bodyZ: item.position.z,
-    stationS: sample.stationS,
-    requiredRadius,
-    hullRadius,
-  });
-  return makeIssue(
-    item.id,
-    "outsideHull",
-    `Требуемый радиус ${requiredRadius.toFixed(2)} м больше радиуса корпуса ${hullRadius.toFixed(2)} м при body.x=${bodyX.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
-  );
-}
-
 function evaluateEllipticalContainmentSample(
   evaluator: ProfileSectionEvaluator,
   item: EquipmentItem,
@@ -452,27 +394,11 @@ function evaluateContainment(
   }
 
   for (const x of controlXs(item, extents)) {
-    if (evaluator.geometryMode === "legacy-dsnp-pa") {
-      for (const sample of containmentPointSamples(item, extents, x, snapshot.state.length)) {
-        const issue = evaluateEllipticalContainmentSample(evaluator, item, sample, bodyMinX, bodyMaxX);
-        if (issue) {
-          issues.push(issue);
-          return freezeIssues(issues);
-        }
-      }
-    } else {
-      const issue = evaluateCircularContainmentSample(
-        evaluator,
-        item,
-        extents,
-        x,
-        bodyMinX,
-        bodyMaxX,
-        snapshot.state.length,
-      );
+    for (const sample of containmentPointSamples(item, extents, x, snapshot.state.length)) {
+      const issue = evaluateEllipticalContainmentSample(evaluator, item, sample, bodyMinX, bodyMaxX);
       if (issue) {
         issues.push(issue);
-        break;
+        return freezeIssues(issues);
       }
     }
   }
