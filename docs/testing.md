@@ -38,7 +38,9 @@ docker compose run --rm app npm run build
 
 `profile.test.ts` проверяет:
 
-- диаметр `D` является полной максимальной высотой;
+- `height`/compatibility `diameter` являются полной максимальной высотой;
+- current-formula масштабирует эллиптические сечения по независимым `B`/`H`;
+- legacy mode передает `B` в `MaxWl`, `H` в `MaxBt`;
 - `radiusAt` совпадает с fixture из `tests/fixtures/formula-profile.json`;
 - contract станций: `0`, half-step, равномерные станции, `L - halfStep`, `L`;
 - ЦВК дает постоянный радиус на вставке;
@@ -62,7 +64,7 @@ docker compose run --rm app npm run build
 - валидация id, name, mass, dimensions, displaced volume;
 - создание, update, rename, delete;
 - сохранение пробелов в `Наименование`;
-- выход за радиус корпуса;
+- выход за эллиптическое сечение корпуса;
 - выход за продольные границы;
 - пересечения sphere-sphere;
 - консервативная AABB-проверка для остальных форм;

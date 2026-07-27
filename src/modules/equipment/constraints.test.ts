@@ -238,6 +238,16 @@ describe("equipment constraints", () => {
     expect(equipmentStatus(report, "wide-cylinder")).toBe("outsideHull");
   });
 
+  it("checks current-formula elliptical sections with the common containment path", () => {
+    const report = evaluateEquipmentConstraints(snapshot({ breadth: 4, height: 2, diameter: 2 }), [
+      sphere("inside-y", { x: 0, y: 1.4, z: 0 }, 0.15),
+      sphere("outside-z", { x: 0, y: 0, z: 1.05 }, 0.05),
+    ]);
+
+    expect(equipmentStatus(report, "inside-y")).toBe("ok");
+    expect(equipmentStatus(report, "outside-z")).toBe("outsideHull");
+  });
+
   it("uses deterministic severity priority for display status", () => {
     const report = evaluateEquipmentConstraints(snapshot(), [
       sphere("outside", { x: 1, y: 1.2, z: 0 }, 0.3),

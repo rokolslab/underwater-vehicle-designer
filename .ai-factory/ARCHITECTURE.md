@@ -42,7 +42,7 @@
 │   │   │   ├── canvas2d.ts          # 2D-проекции
 │   │   │   ├── theoretical-drawing.ts # Canvas-рендер теоретического чертежа
 │   │   │   ├── scene3d.ts           # Three.js-сцена
-│   │   │   └── mesh.ts              # Геометрия тела вращения
+│   │   │   └── mesh.ts              # Эллиптические кольца корпуса
 │   │   ├── persistence/
 │   │   │   ├── project-json.ts      # Импорт/экспорт JSON-проекта
 │   │   │   ├── csv.ts               # CSV-экспорт
@@ -94,10 +94,14 @@
 ### Чистая расчетная функция
 
 ```ts
-export function radiusAt(x: number, length: number, diameter: number): number {
-  const t = x / length;
-  const body = t * (1 - t) * (1 - 0.5 * t);
-  return 0.972 * diameter * Math.sqrt(Math.max(0, body));
+export function sectionExtentsAtS(s: number, length: number, breadth: number, height: number): SectionExtents {
+  const t = s / length;
+  const factor = shapeFactor(t);
+  return {
+    radius: (height / 2) * factor,
+    halfBreadthY: (breadth / 2) * factor,
+    halfHeightZ: (height / 2) * factor,
+  };
 }
 ```
 

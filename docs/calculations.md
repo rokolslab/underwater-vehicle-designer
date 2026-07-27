@@ -14,7 +14,7 @@
 | `Y` | на правый борт |
 | `Z` | вниз |
 
-Корма находится в `x = -L/2`, нос — в `x = +L/2`. Для кругового режима допустимый радиус определяется как `hypot(y, z)`; для legacy-режима используется эллипс сечения по `halfBreadthY`/`halfHeightZ`.
+Корма находится в `x = -L/2`, нос — в `x = +L/2`. Допустимый контур сечения задается эллипсом `halfBreadthY`/`halfHeightZ`; при `B = H` он совпадает с прежним круговым радиусом.
 
 Профиль использует отдельную координату `s` от носа (`0`) к корме (`L`):
 
@@ -33,8 +33,10 @@ s      = L/2 - body.x
 | --- | --- |
 | `geometryMode` | Режим геометрии корпуса: `current-formula` или `legacy-dsnp-pa` |
 | `length` | Полная длина корпуса `L` |
-| `slenderness` | Удлинение `lambda = L / D` |
-| `diameter` | Максимальный физический диаметр `D` |
+| `slenderness` | Удлинение `lambda = L / H` |
+| `breadth` | Максимальная ширина корпуса `B` по Body Y |
+| `height` | Максимальная высота корпуса `H` по Body Z |
+| `diameter` | Compatibility alias на `height` для старых consumers/JSON |
 | `cylindricalInsertLength` | Длина ЦВК |
 | `stations` | Количество расчетных интервалов |
 | `showGrid`, `showPoints` | UI flags для бокового вида |
@@ -43,7 +45,8 @@ s      = L/2 - body.x
 
 - `length >= 0.1`;
 - `slenderness >= 0.1`;
-- `diameter >= 0.01`;
+- `breadth >= 0.01`;
+- `height >= 0.01`;
 - `0 <= cylindricalInsertLength <= length / 2`;
 - `8 <= stations <= 80`.
 
@@ -55,10 +58,10 @@ s      = L/2 - body.x
 
 | Mode | Behavior |
 | --- | --- |
-| `current-formula` | Текущая формула проекта, режим по умолчанию. Сечения круговые: `halfBreadthY = halfHeightZ = radius`. |
-| `legacy-dsnp-pa` | DSNP_PA regression/traceability mode по материалам `APPAUNIT.PAS`. Первый slice ограничен эллиптическими сечениями через `halfBreadthY` и `halfHeightZ`; это не доказательство инженерной валидности исторических коэффициентов. |
+| `current-formula` | Текущая формула проекта, режим по умолчанию. Один нормированный shape factor масштабирует `B/2` и `H/2`, поэтому при `B != H` сечения эллиптические. |
+| `legacy-dsnp-pa` | DSNP_PA regression/traceability mode по материалам `APPAUNIT.PAS`: `B -> MaxWl`, `H -> MaxBt`. Это не доказательство инженерной валидности исторических коэффициентов. |
 
-Legacy-режим использует те же пользовательские параметры `L`, `D` и длину ЦВК. Контракт геометрии поддерживает разные полуоси сечения; текущий UI передает `D` как максимальную ширину и максимальную высоту.
+Оба режима используют пользовательские параметры `L`, `B`, `H` и длину ЦВК. `diameter` сохраняется только как совместимое поле состояния и равен `height`.
 
 Скругленно-прямоугольные сечения `Priam`/`Kr` из исторической системы не входят в текущий slice и оставлены как follow-up до появления эталонных данных.
 
@@ -69,7 +72,9 @@ Legacy-режим использует те же пользовательски�
 ```text
 t = s / L
 f(t) = t * (1 - t) * (1 - 0.5 * t)
-r(s) = D * C * sqrt(max(0, f(t)))
+factor(s) = 2 * C * sqrt(max(0, f(t)))
+halfBreadthY(s) = B / 2 * factor(s)
+halfHeightZ(s)  = H / 2 * factor(s)
 ```
 
 Нормирующая константа:
@@ -80,7 +85,7 @@ fMax = f(xMaxRatio)
 C = 1 / (2 * sqrt(fMax))
 ```
 
-Из-за множителя `1 / 2` диаметр `D` является полной максимальной высотой корпуса, а максимальный радиус равен `D / 2`.
+При `B = H` это сохраняет прежнюю круговую регрессию `radius = H / 2 * factor`. Скалярный `radius` остается совместимым XZ-представлением и равен `halfHeightZ`.
 
 ## Maximum Radius Position
 
@@ -129,7 +134,7 @@ halfAxis = 0.9731 * fullAxis * sqrt(profileX * (1 - profileX) * (1.5 - profileX)
 
 ## Cylindrical Insert (ЦВК) in Current Formula
 
-ЦВК — цилиндрическая вставка корпуса: прямой участок с постоянным максимальным сечением. В `current-formula` она строится как участок постоянного максимального радиуса; в legacy-режиме используется нормализованное плато, описанное в разделе `Legacy DSNP_PA Mode`.
+ЦВК — цилиндрическая вставка корпуса: прямой участок с постоянным максимальным сечением. В `current-formula` она строится как участок постоянных полуосей `B/2` и `H/2`; в legacy-режиме используется нормализованное плато, описанное в разделе `Legacy DSNP_PA Mode`.
 
 Алгоритм:
 
@@ -147,7 +152,7 @@ insertStart = maxRadiusX(Lsource)
 insertEnd = insertStart + Lcyl
 ```
 
-4. Для точек внутри вставки использовать радиус в `insertStart`.
+4. Для точек внутри вставки использовать максимальные полуоси в `insertStart`.
 5. Для точек после вставки сдвигать исходную координату на `Lcyl` назад.
 
 Итоговая длина профиля остается равной `L`.
@@ -179,7 +184,7 @@ insertEnd = insertStart + Lcyl
 
 При `stations = 20` получается 23 строки, потому что добавляются две половинные станции и два конца.
 
-В `current-formula` `topRadius`/`bottomRadius` равны круговому радиусу. В `legacy-dsnp-pa` они описывают XZ-профиль по `halfHeightZ`; полуширота корпуса берется из `halfBreadthY`.
+В обоих режимах `topRadius`/`bottomRadius` описывают XZ-профиль по `halfHeightZ`; полуширота корпуса берется из `halfBreadthY`.
 
 ## Theoretical Drawing
 
@@ -200,7 +205,7 @@ ratio = offset / sourceAxis
 target = targetAxis * sqrt(max(0, 1 - ratio^2))
 ```
 
-Для кругового режима это сводится к прежней формуле `sqrt(radius^2 - offset^2)`. Для legacy-режима это эллиптическая модель первого slice.
+При `B = H` это сводится к прежней формуле `sqrt(radius^2 - offset^2)`. При `B != H` это эллиптическая модель сечения.
 
 ## 3D Hull Mesh
 
@@ -213,7 +218,7 @@ y = halfBreadthY * cos(theta)
 z = halfHeightZ * sin(theta)
 ```
 
-Это финальный 3D scope для Task 7: legacy-режим использует exact elliptical ring mesh из `halfBreadthY`/`halfHeightZ`, а не compatibility approximation телом вращения. Mesh signature включает `geometryMode`, `maxHalfBreadthY`, `maxHalfHeightZ` и подпись полуосей сечений, поэтому 3D-геометрия пересобирается при смене режима или сечений.
+3D mesh использует exact elliptical ring mesh из `halfBreadthY`/`halfHeightZ`, а не compatibility approximation телом вращения. Mesh signature включает `geometryMode`, `breadth`, `height`, `maxHalfBreadthY`, `maxHalfHeightZ` и подпись полуосей сечений, поэтому 3D-геометрия пересобирается при смене режима или сечений.
 
 ## Equipment Geometry
 

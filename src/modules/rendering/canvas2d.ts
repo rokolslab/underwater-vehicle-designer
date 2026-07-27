@@ -47,7 +47,7 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
   const width = canvas.width / ratio;
   const height = canvas.height / ratio;
   const totalLength = snapshot.extents.totalLength;
-  const yLimit = Math.max(snapshot.extents.maxRadius * 1.24, snapshot.state.diameter * 0.08, 0.1);
+  const yLimit = Math.max(snapshot.extents.maxHalfHeightZ * 1.24, snapshot.state.height * 0.08, 0.1);
   const padding = { left: 54, right: 28, top: 30, bottom: 48 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
@@ -219,7 +219,7 @@ export function renderCanvasProfile(
     const projected = bodyPointToXzProjection({
       x: bodyXFromProfileS(point.s, totalLength),
       y: 0,
-      z: -point.radius,
+      z: -point.halfHeightZ,
     });
     const { x: px, y: py } = scale.map(projected);
     if (index === 0) shape.moveTo(px, py);
@@ -229,7 +229,7 @@ export function renderCanvasProfile(
     const projected = bodyPointToXzProjection({
       x: bodyXFromProfileS(point.s, totalLength),
       y: 0,
-      z: point.radius,
+      z: point.halfHeightZ,
     });
     const screen = scale.map(projected);
     shape.lineTo(screen.x, screen.y);

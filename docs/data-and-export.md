@@ -35,7 +35,7 @@ Root document:
 }
 ```
 
-Новый экспорт использует `schemaVersion: 2` и обязательный marker `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Поддерживаются импорт v2 и односторонняя миграция v1; остальные версии отклоняются. Добавление `profile.geometryMode` не меняет версию схемы: поле optional/backward-compatible для старых v2 проектов.
+Новый экспорт использует `schemaVersion: 2` и обязательный marker `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Поддерживаются импорт v2 и односторонняя миграция v1; остальные версии отклоняются. Добавление `profile.geometryMode`, `profile.breadth` и `profile.height` не меняет версию схемы: поля optional/backward-compatible для старых v2 проектов.
 
 ## Profile JSON
 
@@ -44,6 +44,8 @@ Root document:
   "geometryMode": "current-formula",
   "length": 6,
   "slenderness": 3,
+  "breadth": 2,
+  "height": 2,
   "diameter": 2,
   "cylindricalInsertLength": 0,
   "stations": 20,
@@ -52,7 +54,7 @@ Root document:
 }
 ```
 
-При импорте `diameter` восстанавливается как `length / slenderness`, чтобы сохранить текущую связь параметров.
+`slenderness` означает `L / H`. Новый export пишет `breadth`, `height` и compatibility поле `diameter = height`. Старые v2 проекты без `breadth`/`height` импортируются как `B = H = diameter` без warning.
 
 `profile.geometryMode` задает режим геометрии корпуса:
 
@@ -64,7 +66,9 @@ Root document:
 Контракт совместимости:
 
 - новый экспорт всегда записывает нормализованный `profile.geometryMode`;
+- новый экспорт всегда записывает `profile.breadth`, `profile.height` и `profile.diameter = profile.height`;
 - старые v2 JSON без `profile.geometryMode` импортируются как `current-formula` без warning;
+- старые v2 JSON без `profile.breadth`/`profile.height` импортируются как `B = H = diameter` без warning;
 - неподдерживаемое значение импортируется как `current-formula` с warning `project.profile.geometryMode normalized`;
 - schema остается `2`, потому что изменение backward-compatible.
 
@@ -119,6 +123,9 @@ body.z = -old.y
 | --- | --- |
 | `profile.length` | `>= 0.1` |
 | `profile.slenderness` | `>= 0.1` |
+| `profile.breadth` | `>= 0.01`; missing -> `height` |
+| `profile.height` | `>= 0.01`; missing -> `diameter` или `length / slenderness` |
+| `profile.diameter` | compatibility alias на `height` |
 | `profile.geometryMode` | missing -> `current-formula`; unsupported -> `current-formula` + warning |
 | `profile.cylindricalInsertLength` | `0..length/2` |
 | `profile.stations` | `8..80`, округляется |
@@ -150,7 +157,7 @@ Rows:
 
 Разделитель — `;`. CSV соответствует панели `Параметрические точки профиля`.
 
-В `legacy-dsnp-pa` колонки `radius_top` и `radius_bottom` остаются совместимым XZ-представлением по `halfHeightZ`. Полуширина `halfBreadthY` в этот CSV не добавляется, чтобы не менять существующий формат; точная эллиптическая геометрия доступна в `ProfileSnapshot` и 3D mesh.
+Колонки `radius_top` и `radius_bottom` остаются совместимым XZ-представлением по `halfHeightZ`. Полуширина `halfBreadthY` в этот CSV не добавляется, чтобы не менять существующий формат; точная эллиптическая геометрия доступна в `ProfileSnapshot` и 3D mesh.
 
 ## SVG Export: Side View
 
@@ -158,7 +165,7 @@ Rows:
 
 Экспорт располагается в панели `Боковой вид`, потому что относится к этой проекции.
 
-Для legacy-режима это XZ-силуэт по `halfHeightZ`, а не полный набор эллиптических сечений.
+Для `B != H` это XZ-силуэт по `halfHeightZ`, а не полный набор эллиптических сечений.
 
 ## SVG Export: Theoretical Drawing
 
@@ -171,7 +178,7 @@ Rows:
 
 Экспорт располагается в панели `Теоретический чертеж`.
 
-Теоретический чертеж получает `halfBreadthY`/`halfHeightZ` из `ProfileSnapshot`, поэтому legacy-режим отображает эллиптический first-slice contract. 3D export как отдельный файл не реализован; интерактивная Three.js-сцена строит exact elliptical ring mesh из тех же полуосей, не compatibility approximation.
+Теоретический чертеж получает `halfBreadthY`/`halfHeightZ` из `ProfileSnapshot`, поэтому отображает эллиптический contract для обоих режимов. В metadata SVG указываются `B` и `H`. 3D export как отдельный файл не реализован; интерактивная Three.js-сцена строит exact elliptical ring mesh из тех же полуосей, не compatibility approximation.
 
 ## Downloads
 
@@ -189,6 +196,7 @@ Rows:
 - Не менять `schemaVersion` или `coordinateSystem` без миграции.
 - Новые поля JSON должны иметь fallback при импорте.
 - `profile.geometryMode` остается optional в JSON v2; missing defaults to `current-formula`, unsupported values normalize with warning.
+- `profile.breadth`/`profile.height` остаются optional в JSON v2; missing dimensions fall back through `diameter`, then `length / slenderness`.
 - CSV должен оставаться построенным из `stationPoints`.
 - SVG не должен пересчитывать геометрию независимо от `ProfileSnapshot`.
 - Русские UI-строки должны проходить `npm run check:encoding`.

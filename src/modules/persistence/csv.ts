@@ -18,7 +18,7 @@ export function buildCsv(snapshot: ProfileSnapshot): string {
     exportView: "profile-parameters",
     projectionFrame: "Profile(s/radius)",
     sRange: [0, snapshot.extents.totalLength],
-    radiusRange: [-snapshot.extents.maxRadius, snapshot.extents.maxRadius],
+    radiusRange: [-snapshot.extents.maxHalfHeightZ, snapshot.extents.maxHalfHeightZ],
     rowCount: snapshot.stationPoints.length,
   });
   return rows.map((row) => row.join(";")).join("\n");

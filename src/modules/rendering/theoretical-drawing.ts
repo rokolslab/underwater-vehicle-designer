@@ -118,7 +118,11 @@ function drawSheet(context: CanvasRenderingContext2D, layout: DrawingLayout, dra
   context.fillText(drawing.title, 24, 34);
   context.fillStyle = muted;
   context.font = "12px Segoe UI, Arial, sans-serif";
-  context.fillText(`L=${formatNumber(drawing.totalLength, 3)} м; D=${formatNumber(drawing.maxHeight, 3)} м`, layout.width - 214, 34);
+  context.fillText(
+    `L=${formatNumber(drawing.totalLength, 3)} м; B=${formatNumber(drawing.maxHalfBreadthY * 2, 3)} м; H=${formatNumber(drawing.maxHalfHeightZ * 2, 3)} м`,
+    layout.width - 290,
+    34,
+  );
 }
 
 function strokeRect(context: CanvasRenderingContext2D, rect: Rect): void {

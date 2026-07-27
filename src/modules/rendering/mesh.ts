@@ -5,6 +5,8 @@ import { profilePointToThree } from "./coordinate-adapter";
 export interface HullMeshSignature {
   readonly geometryMode: GeometryMode;
   readonly length: number;
+  readonly breadth: number;
+  readonly height: number;
   readonly diameter: number;
   readonly cylindricalInsertLength: number;
   readonly totalLength: number;
@@ -48,6 +50,8 @@ export function hullMeshSignature(snapshot: ProfileSnapshot): HullMeshSignature 
   return {
     geometryMode: normalizeGeometryMode(snapshot.state.geometryMode),
     length: snapshot.state.length,
+    breadth: snapshot.state.breadth,
+    height: snapshot.state.height,
     diameter: snapshot.state.diameter,
     cylindricalInsertLength: snapshot.state.cylindricalInsertLength,
     totalLength: snapshot.extents.totalLength,
@@ -64,6 +68,8 @@ export function isSameHullMeshSignature(a: HullMeshSignature | null, b: HullMesh
     a !== null &&
     a.geometryMode === b.geometryMode &&
     a.length === b.length &&
+    a.breadth === b.breadth &&
+    a.height === b.height &&
     a.diameter === b.diameter &&
     a.cylindricalInsertLength === b.cylindricalInsertLength &&
     a.totalLength === b.totalLength &&

@@ -1,5 +1,5 @@
 import type { Scene3dSettings } from "../rendering/model";
-import type { Scene3dSettingsInput } from "../rendering/viewSettings";
+import type { Scene3dNormalizationBounds, Scene3dSettingsInput } from "../rendering/viewSettings";
 import { logger } from "../../shared/logger";
 
 export interface Scene3dControlElements {
@@ -67,18 +67,20 @@ export function bindScene3dControls(elements: Scene3dControlElements, onChange: 
 
 export function updateScene3dControlBounds(
   elements: Scene3dControlElements,
-  totalLength: number,
-  maxRadius: number,
+  bounds: Scene3dNormalizationBounds,
 ): void {
-  const halfLength = totalLength / 2;
+  const halfLength = bounds.totalLength / 2;
+  const plane = elements.sectionPlane.value === "xz" ? "xz" : "xy";
+  const maxOffset = plane === "xy" ? bounds.maxHalfHeightZ : bounds.maxHalfBreadthY;
   elements.sectionX.min = String(-halfLength);
   elements.sectionX.max = String(halfLength);
-  elements.sectionOffset.min = String(-maxRadius);
-  elements.sectionOffset.max = String(maxRadius);
+  elements.sectionOffset.min = String(-maxOffset);
+  elements.sectionOffset.max = String(maxOffset);
   logger.debug("3d body section control bounds updated", {
     sourceFrame: "Body/SNAME-NED",
     minBodyX: -halfLength,
     maxBodyX: halfLength,
-    maxRadius,
+    plane,
+    maxOffset,
   });
 }

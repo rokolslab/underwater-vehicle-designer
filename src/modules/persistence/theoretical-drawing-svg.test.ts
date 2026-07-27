@@ -51,6 +51,8 @@ describe("theoretical drawing SVG export", () => {
     expect(svg).toContain("+Y правый борт");
     expect(svg).toContain("правый борт (+Y)");
     expect(svg).toContain("+Z вниз");
+    expect(svg).toContain("B=2.000 м; H=2.000 м");
+    expect(svg).not.toContain("D=2.000 м");
     expect(svg.match(/class=\"section-curve\"/g)).toHaveLength(
       drawing.profileButtockCurves.length * 2 + drawing.halfBreadthWaterlineCurves.length,
     );

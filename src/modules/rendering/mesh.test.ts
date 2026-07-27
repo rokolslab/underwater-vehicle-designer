@@ -138,4 +138,12 @@ describe("hull mesh data", () => {
     expect(isSameHullMeshSignature(hullMeshSignature(circular), hullMeshSignature(elliptical))).toBe(false);
     expect(isSameHullMeshSignature(hullMeshSignature(elliptical), hullMeshSignature(changedExtents))).toBe(false);
   });
+
+  it("includes breadth and height in the hull mesh signature", () => {
+    const snapshot = makeSnapshot();
+    const signature = hullMeshSignature(snapshot);
+
+    expect(signature.breadth).toBe(snapshot.state.breadth);
+    expect(signature.height).toBe(snapshot.state.height);
+  });
 });

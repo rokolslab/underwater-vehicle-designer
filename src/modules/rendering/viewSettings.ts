@@ -24,7 +24,8 @@ export interface Scene3dSettingsInput {
 
 export interface Scene3dNormalizationBounds {
   readonly totalLength: number;
-  readonly maxRadius: number;
+  readonly maxHalfBreadthY: number;
+  readonly maxHalfHeightZ: number;
 }
 
 function normalizeMode(mode: string | undefined): Scene3dViewMode {
@@ -67,18 +68,20 @@ function normalizeSection(input: Scene3dSettingsInput["section"], bounds: Scene3
   }
 
   if (input?.type === "longitudinalPlane") {
-    const normalized = clampNumber(input.offset, 0, -bounds.maxRadius, bounds.maxRadius);
+    const plane = normalizePlane(input.plane);
+    const maxOffset = plane === "xy" ? bounds.maxHalfHeightZ : bounds.maxHalfBreadthY;
+    const normalized = clampNumber(input.offset, 0, -maxOffset, maxOffset);
     const numeric = Number(input.offset);
     if (input.offset !== undefined && (!Number.isFinite(numeric) || numeric !== normalized)) {
       logger.warn("3d body longitudinal section offset clamped", {
         sourceFrame: "Body/SNAME-NED",
-        plane: input.plane,
+        plane,
         requested: input.offset,
         normalized,
-        maxRadius: bounds.maxRadius,
+        maxOffset,
       });
     }
-    return Object.freeze({ type: "longitudinalPlane", plane: normalizePlane(input.plane), offset: normalized });
+    return Object.freeze({ type: "longitudinalPlane", plane, offset: normalized });
   }
 
   if (input?.type !== undefined && input.type !== "disabled") {

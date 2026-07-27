@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { logger } from "../../shared/logger";
 import { maxHullOpacity, minHullOpacity, normalizeScene3dSettings } from "./viewSettings";
 
-const bounds = { totalLength: 6, maxRadius: 1.2 };
+const bounds = { totalLength: 6, maxHalfBreadthY: 1.8, maxHalfHeightZ: 1.2 };
 
 describe("3d view settings", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -51,7 +51,7 @@ describe("3d view settings", () => {
     ).section).toEqual({ type: "crossSectionX", x: -3 });
   });
 
-  it("normalizes longitudinal section plane and offset", () => {
+  it("normalizes longitudinal xy section offset by height", () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
     const settings = normalizeScene3dSettings(
       { mode: "cutaway", section: { type: "longitudinalPlane", plane: "bad", offset: -4 } },
@@ -62,6 +62,16 @@ describe("3d view settings", () => {
     expect(warn).toHaveBeenCalledWith("3d body longitudinal section offset clamped", expect.objectContaining({
       requested: -4,
       normalized: -1.2,
+      maxOffset: 1.2,
     }));
+  });
+
+  it("clamps longitudinal xz section offset by breadth", () => {
+    const settings = normalizeScene3dSettings(
+      { mode: "cutaway", section: { type: "longitudinalPlane", plane: "xz", offset: 4 } },
+      bounds,
+    );
+
+    expect(settings.section).toEqual({ type: "longitudinalPlane", plane: "xz", offset: 1.8 });
   });
 });

@@ -114,6 +114,27 @@ describe("profile geometry", () => {
     expect(Object.isFrozen(snapshot)).toBe(true);
   });
 
+  it("scales current formula sections by independent breadth and height", () => {
+    const snapshot = makeProfileSnapshot({
+      length: 6,
+      breadth: 4,
+      height: 2,
+      slenderness: 3,
+      diameter: 2,
+      cylindricalInsertLength: 1,
+      stations: 20,
+      showGrid: true,
+      showPoints: true,
+    });
+    const maxPoint = snapshot.smoothPoints.find((point) => point.s === snapshot.extents.maxRadiusS);
+
+    expect(snapshot.extents.maxHalfBreadthY).toBeCloseTo(2, 12);
+    expect(snapshot.extents.maxHalfHeightZ).toBeCloseTo(1, 12);
+    expect(snapshot.extents.maxRadius).toBeCloseTo(1, 12);
+    expect(maxPoint?.halfBreadthY).toBeCloseTo(2, 12);
+    expect(maxPoint?.halfHeightZ).toBeCloseTo(1, 12);
+  });
+
   // Legacy regressions trace to docs/legacy/dsnp-pa-calculation-catalog.md and do not validate DSNP_PA coefficients.
   it("normalizes profile stations and cylindrical insert length for legacy DSNP_PA regressions", () => {
     expect(profileStationToLegacyX(2.5, 10)).toBeCloseTo(0.25, 12);
@@ -184,5 +205,25 @@ describe("profile geometry", () => {
     expect(snapshot.extents.maxHalfHeightZ).toBeCloseTo(Math.max(...snapshot.smoothPoints.map((point) => point.halfHeightZ)), 12);
     expect(snapshot.extents.maxHeight).toBeCloseTo(snapshot.extents.maxHalfHeightZ * 2, 12);
     expect(snapshot.extents.totalLength).toBe(10);
+  });
+
+  it("passes breadth to legacy MaxWl and height to legacy MaxBt", () => {
+    const snapshot = makeProfileSnapshot({
+      geometryMode: "legacy-dsnp-pa",
+      length: 10,
+      breadth: 4,
+      height: 2,
+      slenderness: 5,
+      diameter: 2,
+      cylindricalInsertLength: 2,
+      stations: 10,
+      showGrid: true,
+      showPoints: true,
+    });
+    const plateauPoint = snapshot.smoothPoints.find((point) => point.s === 4);
+
+    expect(plateauPoint?.halfBreadthY).toBeCloseTo(2, 12);
+    expect(plateauPoint?.halfHeightZ).toBeCloseTo(1, 12);
+    expect(plateauPoint?.radius).toBeCloseTo(1, 12);
   });
 });

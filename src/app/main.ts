@@ -271,10 +271,16 @@ function update(source: LastEdited = appState.getLastEdited()): void {
     });
   }
 
-  updateScene3dControlBounds(scene3dControls, currentSnapshot.extents.totalLength, currentSnapshot.extents.maxRadius);
+  const scene3dBounds = {
+    totalLength: currentSnapshot.extents.totalLength,
+    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
+  };
+  updateScene3dControlBounds(scene3dControls, scene3dBounds);
   const scene3dSettings = normalizeScene3dSettings(readScene3dControls(scene3dControls), {
     totalLength: currentSnapshot.extents.totalLength,
-    maxRadius: currentSnapshot.extents.maxRadius,
+    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
   });
   const balanceSettings = {
     waterDensityKgPerM3: readWaterDensity(waterDensityInput),

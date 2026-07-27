@@ -231,7 +231,8 @@ function normalizeBalanceSettings(value: unknown, warnings: string[]): BalanceSe
 function normalizeSceneSettings(value: unknown, profile: ProfileState): Scene3dSettings {
   return normalizeScene3dSettings(isRecord(value) ? value : defaultScene3dSettings, {
     totalLength: profile.length,
-    maxRadius: profile.height / 2,
+    maxHalfBreadthY: profile.breadth / 2,
+    maxHalfHeightZ: profile.height / 2,
   });
 }
 

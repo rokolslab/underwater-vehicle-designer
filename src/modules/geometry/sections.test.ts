@@ -38,4 +38,23 @@ describe("section geometry", () => {
     expect(section.halfHeightZ).toBeCloseTo(1, 12);
     expect(section.area).toBeCloseTo(Math.PI * 2 * 1, 12);
   });
+
+  it("uses current-formula elliptical half axes for section area", () => {
+    const section = makeSection(2.5358983848622456, {
+      geometryMode: "current-formula",
+      length: 6,
+      breadth: 4,
+      height: 2,
+      slenderness: 3,
+      diameter: 2,
+      cylindricalInsertLength: 0,
+      stations: 20,
+      showGrid: true,
+      showPoints: true,
+    });
+
+    expect(section.halfBreadthY).toBeCloseTo(2, 12);
+    expect(section.halfHeightZ).toBeCloseTo(1, 12);
+    expect(section.area).toBeCloseTo(Math.PI * 2 * 1, 12);
+  });
 });
