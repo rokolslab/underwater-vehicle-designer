@@ -5,6 +5,8 @@ import { makeTheoreticalDrawing } from "./theoretical-drawing";
 
 const baseState: ProfileState = Object.freeze({
   length: 6,
+  breadth: 2,
+  height: 2,
   slenderness: 3,
   diameter: 2,
   cylindricalInsertLength: 0,

@@ -91,6 +91,8 @@ describe("equipment ui", () => {
     const report = evaluateEquipmentConstraints(
       makeProfileSnapshot({
         length: 10,
+        breadth: 2,
+        height: 2,
         slenderness: 5,
         diameter: 2,
         cylindricalInsertLength: 0,

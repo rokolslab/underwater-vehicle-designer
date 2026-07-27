@@ -37,6 +37,8 @@ export function makeSection(
             geometryMode,
             length: input,
             slenderness: diameter === 0 ? 0 : input / diameter,
+            breadth: diameter,
+            height: diameter,
             diameter,
             cylindricalInsertLength,
             stations: 1,

@@ -6,6 +6,8 @@ import { buildHullMeshData, hullMeshSignature, isSameHullMeshSignature, readVert
 function makeSnapshot(cylindricalInsertLength = 0) {
   return makeProfileSnapshot({
     length: 6,
+    breadth: 2,
+    height: 2,
     slenderness: 3,
     diameter: 2,
     cylindricalInsertLength,
@@ -20,6 +22,8 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
     state: Object.freeze({
       geometryMode: "legacy-dsnp-pa" as const,
       length: 4,
+      breadth: 4,
+      height: 2,
       slenderness: 2,
       diameter: 2,
       cylindricalInsertLength: 0,

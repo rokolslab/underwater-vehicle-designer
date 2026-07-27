@@ -39,6 +39,8 @@ export type ProjectJsonParseResult =
 const defaultProfile: ProfileState = Object.freeze({
   geometryMode: defaultGeometryMode,
   length: 6,
+  breadth: 2,
+  height: 2,
   slenderness: 3,
   diameter: 2,
   cylindricalInsertLength: 0,
@@ -103,6 +105,8 @@ function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   return Object.freeze({
     geometryMode: readGeometryMode(source.geometryMode, warnings),
     length,
+    breadth: length / slenderness,
+    height: length / slenderness,
     slenderness,
     diameter: length / slenderness,
     cylindricalInsertLength,

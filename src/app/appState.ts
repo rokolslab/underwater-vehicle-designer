@@ -67,6 +67,8 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     const state = {
       geometryMode,
       length,
+      breadth: diameter,
+      height: diameter,
       slenderness,
       diameter,
       cylindricalInsertLength,

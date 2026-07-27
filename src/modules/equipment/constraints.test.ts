@@ -7,6 +7,8 @@ import { equipmentIssues, equipmentStatus, evaluateEquipmentConstraints } from "
 function snapshot(overrides: Partial<ProfileSnapshot["state"]> = {}): ProfileSnapshot {
   return makeProfileSnapshot({
     length: 10,
+    breadth: 2,
+    height: 2,
     slenderness: 5,
     diameter: 2,
     cylindricalInsertLength: 0,
@@ -21,6 +23,8 @@ function ellipticalSnapshot(): ProfileSnapshot {
   const state = Object.freeze({
     geometryMode: "legacy-dsnp-pa" as const,
     length: 10,
+    breadth: 4,
+    height: 2,
     slenderness: 2.5,
     diameter: 4,
     cylindricalInsertLength: 0,

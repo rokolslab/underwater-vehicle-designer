@@ -19,9 +19,13 @@ function normalizeCylindricalInsertLength(length: number, cylindricalInsertLengt
 }
 
 export function radiusAt(s: number, length: number, diameter: number): number {
+  return (diameter / 2) * shapeFactorAt(s, length);
+}
+
+export function shapeFactorAt(s: number, length: number): number {
   const t = s / length;
   const body = t * (1 - t) * (1 - 0.5 * t);
-  return diameter * PROFILE_RADIUS_NORMALIZATION * Math.sqrt(Math.max(0, body));
+  return 2 * PROFILE_RADIUS_NORMALIZATION * Math.sqrt(Math.max(0, body));
 }
 
 function sourceSAt(s: number, length: number, cylindricalInsertLength: number): number {
@@ -42,18 +46,32 @@ export function profileRadiusAt(
   diameter: number,
   cylindricalInsertLength = 0,
 ): number {
+  return profileSectionExtentsAt(s, length, diameter, diameter, cylindricalInsertLength).radius;
+}
+
+export function profileShapeFactorAt(s: number, length: number, cylindricalInsertLength = 0): number {
   const normalizedInsertLength = normalizeCylindricalInsertLength(length, cylindricalInsertLength);
   const sourceLength = length - normalizedInsertLength;
-  return radiusAt(sourceSAt(s, length, normalizedInsertLength), sourceLength, diameter);
+  return shapeFactorAt(sourceSAt(s, length, normalizedInsertLength), sourceLength);
 }
 
-function makeCircularSectionExtents(radius: number): SectionExtents {
-  return { radius, halfBreadthY: radius, halfHeightZ: radius };
-}
-
-export function makeStationPoints(
+export function profileSectionExtentsAt(
+  s: number,
   length: number,
-  diameter: number,
+  breadth: number,
+  height: number,
+  cylindricalInsertLength = 0,
+): SectionExtents {
+  const factor = profileShapeFactorAt(s, length, cylindricalInsertLength);
+  const halfBreadthY = (breadth / 2) * factor;
+  const halfHeightZ = (height / 2) * factor;
+  return { radius: halfHeightZ, halfBreadthY, halfHeightZ };
+}
+
+export function makeStationPointsForSectionDimensions(
+  length: number,
+  breadth: number,
+  height: number,
   stations: number,
   cylindricalInsertLength = 0,
 ): StationPoint[] {
@@ -69,19 +87,37 @@ export function makeStationPoints(
   stationSValues.push(totalLength - halfStep, totalLength);
 
   return uniqueSorted(stationSValues).map((s) => {
-    const radius = profileRadiusAt(s, length, diameter, cylindricalInsertLength);
-    return { s, ...makeCircularSectionExtents(radius), topRadius: radius, bottomRadius: -radius };
+    const sectionExtents = profileSectionExtentsAt(s, length, breadth, height, cylindricalInsertLength);
+    return { s, ...sectionExtents, topRadius: sectionExtents.halfHeightZ, bottomRadius: -sectionExtents.halfHeightZ };
   });
 }
 
-export function makeProfilePoints(length: number, diameter: number, cylindricalInsertLength = 0): ProfilePoint[] {
+export function makeStationPoints(
+  length: number,
+  diameter: number,
+  stations: number,
+  cylindricalInsertLength = 0,
+): StationPoint[] {
+  return makeStationPointsForSectionDimensions(length, diameter, diameter, stations, cylindricalInsertLength);
+}
+
+export function makeProfilePointsForSectionDimensions(
+  length: number,
+  breadth: number,
+  height: number,
+  cylindricalInsertLength = 0,
+): ProfilePoint[] {
   const points: ProfilePoint[] = [];
   const totalLength = totalProfileLength(length, cylindricalInsertLength);
   for (let index = 0; index <= smoothSamples; index += 1) {
     const s = (totalLength * index) / smoothSamples;
-    points.push({ s, ...makeCircularSectionExtents(profileRadiusAt(s, length, diameter, cylindricalInsertLength)) });
+    points.push({ s, ...profileSectionExtentsAt(s, length, breadth, height, cylindricalInsertLength) });
   }
   return points;
+}
+
+export function makeProfilePoints(length: number, diameter: number, cylindricalInsertLength = 0): ProfilePoint[] {
+  return makeProfilePointsForSectionDimensions(length, diameter, diameter, cylindricalInsertLength);
 }
 
 export function getExtents(points: readonly ProfilePoint[]): ProfileExtents {

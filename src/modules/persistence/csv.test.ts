@@ -7,6 +7,8 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
   state: Object.freeze({
     geometryMode: "legacy-dsnp-pa",
     length: 99,
+    breadth: 9,
+    height: 9,
     slenderness: 9,
     diameter: 9,
     cylindricalInsertLength: 0,
@@ -33,6 +35,8 @@ describe("csv export", () => {
   it("preserves current semicolon-separated station export", () => {
     const snapshot = makeProfileSnapshot({
       length: 6,
+      breadth: 2,
+      height: 2,
       slenderness: 3,
       diameter: 2,
       cylindricalInsertLength: 0,
@@ -53,6 +57,8 @@ describe("csv export", () => {
   it("keeps station coordinates within the declared total length when insert is present", () => {
     const snapshot = makeProfileSnapshot({
       length: 6,
+      breadth: 2,
+      height: 2,
       slenderness: 3,
       diameter: 2,
       cylindricalInsertLength: 2,

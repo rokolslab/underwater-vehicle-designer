@@ -7,6 +7,8 @@ describe("section geometry", () => {
     const section = makeSection(2.5, {
       geometryMode: "current-formula",
       length: 6,
+      breadth: 2,
+      height: 2,
       slenderness: 3,
       diameter: 2,
       cylindricalInsertLength: 2,

@@ -94,6 +94,8 @@ describe("profile geometry", () => {
   it("creates a shared immutable profile snapshot", () => {
     const snapshot = makeProfileSnapshot({
       length: 6,
+      breadth: 2,
+      height: 2,
       slenderness: 3,
       diameter: 2,
       cylindricalInsertLength: 2,
@@ -163,6 +165,8 @@ describe("profile geometry", () => {
     const snapshot = makeProfileSnapshot({
       geometryMode: "legacy-dsnp-pa",
       length: 10,
+      breadth: 2,
+      height: 2,
       slenderness: 5,
       diameter: 2,
       cylindricalInsertLength: 2,

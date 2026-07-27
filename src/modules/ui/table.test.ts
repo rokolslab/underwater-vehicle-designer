@@ -6,6 +6,8 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
   state: Object.freeze({
     geometryMode: "legacy-dsnp-pa",
     length: 99,
+    breadth: 9,
+    height: 9,
     slenderness: 9,
     diameter: 9,
     cylindricalInsertLength: 0,

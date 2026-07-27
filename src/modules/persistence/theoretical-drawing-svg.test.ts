@@ -7,6 +7,8 @@ import { buildTheoreticalDrawingSvg } from "./theoretical-drawing-svg";
 function makeEllipticalSnapshot(): ProfileSnapshot {
   const snapshot = makeProfileSnapshot({
     length: 6,
+    breadth: 2,
+    height: 2,
     slenderness: 3,
     diameter: 2,
     cylindricalInsertLength: 0,
@@ -33,6 +35,8 @@ describe("theoretical drawing SVG export", () => {
   it("uses the shared body projections and preserves source curve counts", () => {
     const drawing = makeTheoreticalDrawing(makeProfileSnapshot({
       length: 6,
+      breadth: 2,
+      height: 2,
       slenderness: 3,
       diameter: 2,
       cylindricalInsertLength: 0,
