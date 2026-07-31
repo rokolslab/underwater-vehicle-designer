@@ -2,9 +2,11 @@
 
 # Architecture
 
-Проект построен как frontend-only инженерное SPA с модульными вертикальными зонами. Расчетные модули не зависят от DOM, canvas или Three.js.
+Проект является frontend-only инженерным SPA. Текущий код организован как модульный монолит, а целевое направление уточняет его границы: functional core для расчётов, explicit application layer для состояния проекта и browser adapters для DOM, Canvas, Three.js и persistence.
 
-## Runtime Overview
+Целевая архитектура описывает поэтапную эволюцию, а не уже завершённый перенос файлов. Подробные нормативные правила находятся в [`.ai-factory/ARCHITECTURE.md`](../.ai-factory/ARCHITECTURE.md).
+
+## Current Runtime
 
 ```text
 index.html
@@ -14,23 +16,120 @@ index.html
     -> equipment evaluates constraints
     -> balance calculates aggregate metrics
     -> rendering updates Canvas and Three.js
-    -> persistence exports JSON/CSV/SVG
+    -> persistence imports/exports JSON, CSV and SVG
 ```
 
-`main.ts` является orchestration layer. Он связывает DOM events, state, pure modules и rendering, но не содержит расчетных формул корпуса.
+`main.ts` является composition root и текущим application controller. Он не содержит формул корпуса, но пока координирует состояние, import workflow, derived calculations и rendering.
 
-## Module Boundaries
+## Current Module Boundaries
 
 | Module | Responsibility | Must Not Do |
 | --- | --- | --- |
-| `src/app/` | DOM wiring, UI state, orchestration | Дублировать расчетную геометрию |
-| `geometry/` | Профиль, станции, теоретический чертеж | Читать DOM или canvas |
-| `equipment/` | Оборудование, размеры, ограничения | Рендерить UI |
-| `balance/` | ЦТ, ЦВ, плавучесть, предупреждения | Считать геометрию корпуса заново |
-| `rendering/` | Canvas 2D, theoretical drawing canvas, Three.js | Владеть проектным состоянием |
-| `persistence/` | JSON, CSV, SVG, download | Нормализовать UI controls |
-| `ui/` | HTML snippets, tables, metrics, control helpers | Хранить бизнес-правила |
-| `shared/` | Форматирование, math, logger | Становиться dumping ground |
+| `src/app/` | Bootstrap, DOM wiring, текущая orchestration | Дублировать расчётные формулы |
+| `geometry/` | Профиль, стратегии геометрии, станции, theoretical drawing data | Читать DOM, Canvas или Three.js |
+| `equipment/` | Оборудование, placement, containment и intersections | Рендерить UI |
+| `balance/` | Equipment-only CG/CB, силы и stability diagnostics | Считать геометрию корпуса заново |
+| `rendering/` | Canvas 2D, Three.js, mesh и coordinate adapters | Владеть каноническим project state |
+| `persistence/` | JSON migrations, CSV, SVG и download | Получать данные через DOM controls |
+| `ui/` | Typed DOM adapters, таблицы и metrics | Хранить инженерные формулы |
+| `shared/` | Body coordinates, math, format и logger | Становиться dumping ground |
+
+Прямых циклических зависимостей между production-модулями нет. Three.js импортируется только rendering adapters, а основная геометрия остаётся независимой от browser runtime.
+
+## Current State Flow
+
+Сейчас состояние распределено между несколькими владельцами:
+
+| Data | Current owner |
+| --- | --- |
+| Profile input | DOM controls и `appState.ts` |
+| Equipment | Module-level `equipmentItems` в `main.ts` |
+| 3D settings | DOM controls |
+| Derived geometry/reports | Module-level значения в `main.ts` |
+| Camera interaction | Closure внутри Three.js scene |
+| Export aggregate | Собираемый при `update()` `ProjectState` |
+
+При каждом изменении выполняется полный pipeline:
+
+```text
+DOM
+  -> normalize profile
+  -> make ProfileSnapshot
+  -> make TheoreticalDrawing
+  -> evaluate constraints
+  -> normalize scene settings
+  -> assemble ProjectState
+  -> calculate balance
+  -> render all views
+```
+
+Эта схема приемлема для текущего прототипа, но делает DOM частью store и усложняет атомарный import, integration tests и независимое развитие расчётных modules.
+
+## Target Pattern
+
+Целевой паттерн:
+
+> Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters
+
+```text
+app/main.ts
+    |
+    v
+application ---------------> core
+    ^                          ^
+    |                          |
+adapters ---------------------+
+```
+
+| Layer | Responsibility |
+| --- | --- |
+| `core` | Geometry, equipment, constraints, mass properties, hydrostatics и другие pure calculations |
+| `application` | Канонический project state, commands, normalization и `deriveProject()` |
+| `adapters` | DOM, Canvas, Three.js, JSON, CSV, SVG, browser files и logging |
+| `app` | Создание зависимостей, subscriptions и startup |
+
+Core не импортирует application, adapters, DOM, Canvas, Three.js, `import.meta.env` или глобальный logger. Application не читает controls и не управляет Three.js resources.
+
+## Target State Flow
+
+DOM становится adapter, а не источником истины:
+
+```text
+DOM event
+  -> application command
+  -> ProjectStore
+  -> canonical ProjectInputs
+  -> deriveProject()
+  -> ProjectEvaluation
+  -> DOM / Canvas / Three.js / export adapters
+```
+
+Импорт применяется атомарно:
+
+```text
+File
+  -> JSON decode
+  -> schema migration
+  -> shared normalization
+  -> ReplaceProject command
+  -> deriveProject()
+  -> render
+```
+
+Запись JSON-данных в controls с последующим чтением обратно не входит в целевую архитектуру.
+
+## State Contracts
+
+Целевая модель разделяет четыре вида данных:
+
+| Contract | Purpose |
+| --- | --- |
+| `ProjectInputs` | Канонические пользовательские и инженерные inputs |
+| `ProjectViewState` | Grid, points, camera и остальные view settings |
+| `ProjectEvaluation` | Geometry, constraints, mass и hydrostatic results |
+| `ProjectDocumentV3+` | Versioned persistence DTO и migration boundary |
+
+`ProfileSnapshot` остаётся производным geometry contract, но не должен использоваться как название универсального снимка всего проекта. Для comparison нужен отдельный versioned `DesignSnapshot`.
 
 ## Coordinate Architecture
 
@@ -39,11 +138,11 @@ index.html
 | Space | Contract |
 | --- | --- |
 | Body/SNAME-NED | Инженерные позиции, силы, моменты и сечения; `+X` к носу, `+Y` на правый борт, `+Z` вниз |
-| Profile | Параметр `s ∈ [0,L]` от носа к корме и радиус |
+| Profile | Параметр `s ∈ [0,L]` от носа к корме |
 | Three.js | Техническая Y-up сцена |
-| Canvas/SVG | Экранные координаты конкретной проекции |
+| Canvas/SVG | Screen coordinates конкретной проекции |
 
-`src/shared/body-coordinates.ts` владеет Body/Profile conversion. `rendering/coordinate-adapter.ts` — единственная граница Body↔Three и Body↔screen:
+`src/shared/body-coordinates.ts` владеет текущими Body/Profile conversions. `rendering/coordinate-adapter.ts` является границей Body↔Three и Body↔screen:
 
 ```text
 three.x = body.x
@@ -51,84 +150,82 @@ three.y = -body.z
 three.z = body.y
 ```
 
-Проекции: XZ — вправо `+X`, вниз `+Z`; XY — вправо `+X`, вниз `+Y`; YZ — вправо `+Y`, вниз `+Z`. Domain-модули не импортируют Three.js, DOM или Canvas.
+В целевой структуре Body conversions переходят в `core/coordinates`, а Three/screen transforms остаются в adapters.
 
-## State Layers
+## General Section Geometry
 
-| Layer | Type/File | Description |
+Текущие режимы используют эллиптические сечения `halfBreadthY`/`halfHeightZ`. Для будущих `Priam`/`Kr` этого контракта недостаточно.
+
+До расширения legacy geometry вводится общий `SectionShape`:
+
+```ts
+type SectionShape =
+  | { kind: "ellipse"; halfBreadthY: number; halfHeightZ: number }
+  | { kind: "rounded-rectangle"; halfBreadthY: number; halfHeightZ: number; cornerRadius: number };
+```
+
+Общие pure operations рассчитывают площадь, containment и sampled contour. Mesh, constraints, theoretical drawing и volume integration используют их и не ветвятся по формулам `geometryMode`.
+
+## Physical Hull Models
+
+В целевой domain model разделяются разные значения слова «корпус»:
+
+| Model | Physical meaning |
+| --- | --- |
+| `HydrodynamicFairing` | Внешняя форма для обводов и будущей ходкости |
+| `PlacementEnvelope` | Допустимая область размещения оборудования |
+| `StructuralMassModel` | Масса оболочки, конструкций и переборок |
+| `WatertightEnvelope` | Герметичный вытесняющий объём для hydrostatics |
+
+Equipment-only displacement и watertight-envelope buoyancy не складываются неявно. Выбранная `BuoyancyModel` должна иметь discriminator и правила предотвращения double counting.
+
+## Rendering and Export
+
+| Adapter | Source data | Output |
 | --- | --- | --- |
-| Raw DOM | `index.html` controls | Значения input/select/checkbox |
-| App input | `appState.ts` | Нормализованный `ProfileState` |
-| Project aggregate | `projectState.ts` | `profile`, `equipment`, `scene3dSettings`, `balanceSettings` |
-| Geometry snapshot | `ProfileSnapshot` | Общий источник для canvas, table, SVG, 3D |
-| Reports | `EquipmentConstraintReport`, `EquipmentBalanceResult` | Диагностика компоновки и баланса |
+| `canvas2d.ts` | Geometry snapshot, equipment, constraints | Боковой вид |
+| `rendering/theoretical-drawing.ts` | `TheoreticalDrawing` | Судостроительный лист на Canvas |
+| `scene3d.ts` | Geometry snapshot, equipment, view settings | Three.js scene |
+| `mesh.ts` | Sampled section geometry | Hull mesh data |
+| CSV/SVG builders | Snapshot или presentation-neutral drawing data | Downloadable text/vector files |
 
-## Data Flow on Update
+Rendering и export не пересчитывают geometry или balance. Canvas и SVG theoretical drawing должны в перспективе получать общий render-neutral drawing scene, чтобы не дублировать layout и projection logic.
 
-При любом изменении размера корпуса, оборудования, воды или 3D-настроек вызывается `update()`:
+## Error and Diagnostics Strategy
 
-1. `appState.readState()` нормализует профиль.
-2. `makeProfileSnapshot()` создает гладкие и станционные точки.
-3. `makeTheoreticalDrawing()` создает данные теоретического чертежа.
-4. `evaluateEquipmentConstraints()` проверяет оборудование.
-5. `normalizeScene3dSettings()` ограничивает настройки 3D.
-6. `makeProjectState()` собирает состояние проекта.
-7. `calculateEquipmentBalance()` считает баланс.
-8. UI обновляет canvas, теоретический чертеж, оборудование, таблицу и баланс.
-9. Three.js сцена перерисовывает корпус и оборудование.
-
-## Rendering Architecture
-
-| Renderer | Source Data | Output |
-| --- | --- | --- |
-| `canvas2d.ts` | `ProfileSnapshot`, equipment, constraints | Боковой вид |
-| `rendering/theoretical-drawing.ts` | `TheoreticalDrawing` | Судостроительный лист на canvas |
-| `scene3d.ts` | `ProfileSnapshot`, equipment, settings, constraints | Three.js scene |
-| `mesh.ts` | Profile points | Hull mesh |
-| `equipment3d.ts` | Equipment items | Equipment meshes |
-
-Canvas/SVG/CSV должны использовать один и тот же `ProfileSnapshot`.
-
-## Persistence Architecture
-
-`project-json.ts` экспортирует и импортирует:
-
-- `profile`;
-- `equipment`;
-- `scene3dSettings`;
-- `balanceSettings`.
-
-Экспорт пишет JSON v2 с `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`. Импорт v1 выполняет явную одностороннюю миграцию и предупреждает о соглашении `old.z = starboard`; импорт v2 без корректного marker отклоняется.
-
-## Error and Warning Strategy
-
-В проекте используется `shared/logger.ts`. Основные правила:
-
-- расчетные ошибки возвращаются структурированно через result/report;
-- пользователь видит состояние в UI, не только console output;
-- logger помогает отладке normalization, import/export и расчетных предупреждений;
-- некорректное оборудование не ломает весь расчет баланса, а пропускается с warning.
+- Core возвращает stable diagnostic codes и параметры без русских UI messages.
+- Presentation adapters преобразуют diagnostics в пользовательский текст.
+- Ошибка одного equipment item не должна разрушать весь aggregate calculation.
+- Logger принадлежит application/adapters boundary и не вызывается из pure calculations.
+- Persistence decoders принимают `unknown`, выполняют migrations и используют общие normalizers.
 
 ## Testing Boundaries
 
-| Area | Tests |
+| Area | Required tests |
 | --- | --- |
-| Geometry | Formula fixture, ЦВК, stations, snapshot immutability |
-| Theoretical drawing | Sections, waterlines, buttocks, body plan split |
-| Equipment | Volume, validation, placement, constraints |
-| Balance | CG, equipment-only CB, BG, forces, moments, warning codes |
-| Persistence | CSV, SVG, JSON schema normalization |
-| UI | Equipment editor, metrics, DOM contract |
+| Core calculations | Unit, invariants и fixture regressions |
+| Coordinates | Frame conversions и signs |
+| Application | Commands, normalization и `deriveProject()` |
+| Persistence | Migration, normalization и round-trip |
+| Rendering data | Mesh/drawing primitives без WebGL |
+| Browser adapters | Targeted integration или Playwright smoke |
+| Architecture | Dependency-boundary check без запрещённых imports |
 
-## Future Architecture Notes
+## Evolution Order
 
-- Балласт, масса корпуса и оболочка должны добавляться в `balance`, а не в `geometry`.
-- Более точные CAD-проверки оборудования должны расширять `equipment/constraints.ts` или новый соседний pure module.
-- Новые export formats должны использовать `ProfileSnapshot` и `TheoreticalDrawing`, а не пересчитывать профиль.
-- Новые UI-панели должны работать через app/project state, а не напрямую менять расчетные структуры.
+1. Закрепить import/export integration tests, включая gravity и уникальность equipment IDs.
+2. Ввести canonical `ProjectInputs` и единый application API.
+3. Объединить DOM и JSON normalization.
+4. Извлечь pure `deriveProject()` и оставить в `main.ts` только wiring.
+5. Разделить domain inputs, view settings и persistence DTO.
+6. Ввести `SectionShape` до расширения legacy geometry.
+7. Разделить `constraints.ts`, `scene3d.ts` и `project-json.ts` по ответственности.
+8. Добавлять mass properties, hydrostatics, comparison, hydrodynamics и energy отдельными pure capabilities.
+
+Физическое перемещение существующих каталогов не должно выполняться ради структуры само по себе. Каждый шаг должен иметь самостоятельный behavioural seam и regression tests.
 
 ## See Also
 
-- [Calculations](calculations.md) — pure расчетные правила.
-- [Data and Export](data-and-export.md) — структура JSON/CSV/SVG.
-- [Testing](testing.md) — как проверяются границы модулей.
+- [Calculations](calculations.md) — действующие формулы и ограничения.
+- [Data and Export](data-and-export.md) — текущая JSON schema и export contracts.
+- [Testing](testing.md) — unit, regression и browser smoke проверки.

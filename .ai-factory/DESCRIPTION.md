@@ -4,7 +4,7 @@
 
 Underwater Vehicle Designer — клиентский веб-инструмент для построения и анализа обводов корпуса подводного аппарата по расчетной формуле радиуса и альтернативному legacy DSNP_PA traceability mode. Текущая версия работает как Vite + TypeScript приложение с canvas-визуализацией, Three.js-просмотром, таблицей координат станций, модульной расчетной геометрией, вводом ЦВК/цилиндрической вставки корпуса, базовой моделью оборудования, проверками выхода оборудования за корпус и пересечений, X-Ray/Cutaway режимами, JSON import/export проекта, экспортом SVG/CSV и отдельным теоретическим чертежом корпуса.
 
-В репозитории также есть `TECHNICAL_SPEC.md`, который задает следующий этап: развить модульную структуру до `Three.js`, добавить 3D-представление корпуса, цилиндрическую вставку, размещение оборудования внутри корпуса и расчет ЦТ/ЦВ/крена/дифферента.
+`TECHNICAL_SPEC.md` фиксирует baseline первой 3D-версии, большая часть которого уже реализована. Актуальные направления развития находятся в `.ai-factory/ROADMAP.md`: расширенная legacy-геометрия, mass properties и inertia, watertight envelope, comparison, hydrodynamics и energy.
 
 ## Термины проекта
 
@@ -21,7 +21,7 @@ Underwater Vehicle Designer — клиентский веб-инструмент
 - **Тесты:** Vitest для расчетных модулей, export и UI/appState-регрессии
 - **Docker:** multi-stage dev/build/production image и Compose overlays для разработки и VPS smoke checks
 
-## Целевой стек из спецификации
+## Инженерный стек
 
 - **Язык:** TypeScript
 - **Сборка:** Vite
@@ -71,7 +71,9 @@ Docker является предпочтительным воспроизвод�
 
 Подробные правила архитектуры описаны в `.ai-factory/ARCHITECTURE.md`.
 
-**Паттерн:** Structured Modules (Vertical Slices)
+**Текущее состояние:** модульный frontend-монолит с предметными модулями `geometry`, `equipment`, `balance` и техническими adapters `ui`, `rendering`, `persistence`.
+
+**Целевой паттерн:** Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters. DOM должен стать adapter, а канонические `ProjectInputs`, application state и чистый `deriveProject()` — единым путём изменения и вычисления проекта. Исследование и основания решения сохранены в `.ai-factory/RESEARCH.md`.
 
 ## Нефункциональные требования
 

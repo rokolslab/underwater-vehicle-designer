@@ -1,3 +1,5 @@
+[← Каталог расчётов](dsnp-pa-calculation-catalog.md) · [Back to README](../../README.md)
+
 # Карта интеграции наследия ДСНП_ПА
 
 ## Назначение и ограничения
@@ -206,3 +208,9 @@ estimate от known cost; uncertainty/coverage видимы.
 4. Все значения получают единицу, validity state и provenance.
 5. Результаты исторической программы допустимы как regression clue, но не как
    единственный инженерный oracle.
+
+## See Also
+
+- [Карта исторической системы](dsnp-pa-system-map.md) — границы и зависимости архивной программы.
+- [Модель данных DSNP-PA](dsnp-pa-data-model.md) — типы, координаты и риски миграции.
+- [Архитектура проекта](../architecture.md) — целевые границы functional core и adapters.

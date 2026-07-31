@@ -126,7 +126,7 @@ docker compose run --rm app npm run build
 
 1. Запустить `npm run dev`.
 2. Проверить, что `Размерения` раскрываются/скрываются.
-3. Изменить `L`, `lambda`, `D` и убедиться, что профиль меняется.
+3. Изменить `L`, `lambda`, `B`, `H` и убедиться, что профиль и эллиптические сечения меняются согласованно.
 4. Переключить `Сетка` и `Точки обвода` в боковом виде.
 5. Проверить 3D modes: `Сплошной`, `Рентген`, `Вырез`.
 6. Добавить два объекта и создать пересечение.
@@ -176,7 +176,23 @@ Current run, 2026-07-27:
 - production image build passed после явного production build; checklist выше использует отдельный `APP_IMAGE`, чтобы не перезаписывать development image tag;
 - production `/healthz` returned `ok` and `/` returned `HTTP/1.1 200 OK` on `127.0.0.1:80`;
 - Docker health status reached `healthy`;
-- desktop browser and smartphone/emulated viewport smoke were not completed in this environment: no browser/device access and no Playwright/Puppeteer smoke harness exists in the repository.
+- desktop browser and smartphone/emulated viewport smoke не были выполнены в запуске 2026-07-27; в репозитории по-прежнему нет committed browser test suite, но проектный `opencode.json` теперь предоставляет Playwright MCP для agent-assisted smoke.
+
+## Agent-Assisted Browser Smoke
+
+`opencode.json` регистрирует локальный Playwright MCP server:
+
+```text
+npx -y @playwright/mcp@latest
+```
+
+Проверка подключения:
+
+```bash
+opencode mcp list
+```
+
+Playwright MCP предназначен для интерактивной проверки работающего приложения через OpenCode. Он не заменяет `npm run test` и пока не является committed end-to-end test suite. После изменения `opencode.json` перезапустите OpenCode, потому что текущая сессия не перечитывает configuration автоматически.
 
 ## When to Add Tests
 

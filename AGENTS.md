@@ -31,18 +31,20 @@ Underwater Vehicle Designer — браузерный инженерный инс
 
 ## Следующие целевые расширения
 
-- **3D-графика:** Three.js
-- **Геометрия:** дальнейшее развитие legacy DSNP_PA beyond elliptical first slice и будущие параметры сечений
-- **Компоновка:** более точные CAD-подобные проверки оборудования внутри корпуса
-- **Баланс:** ЦТ, ЦВ, крен и дифферент
+- **Архитектура:** канонический application state, общий normalization pipeline и чистый `deriveProject()`
+- **Геометрия:** общий `SectionShape`, дальнейшее развитие legacy DSNP_PA beyond elliptical first slice и параметры `Priam`/`Kr`
+- **Компоновка:** более точные CAD-подобные проверки оборудования внутри placement envelope
+- **Mass properties:** группы масс и полный тензор инерции
+- **Hydrostatics:** отдельный watertight envelope и полный ЦВ без смешивания с equipment-only displacement
+- **Расчётные модули:** comparison, hydrodynamics и energy после фиксации методик и эталонов
 
 ## Структура проекта
 
 ```text
 .
-├── .agents/                  # Локальные AI Factory skills
-├── .codex/                   # Локальная конфигурация Codex, если появится
+├── .agents/                  # Установленные внешние skills, включая threejs-geometry
 ├── .ai-factory/              # Контекст AI Factory: планы, правила, архитектура
+├── .opencode/                # Проектные skills AI Factory для OpenCode
 ├── docker/
 │   └── nginx/                # Конфигурация nginx для production container
 ├── docs/                     # Документация по разработке и эксплуатации
@@ -51,7 +53,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint и UI orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
-│   │   ├── projectState.ts    # App-layer aggregate: profile, equipment, scene3dSettings, balanceSettings
+│   │   ├── projectState.ts   # App-layer aggregate: profile, equipment, scene3dSettings, balanceSettings
 │   │   └── styles.css        # Основные стили приложения
 │   ├── modules/
 │   │   ├── geometry/         # Чистая расчетная геометрия, ProfileSnapshot и данные теоретического чертежа
@@ -83,7 +85,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
 | `src/app/main.ts` | Инициализация DOM, сборка ProjectState, canvas/table/metrics/3D/export orchestration |
 | `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `H = L / lambda`, `lastEdited` |
-| `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings` |
+| `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings`, `balanceSettings` |
 | `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/geometry/current-formula.ts` | Текущая формула радиуса и ЦВК |
@@ -126,9 +128,10 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | Testing | `docs/testing.md` | Тесты и smoke checks |
 | Docker Workflow | `docs/docker.md` | Docker и production smoke |
 | Анализ ДСНП_ПА | `docs/legacy/` | Карта исторической системы, модели данных, расчётов и roadmap интеграции |
-| Техническое задание | `TECHNICAL_SPEC.md` | Целевой функционал следующих версий |
+| Техническое задание | `TECHNICAL_SPEC.md` | Baseline первой 3D-версии и остаточные требования |
 | Описание проекта | `.ai-factory/DESCRIPTION.md` | Контекст AI Factory |
 | Архитектура AI Factory | `.ai-factory/ARCHITECTURE.md` | Архитектурные правила |
+| Исследование архитектуры | `.ai-factory/RESEARCH.md` | Сопоставление документации и кода, целевая архитектура и seams рефакторинга |
 | Базовые правила | `.ai-factory/rules/base.md` | Соглашения по коду |
 
 ## AI Context Files
@@ -138,6 +141,8 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `AGENTS.md` | Быстрая карта проекта для AI-агентов |
 | `.ai-factory/DESCRIPTION.md` | Проектное описание и стек |
 | `.ai-factory/ARCHITECTURE.md` | Архитектурные правила и границы модулей |
+| `.ai-factory/RESEARCH.md` | Активные результаты исследований для последующего планирования |
+| `.ai-factory/RULES.md` | Обязательные аксиомы проекта |
 | `.ai-factory/rules/base.md` | Базовые соглашения по коду |
 | `.ai-factory/config.yaml` | Настройки AI Factory |
 
@@ -159,6 +164,6 @@ Docker является предпочтительным окружением д
 - Расчетная геометрия должна оставаться в чистых TypeScript-модулях без DOM/canvas/browser side effects.
 - UI/appState отвечает за пользовательский ввод, clamp/round, `lastEdited` и форматирование; geometry получает уже нормализованное состояние.
 - Canvas, SVG, CSV, table и metrics должны использовать общий `ProfileSnapshot`, а не пересчитывать геометрию самостоятельно.
-- 3D hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot; оба geometry modes строятся как exact elliptical ring mesh, не тело вращения по compatibility `radius`.
+- Пока оба geometry modes эллиптические, 3D hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot и строить exact elliptical rings, а не тело вращения по compatibility `radius`; будущий `SectionShape` должен заменить эту временную инварианту для `Priam`/`Kr`.
 - Производные инженерные расчеты вроде ЦВ держите в `balance`, а не в `geometry` или UI.
 - При изменении формулы или координатной системы обновляйте Vitest-регрессии и fixture по `formula.xlsx`.
