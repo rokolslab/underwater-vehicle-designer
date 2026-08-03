@@ -11,21 +11,20 @@
 ```text
 index.html
   -> src/app/main.ts
-    -> appState reads and normalizes controls
-    -> geometry creates ProfileSnapshot
-    -> equipment evaluates constraints
-    -> balance calculates aggregate metrics
-    -> rendering updates Canvas and Three.js
-    -> persistence imports/exports JSON, CSV and SVG
+    -> appState / import adapters normalize inputs
+    -> ProjectStore commits canonical ProjectInputs
+    -> deriveProject(ProjectInputs) creates ProjectEvaluation
+    -> projectEvaluationRuntime publishes { inputsSnapshot, evaluation }
+    -> adapters render Canvas, Three.js, tables, metrics and exports
 ```
 
-`main.ts` является composition root и текущим application controller. Он не содержит формул корпуса, но пока координирует состояние, import workflow, derived calculations и rendering.
+`main.ts` является composition root и browser controller. Он не содержит формул корпуса и больше не собирает временный `ProjectState`; производные данные создаются чистым `deriveProject()` и публикуются одной coherent парой через `src/app/projectEvaluationRuntime.ts`.
 
 ## Current Module Boundaries
 
 | Module | Responsibility | Must Not Do |
 | --- | --- | --- |
-| `src/app/` | Bootstrap, DOM wiring, текущая orchestration | Дублировать расчётные формулы |
+| `src/app/` | Bootstrap, DOM wiring, runtime publication и adapter orchestration | Дублировать расчётные формулы |
 | `geometry/` | Профиль, стратегии геометрии, станции, theoretical drawing data | Читать DOM, Canvas или Three.js |
 | `equipment/` | Оборудование, placement, containment и intersections | Рендерить UI |
 | `balance/` | Equipment-only CG/CB, силы и stability diagnostics | Считать геометрию корпуса заново |
@@ -38,32 +37,29 @@ index.html
 
 ## Current State Flow
 
-Сейчас состояние распределено между несколькими владельцами:
+Состояние разделено на canonical inputs, view settings и последнюю успешную publication:
 
 | Data | Current owner |
 | --- | --- |
-| Profile input | DOM controls и `appState.ts` |
-| Equipment | Module-level `equipmentItems` в `main.ts` |
-| 3D settings | DOM controls |
-| Derived geometry/reports | Module-level значения в `main.ts` |
+| Project inputs: profile, equipment, balance settings | `ProjectStore` в application layer |
+| View settings: grid, points, 3D mode/sections | `ProjectViewState` в app layer |
+| Derived geometry/reports/balance | `ProjectEvaluation` из `deriveProject()` |
+| Latest coherent render/export pair | `ProjectEvaluationPublication` в `projectEvaluationRuntime.ts` |
 | Camera interaction | Closure внутри Three.js scene |
-| Export aggregate | Собираемый при `update()` `ProjectState` |
+| JSON export | Fresh `ProjectInputs + ProjectViewState`, без derived evaluation |
 
-При каждом изменении выполняется полный pipeline:
+При canonical изменении выполняется pipeline:
 
 ```text
-DOM
-  -> normalize profile
-  -> make ProfileSnapshot
-  -> make TheoreticalDrawing
-  -> evaluate constraints
-  -> normalize scene settings
-  -> assemble ProjectState
-  -> calculate balance
-  -> render all views
+DOM event / JSON import
+  -> normalize inputs
+  -> ProjectStore commit
+  -> deriveProject(ProjectInputs)
+  -> publish { inputsSnapshot, ProjectEvaluation }
+  -> render adapters
 ```
 
-Эта схема приемлема для текущего прототипа, но делает DOM частью store и усложняет атомарный import, integration tests и независимое развитие расчётных modules.
+View-only события (`showGrid`, `showPoints`, 3D settings, resize) повторно используют текущую publication и не запускают `deriveProject()`. Если derive падает после canonical commit, store остается обновленным, а engineering rendering/export продолжает использовать предыдущую coherent publication; JSON export отражает свежий store.
 
 ## Target Pattern
 
@@ -126,7 +122,7 @@ File
 | --- | --- |
 | `ProjectInputs` | Канонические пользовательские и инженерные inputs |
 | `ProjectViewState` | Grid, points, camera и остальные view settings |
-| `ProjectEvaluation` | Geometry, constraints, mass и hydrostatic results |
+| `ProjectEvaluation` | `ProfileSnapshot`, `TheoreticalDrawing`, constraints и equipment-only balance results |
 | `ProjectDocumentV3+` | Versioned persistence DTO и migration boundary |
 
 `ProfileSnapshot` остаётся производным geometry contract, но не должен использоваться как название универсального снимка всего проекта. Для comparison нужен отдельный versioned `DesignSnapshot`.
@@ -189,7 +185,7 @@ Equipment-only displacement и watertight-envelope buoyancy не складыв�
 | `mesh.ts` | Sampled section geometry | Hull mesh data |
 | CSV/SVG builders | Snapshot или presentation-neutral drawing data | Downloadable text/vector files |
 
-Rendering и export не пересчитывают geometry или balance. Canvas и SVG theoretical drawing должны в перспективе получать общий render-neutral drawing scene, чтобы не дублировать layout и projection logic.
+Rendering и engineering export не пересчитывают geometry или balance. Canvas, tables, metrics, Three.js, profile SVG/CSV и theoretical SVG читают текущую publication. JSON export намеренно строится из свежих `ProjectInputs + ProjectViewState` и не сериализует `ProjectEvaluation`.
 
 ## Error and Diagnostics Strategy
 
@@ -216,7 +212,7 @@ Rendering и export не пересчитывают geometry или balance. Can
 1. Закрепить import/export integration tests, включая gravity и уникальность equipment IDs.
 2. Ввести canonical `ProjectInputs` и единый application API.
 3. Объединить DOM и JSON normalization.
-4. Извлечь pure `deriveProject()` и оставить в `main.ts` только wiring.
+4. Извлечь pure `deriveProject()` и оставить в `main.ts` только wiring. ✅ Реализовано для текущих geometry/drawing/constraints/equipment-only balance.
 5. Разделить domain inputs, view settings и persistence DTO.
 6. Ввести `SectionShape` до расширения legacy geometry.
 7. Разделить `constraints.ts`, `scene3d.ts` и `project-json.ts` по ответственности.

@@ -27,7 +27,9 @@ s      = L/2 - body.x
 
 ## Input State
 
-`ProfileState` содержит:
+Canonical profile inputs хранятся как `ProjectProfileInputs`; расчетная projection для geometry называется `GeometryProfileState` и не содержит view flags. Persisted/view boundary по-прежнему использует `ProfileState` для JSON v2 compatibility.
+
+`GeometryProfileState` содержит:
 
 | Field | Meaning |
 | --- | --- |
@@ -39,9 +41,9 @@ s      = L/2 - body.x
 | `diameter` | Compatibility alias на `height` для старых consumers/JSON |
 | `cylindricalInsertLength` | Длина ЦВК |
 | `stations` | Количество расчетных интервалов |
-| `showGrid`, `showPoints` | UI flags для бокового вида |
+| `showGrid`, `showPoints` | Не входят в расчетное состояние; передаются Canvas как `RenderOptions` |
 
-`appState` нормализует ввод до передачи в geometry:
+`appState` и JSON import normalizers нормализуют ввод до commit в `ProjectStore` и последующего `deriveProject()`:
 
 - `length >= 0.1`;
 - `slenderness >= 0.1`;
@@ -51,6 +53,19 @@ s      = L/2 - body.x
 - `8 <= stations <= 80`.
 
 Неизвестный `geometryMode` нормализуется в `current-formula`. ЦВК здесь означает цилиндрическую вставку корпуса; ЦВ означает центр величины и относится к расчетам баланса.
+
+## ProjectEvaluation
+
+`deriveProject(ProjectInputs)` является единым чистым расчетным графом текущего приложения. Он возвращает immutable `ProjectEvaluation`:
+
+| Field | Source |
+| --- | --- |
+| `hullGeometry` | `makeProfileSnapshot(project.profile)` |
+| `theoreticalDrawing` | `makeTheoreticalDrawing(hullGeometry)` |
+| `constraints` | `evaluateEquipmentConstraints(hullGeometry, equipment)` |
+| `balance` | `calculateEquipmentBalance(equipment, balanceSettings)` |
+
+`ProjectEvaluation` не содержит `ProjectViewState`, DOM controls, renderer instances или persistence DTO. View-only события повторно используют последнюю successful publication.
 
 ## Geometry Modes
 
@@ -163,7 +178,7 @@ insertEnd = insertStart + Lcyl
 
 | Property | Purpose |
 | --- | --- |
-| `state` | Нормализованный `ProfileState`, включая `geometryMode` |
+| `state` | Нормализованный `GeometryProfileState`, включая `geometryMode`, без `showGrid`/`showPoints` |
 | `smoothPoints` | 321 точка гладкой кривой для отрисовки |
 | `stationPoints` | Точки таблицы и CSV |
 | `extents` | `maxRadius`, `maxHalfBreadthY`, `maxHalfHeightZ`, `maxHeight`, `maxRadiusS`, `totalLength` |

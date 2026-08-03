@@ -8,12 +8,15 @@
 
 | Data | Owner |
 | --- | --- |
-| Параметры корпуса и `geometryMode` | `ProfileState` через `appState.ts` |
-| Оборудование | `EquipmentItem[]` через `equipment/placement.ts` |
-| Настройки 3D | `Scene3dSettings` через `viewSettings.ts` |
-| Настройки баланса | `BalanceSettings` |
-| Точки профиля | `ProfileSnapshot` |
-| Теоретический чертеж | `TheoreticalDrawing` |
+| Параметры корпуса и `geometryMode` | `ProjectInputs.profile` в `ProjectStore` |
+| Оборудование | `ProjectInputs.equipment` через `equipment/placement.ts` и `ProjectStore` |
+| Настройки 3D, grid, points | `ProjectViewState` |
+| Настройки баланса | `ProjectInputs.balanceSettings` |
+| Точки профиля | `ProjectEvaluation.hullGeometry` (`ProfileSnapshot`) |
+| Теоретический чертеж | `ProjectEvaluation.theoreticalDrawing` |
+| Constraints и balance results | `ProjectEvaluation.constraints` и `ProjectEvaluation.balance` |
+
+JSON export строится из свежих `ProjectInputs + ProjectViewState`. Derived `ProjectEvaluation` не входит в JSON и не является persisted source of truth. SVG/CSV/theoretical SVG используют последнюю successful publication, чтобы не смешивать geometry, reports и equipment из разных commits после derive failure.
 
 ## JSON Project
 

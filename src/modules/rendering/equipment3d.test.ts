@@ -65,8 +65,6 @@ describe("equipment 3d helpers", () => {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 10,
-      showGrid: true,
-      showPoints: true,
     });
     const inside = { ...sphere, position: { x: 4, y: 0, z: 0 } } satisfies EquipmentItem;
     const outside = { ...inside, position: { x: 4, y: 1.4, z: 0 } } satisfies EquipmentItem;

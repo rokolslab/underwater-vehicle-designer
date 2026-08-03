@@ -13,8 +13,6 @@ describe("section geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     expect(section.radius).toBeCloseTo(1, 12);
@@ -49,8 +47,6 @@ describe("section geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     expect(section.halfBreadthY).toBeCloseTo(2, 12);

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDefaultProjectInputs } from "../application/project/defaults";
-import { projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
+import { projectProfileInputsToGeometryProfileState, projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
 import { inputsAndViewToSerializableProject, serializableProjectToInputsAndView, type ProjectViewState } from "./projectProjection";
 import type { SerializableProjectState } from "../modules/persistence/project-json";
 
@@ -100,6 +100,22 @@ describe("project persistence projections", () => {
     expect(profile.diameter).toBe(2.5);
     expect(profile.showGrid).toBe(true);
     expect(profile.showPoints).toBe(false);
+  });
+
+  it("projects canonical profile inputs to geometry state without view flags", () => {
+    const profile = projectProfileInputsToGeometryProfileState({
+      geometryMode: "current-formula",
+      length: 12.5,
+      breadth: 3,
+      height: 2.5,
+      cylindricalInsertLength: 1,
+      stations: 21,
+    });
+
+    expect(profile.slenderness).toBe(5);
+    expect(profile.diameter).toBe(2.5);
+    expect(profile).not.toHaveProperty("showGrid");
+    expect(profile).not.toHaveProperty("showPoints");
   });
 
   it("does not log from pure projections", () => {

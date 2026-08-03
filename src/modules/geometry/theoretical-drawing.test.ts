@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { makeProfileSnapshot } from "./profile";
-import type { ProfileSnapshot, ProfileState } from "./model";
+import type { GeometryProfileState, ProfileSnapshot } from "./model";
 import { makeTheoreticalDrawing } from "./theoretical-drawing";
 
-const baseState: ProfileState = Object.freeze({
+const baseState: GeometryProfileState = Object.freeze({
   length: 6,
   breadth: 2,
   height: 2,
@@ -11,8 +11,6 @@ const baseState: ProfileState = Object.freeze({
   diameter: 2,
   cylindricalInsertLength: 0,
   stations: 8,
-  showGrid: true,
-  showPoints: true,
 });
 
 function makeEllipticalSnapshot(): ProfileSnapshot {

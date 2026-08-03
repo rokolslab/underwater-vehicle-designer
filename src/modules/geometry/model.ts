@@ -26,7 +26,7 @@ export function geometryModePresentation(value: unknown): GeometryModePresentati
   return geometryModePresentations[normalizeGeometryMode(value)];
 }
 
-export interface ProfileState {
+export interface GeometryProfileState {
   readonly geometryMode?: GeometryMode;
   readonly length: number;
   /** Hull maximum breadth B along Body Y, in meters. */
@@ -38,6 +38,9 @@ export interface ProfileState {
   readonly diameter: number;
   readonly cylindricalInsertLength: number;
   readonly stations: number;
+}
+
+export interface ProfileState extends GeometryProfileState {
   readonly showGrid: boolean;
   readonly showPoints: boolean;
 }
@@ -74,7 +77,7 @@ export interface ProfileExtents {
 }
 
 export interface ProfileSnapshot {
-  readonly state: ProfileState;
+  readonly state: GeometryProfileState;
   readonly smoothPoints: readonly ProfilePoint[];
   readonly stationPoints: readonly StationPoint[];
   readonly extents: ProfileExtents;

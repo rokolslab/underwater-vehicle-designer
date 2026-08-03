@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EquipmentItem } from "./model";
 import { equipmentCenter, equipmentDisplacedVolume, equipmentVolume, validateEquipmentItem } from "./model";
 
@@ -80,5 +80,28 @@ describe("equipment model", () => {
     expect(validateEquipmentItem({ ...box, dimensions: { lengthX: 2, breadthY: 3, heightZ: 0 } }).reason).toBe(
       "box dimensions must be positive",
     );
+  });
+
+  it("does not write console output from pure equipment helpers", () => {
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const consoleDebug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      equipmentVolume(sphere);
+      equipmentCenter(sphere);
+      equipmentDisplacedVolume(cylinder);
+      validateEquipmentItem({ ...box, dimensions: { lengthX: 2, breadthY: 3, heightZ: 0 } });
+
+      expect(consoleInfo).not.toHaveBeenCalled();
+      expect(consoleDebug).not.toHaveBeenCalled();
+      expect(consoleWarn).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleInfo.mockRestore();
+      consoleDebug.mockRestore();
+      consoleWarn.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });

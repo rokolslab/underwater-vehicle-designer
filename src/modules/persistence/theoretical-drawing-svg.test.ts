@@ -13,8 +13,6 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
     diameter: 2,
     cylindricalInsertLength: 0,
     stations: 8,
-    showGrid: true,
-    showPoints: true,
   });
   return Object.freeze({
     ...snapshot,
@@ -41,8 +39,6 @@ describe("theoretical drawing SVG export", () => {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 8,
-      showGrid: true,
-      showPoints: true,
     }));
 
     const svg = buildTheoreticalDrawingSvg(drawing);

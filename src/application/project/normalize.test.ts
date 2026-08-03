@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { normalizeProjectProfileInputs, projectProfileInputsToProfileState } from "./normalize";
+import {
+  normalizeProjectProfileInputs,
+  projectProfileInputsToGeometryProfileState,
+  projectProfileInputsToProfileState,
+} from "./normalize";
 
 describe("project profile normalization", () => {
   it("keeps canonical profile inputs free of view and compatibility fields", () => {
@@ -107,6 +111,21 @@ describe("project profile normalization", () => {
       stations: 20,
       showGrid: false,
       showPoints: true,
+    });
+  });
+
+  it("projects canonical profile to calculation geometry state without view flags", () => {
+    const result = normalizeProjectProfileInputs({ length: 8, breadth: 3, slenderness: 4 }, "interactive-slenderness");
+
+    expect(projectProfileInputsToGeometryProfileState(result.profile)).toEqual({
+      geometryMode: "current-formula",
+      length: 8,
+      breadth: 3,
+      height: 2,
+      slenderness: 4,
+      diameter: 2,
+      cylindricalInsertLength: 0,
+      stations: 20,
     });
   });
 

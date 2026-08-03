@@ -1,5 +1,5 @@
 import { normalizeGeometryMode } from "../../modules/geometry/model";
-import type { GeometryMode, ProfileState } from "../../modules/geometry/model";
+import type { GeometryMode, GeometryProfileState, ProfileState } from "../../modules/geometry/model";
 import { clampNumber } from "../../shared/math";
 import { DEFAULT_PROJECT_PROFILE_INPUTS } from "./defaults";
 import type { ProjectProfileInputs } from "./model";
@@ -136,14 +136,20 @@ export function projectProfileInputsToProfileState(
   return projectProfileInputsWithViewToProfileState(result.profile, viewFlags);
 }
 
+export function projectProfileInputsToGeometryProfileState(profile: ProjectProfileInputs): GeometryProfileState {
+  return Object.freeze({
+    ...profile,
+    slenderness: profile.length / profile.height,
+    diameter: profile.height,
+  });
+}
+
 export function projectProfileInputsWithViewToProfileState(
   profile: ProjectProfileInputs,
   viewFlags: ProfileViewFlags,
 ): ProfileState {
   return Object.freeze({
-    ...profile,
-    slenderness: profile.length / profile.height,
-    diameter: profile.height,
+    ...projectProfileInputsToGeometryProfileState(profile),
     showGrid: viewFlags.showGrid,
     showPoints: viewFlags.showPoints,
   });

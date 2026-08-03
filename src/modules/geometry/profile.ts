@@ -1,5 +1,3 @@
-import { bodyXFromProfileS } from "../../shared/body-coordinates";
-import { logger } from "../../shared/logger";
 import { uniqueSorted } from "../../shared/math";
 import {
   getExtents as getCurrentFormulaExtents,
@@ -11,10 +9,10 @@ import { legacyDsnpPaSectionExtentsAt } from "./legacy-dsnp-pa";
 import {
   normalizeGeometryMode,
   type GeometryMode,
+  type GeometryProfileState,
   type ProfileExtents,
   type ProfilePoint,
   type ProfileSnapshot,
-  type ProfileState,
   type SectionExtents,
   type StationPoint,
 } from "./model";
@@ -51,7 +49,7 @@ function makeStationSValues(totalLength: number, stations: number): number[] {
   return uniqueSorted(stationSValues);
 }
 
-function makeLegacyDsnpPaSectionExtents(state: ProfileState, s: number): SectionExtents {
+function makeLegacyDsnpPaSectionExtents(state: GeometryProfileState, s: number): SectionExtents {
   return legacyDsnpPaSectionExtentsAt({
     s,
     length: state.length,
@@ -61,7 +59,7 @@ function makeLegacyDsnpPaSectionExtents(state: ProfileState, s: number): Section
   });
 }
 
-export function sectionExtentsAt(state: ProfileState, s: number): SectionExtents {
+export function sectionExtentsAt(state: GeometryProfileState, s: number): SectionExtents {
   if (normalizeGeometryMode(state.geometryMode) === "legacy-dsnp-pa") return makeLegacyDsnpPaSectionExtents(state, s);
 
   return currentFormulaProfileSectionExtentsAt(
@@ -73,7 +71,7 @@ export function sectionExtentsAt(state: ProfileState, s: number): SectionExtents
   );
 }
 
-function makeLegacyDsnpPaProfilePoints(state: ProfileState): ProfilePoint[] {
+function makeLegacyDsnpPaProfilePoints(state: GeometryProfileState): ProfilePoint[] {
   const points: ProfilePoint[] = [];
 
   for (let index = 0; index <= smoothSamples; index += 1) {
@@ -84,7 +82,7 @@ function makeLegacyDsnpPaProfilePoints(state: ProfileState): ProfilePoint[] {
   return points;
 }
 
-function makeLegacyDsnpPaStationPoints(state: ProfileState): StationPoint[] {
+function makeLegacyDsnpPaStationPoints(state: GeometryProfileState): StationPoint[] {
   return makeStationSValues(state.length, state.stations).map((s) => {
     const sectionExtents = sectionExtentsAt(state, s);
     return {
@@ -116,7 +114,7 @@ function getLegacyDsnpPaExtents(points: readonly ProfilePoint[]): ProfileExtents
 }
 
 function makeModeAwareProfileData(
-  state: ProfileState,
+  state: GeometryProfileState,
   geometryMode: GeometryMode,
 ): Pick<ProfileSnapshot, "smoothPoints" | "stationPoints" | "extents"> {
   if (geometryMode === "legacy-dsnp-pa") {
@@ -147,35 +145,21 @@ function makeModeAwareProfileData(
   };
 }
 
-export function makeProfileSnapshot(state: ProfileState): ProfileSnapshot {
+export function makeProfileSnapshot(state: GeometryProfileState): ProfileSnapshot {
   const geometryMode = normalizeGeometryMode(state.geometryMode);
   const { smoothPoints, stationPoints, extents } = makeModeAwareProfileData(state, geometryMode);
-  const firstS = smoothPoints[0]?.s ?? 0;
-  const lastS = smoothPoints.at(-1)?.s ?? 0;
-
-  logger.debug("profile snapshot built", {
-    geometryMode,
-    profileSRange: { min: firstS, max: lastS },
-    bodyXExtents: {
-      min: bodyXFromProfileS(lastS, state.length),
-      max: bodyXFromProfileS(firstS, state.length),
-    },
-    sectionExtents: {
-      maxRadius: extents.maxRadius,
-      maxHalfBreadthY: extents.maxHalfBreadthY,
-      maxHalfHeightZ: extents.maxHalfHeightZ,
-      maxHeight: extents.maxHeight,
-    },
-    profileDimensions: {
-      breadth: state.breadth,
-      height: state.height,
-    },
-    smoothPointCount: smoothPoints.length,
-    stationPointCount: stationPoints.length,
-  });
 
   return Object.freeze({
-    state: Object.freeze({ ...state, geometryMode }),
+    state: Object.freeze({
+      geometryMode,
+      length: state.length,
+      breadth: state.breadth,
+      height: state.height,
+      slenderness: state.slenderness,
+      diameter: state.diameter,
+      cylindricalInsertLength: state.cylindricalInsertLength,
+      stations: state.stations,
+    }),
     smoothPoints: Object.freeze(smoothPoints),
     stationPoints: Object.freeze(stationPoints),
     extents: Object.freeze(extents),

@@ -2,6 +2,8 @@
 
 Дата: 2026-07-31
 
+Обновлено: 2026-08-03. Этот документ остается историческим контекстом обсуждения будущего UI. В коде уже выполнена часть описанного рефакторинга: `ProjectStore` владеет canonical `ProjectInputs`, `deriveProject()` создает `ProjectEvaluation`, а `projectEvaluationRuntime` публикует последнюю успешную coherent пару `{ inputsSnapshot, evaluation }`. Разделы ниже сохраняют исходный анализ на дату создания; актуальный runtime flow см. в `docs/architecture.md`.
+
 Статус: аналитический документ. Исходный код, UI, зависимости, JSON-схема и расчётные формулы в рамках подготовки документа не изменялись.
 
 Путь выбран по запросу задачи: `docs/architecture/ui-refactoring-context.md`. В репозитории уже есть обзорный документ `docs/architecture.md`; новый каталог `docs/architecture/` используется для более узкого архитектурного материала, который не должен перегружать обзорную страницу.
@@ -54,7 +56,7 @@
 - `index.html`: Vite HTML shell.
 - `src/app/main.ts`: composition root, DOM lookup, update loop, import/export, rendering orchestration.
 - `src/app/appState.ts`: DOM-backed чтение и нормализация profile inputs.
-- `src/app/projectState.ts`: frozen aggregate для profile/equipment/scene3d/balance settings.
+- `src/app/projectEvaluationRuntime.ts`: browser-free coordinator для derive и atomic publication последней успешной `ProjectEvaluation`.
 - `src/modules/geometry/model.ts`: `GeometryMode`, `ProfileState`, `SectionExtents`, `ProfileSnapshot`.
 - `src/modules/geometry/profile.ts`: `makeProfileSnapshot()`, `sectionExtentsAt()`.
 - `src/modules/geometry/current-formula.ts`: current-formula geometry и ЦВК.

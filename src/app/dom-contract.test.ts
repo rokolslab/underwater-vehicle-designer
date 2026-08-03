@@ -110,4 +110,11 @@ describe("app DOM contract", () => {
     expect(main).not.toContain("appState.makeCurrentBalanceSettings");
     expect(main).not.toContain("buildProjectJson(currentProjectState)");
   });
+
+  it("keeps removed temporary ProjectState out of app sources", () => {
+    const main = readFileSync("src/app/main.ts", "utf8");
+
+    expect(main).not.toContain("makeProjectState");
+    expect(main).not.toContain("currentProjectState");
+  });
 });

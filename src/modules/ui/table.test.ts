@@ -12,8 +12,6 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
     diameter: 9,
     cylindricalInsertLength: 0,
     stations: 3,
-    showGrid: true,
-    showPoints: true,
   }),
   smoothPoints: Object.freeze([]),
   stationPoints: Object.freeze([
