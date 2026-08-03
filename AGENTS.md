@@ -31,7 +31,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 
 ## Следующие целевые расширения
 
-- **Архитектура:** канонический application state, общий normalization pipeline и чистый `deriveProject()`
+- **Архитектура:** canonical `ProjectInputs`, общий normalization pipeline, чистый `deriveProject()` и runtime publication `{ inputsSnapshot, evaluation }`
 - **Геометрия:** общий `SectionShape`, дальнейшее развитие legacy DSNP_PA beyond elliptical first slice и параметры `Priam`/`Kr`
 - **Компоновка:** более точные CAD-подобные проверки оборудования внутри placement envelope
 - **Mass properties:** группы масс и полный тензор инерции
@@ -53,9 +53,9 @@ Underwater Vehicle Designer — браузерный инженерный инс
 │   ├── application/
 │   │   └── project/        # Canonical ProjectInputs, profile defaults and shared normalization seam
 │   ├── app/
-│   │   ├── main.ts           # Vite entrypoint и UI orchestration
+│   │   ├── main.ts           # Vite entrypoint, DOM wiring и adapter orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
-│   │   ├── projectState.ts   # App-layer aggregate: profile, equipment, scene3dSettings, balanceSettings
+│   │   ├── projectEvaluationRuntime.ts # Атомарная publication последней успешной ProjectEvaluation
 │   │   └── styles.css        # Основные стили приложения
 │   ├── modules/
 │   │   ├── geometry/         # Чистая расчетная геометрия, ProfileSnapshot и данные теоретического чертежа
@@ -85,12 +85,13 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | Файл | Назначение |
 | --- | --- |
 | `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
-| `src/app/main.ts` | Инициализация DOM, сборка ProjectState, canvas/table/metrics/3D/export orchestration |
+| `src/app/main.ts` | Инициализация DOM, ProjectStore commits, publication render/export orchestration |
 | `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `H = L / lambda`, `lastEdited` |
-| `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings`, `balanceSettings` |
+| `src/app/projectEvaluationRuntime.ts` | Browser-free coordinator: derive, atomic publication, rerender без повторного derive |
 | `src/application/project/model.ts` | Минимальный canonical `ProjectInputs`/`ProjectProfileInputs` contract |
 | `src/application/project/defaults.ts` | Общие defaults профиля для application normalizers и adapters |
 | `src/application/project/normalize.ts` | Pure profile normalization policies и projection в текущий `ProfileState` |
+| `src/application/project/derive.ts` | Pure `deriveProject(ProjectInputs) -> ProjectEvaluation` для geometry/drawing/constraints/equipment balance |
 | `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/geometry/current-formula.ts` | Текущая формула радиуса и ЦВК |

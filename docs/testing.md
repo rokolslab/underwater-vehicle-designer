@@ -54,7 +54,8 @@ docker compose -f compose.e2e.yml run --rm e2e
 | `src/modules/rendering/` | `mesh.test.ts`, `scene3d.test.ts`, `equipment3d.test.ts` |
 | `src/modules/persistence/` | `csv.test.ts`, `svg.test.ts`, `project-json.test.ts` |
 | `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts` |
-| `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `dom-contract.test.ts` |
+| `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `projectEvaluationRuntime.test.ts`, `dom-contract.test.ts` |
+| `src/application/project/` | `derive.test.ts`, `dependency-contract.test.ts`, `normalize.test.ts`, `store.test.ts` |
 | `tests/e2e/` | `import-export.spec.ts` |
 
 ## Geometry Regression
@@ -123,7 +124,13 @@ docker compose -f compose.e2e.yml run --rm e2e
 
 `placement.test.ts` separately covers collection-level ID allocation: empty list starts at `equipment-1`, gaps and deletes reuse the first free default ID, independent branches from `[]` are deterministic, custom factories are called once, blank custom IDs fall back to default allocation, and collisions use the first free suffix.
 
-`application-gravity.test.ts` checks the browser-free application seam: parsed JSON applies imported gravity to `AppStateController`, unrelated updates keep it in `makeProjectState()`, export/import preserves it without warnings, and reset returns gravity to `DEFAULT_GRAVITY_M_PER_S2`.
+`application-gravity.test.ts` checks the browser-free application seam: parsed JSON applies imported gravity to canonical inputs, unrelated updates preserve it through `ProjectStore`, export/import keeps it without warnings, and reset returns gravity to `DEFAULT_GRAVITY_M_PER_S2`.
+
+`derive.test.ts` checks `deriveProject(ProjectInputs)`: current/legacy modes, independent `B/H`, ЦВК, drawing coherence, constraints, custom density/gravity, equipment-only buoyancy discriminator and no console side effects.
+
+`dependency-contract.test.ts` walks the value-import runtime closure from `src/application/project/derive.ts` with the TypeScript compiler API and rejects adapter/browser/logger dependencies in the pure calculation graph.
+
+`projectEvaluationRuntime.test.ts` checks atomic publication semantics: derive failure keeps the previous pair, render failure publishes the new pair, and view-only rerender does not call derive.
 
 ## Coordinate and Migration Regressions
 
@@ -247,6 +254,7 @@ Playwright MCP предназначен для интерактивной про
 - баланс или warning codes;
 - DOM ids, которые использует `main.ts`;
 - нормализация пользовательского ввода.
+- application derive/runtime publication boundaries.
 
 ## See Also
 

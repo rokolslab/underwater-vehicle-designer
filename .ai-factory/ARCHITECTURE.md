@@ -4,7 +4,7 @@
 
 Underwater Vehicle Designer развивается как frontend-only модульный монолит. Расчётное ядро состоит из чистых TypeScript capabilities, application layer владеет каноническим состоянием проекта и последовательностью вычислений, а DOM, Canvas, Three.js, JSON и файловые операции остаются внешними adapters.
 
-Целевая схема развивает существующий код без big-bang rewrite. Текущие модули `geometry`, `equipment` и `balance` уже образуют полезное functional core, но состояние пока распределено между DOM controls и module-level переменными, а `main.ts` совмещает composition root и application controller. Первый архитектурный переход — ввести единые `ProjectInputs`, общий normalization pipeline и чистый `deriveProject()`.
+Целевая схема развивается без big-bang rewrite. Текущие модули `geometry`, `equipment` и `balance` уже образуют functional core, а первый архитектурный переход выполнен: canonical `ProjectInputs`, общий normalization seam, pure `deriveProject()` и browser-free runtime publication отделяют расчетный граф от DOM/render adapters. `main.ts` остается composition root и adapter wiring, но еще не является полноценным reducer/command bus.
 
 ## Обоснование решения
 
@@ -24,7 +24,7 @@ src/
 ├── app/
 │   ├── main.ts                 # Composition root и текущий application controller
 │   ├── appState.ts             # DOM-backed profile adapter, использует application normalization seam
-│   └── projectState.ts         # Временный aggregate текущего проекта
+│   └── projectEvaluationRuntime.ts # Atomic publication последней успешной ProjectEvaluation
 ├── modules/
 │   ├── geometry/               # Профиль, стратегии геометрии, сечения, theoretical drawing data
 │   ├── equipment/              # Модель, placement и constraints
@@ -48,8 +48,8 @@ src/
 │   │   ├── model.ts                    # ProjectInputs и ProjectViewState
 │   │   ├── defaults.ts
 │   │   ├── normalize.ts                # Общий normalization pipeline
+│   │   ├── derive.ts                   # Чистый deriveProject() для текущего расчетного графа
 │   │   ├── reducer.ts                  # Команды изменения проекта
-│   │   ├── derive.ts                   # Чистый deriveProject()
 │   │   └── store.ts                    # Каноническое application state
 │   └── diagnostics/
 │       └── model.ts                    # Коды и параметры диагностик
@@ -125,7 +125,7 @@ application не зависит от DOM, Canvas, Three.js и browser files.
 
 - `ProjectInputs` — канонические нормализованные пользовательские данные.
 - `ProjectViewState` — grid, points, camera и другие настройки отображения.
-- `ProjectEvaluation` — производные geometry, constraints, mass и hydrostatic results.
+- `ProjectEvaluation` — производные `ProfileSnapshot`, `TheoreticalDrawing`, constraints и текущий equipment-only balance result.
 - `HullGeometrySnapshot` — производная геометрия корпуса для расчётов и adapters.
 - `DesignSnapshot` — versioned immutable состояние для comparison.
 - `ProjectDocumentV3` и последующие версии — persistence DTO, а не domain state.
@@ -139,8 +139,11 @@ DOM event
   -> ProjectInputs
   -> deriveProject()
   -> ProjectEvaluation
+  -> ProjectEvaluationPublication { inputsSnapshot, evaluation }
   -> DOM / Canvas / Three.js / export adapters
 ```
+
+В текущей реализации `ProjectStore` уже коммитит canonical inputs, а `projectEvaluationRuntime` публикует новую coherent пару только после успешного derive. View-only события и resize повторно используют текущую publication без повторного engineering calculation.
 
 Импорт выполняется атомарно:
 
@@ -305,7 +308,7 @@ projectStore.subscribe(({ inputs, evaluation }) => {
 1. Закрепить integration tests для import/export, gravity и уникальности equipment IDs.
 2. Ввести канонические `ProjectInputs` и единый application API изменения состояния.
 3. Объединить DOM/JSON normalizers.
-4. Извлечь чистый `deriveProject()` и сократить `main.ts` до wiring.
+4. Извлечь чистый `deriveProject()` и сократить `main.ts` до wiring. ✅ Реализовано для текущих geometry/drawing/constraints/equipment balance.
 5. Разделить domain inputs, view settings и compatibility DTO.
 6. Ввести `SectionShape` до расширения legacy geometry.
 7. Разделить крупные orchestrators и adapters по lifecycle/ответственности.
