@@ -145,25 +145,25 @@ body.z = -old.y
 
 ## CSV Export
 
-CSV строится из `ProfileSnapshot.stationPoints`.
+CSV строится из `ProfileSnapshot.stationPoints` и экспортирует станции в Body/SNAME-NED координатах. Поле `s_m` сохраняется как traceability-координата профиля от носа к корме.
 
 Header:
 
 ```text
-N;s;radius_top;radius_bottom
+N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m
 ```
 
 Rows:
 
 ```text
-1;0;0;0
-2;0.15;0.33;-0.33
+1;0;3;0;0;0
+2;0.15;2.85;0.33;-0.33;0.33
 ...
 ```
 
 Разделитель — `;`. CSV соответствует панели `Параметрические точки профиля`.
 
-Колонки `radius_top` и `radius_bottom` остаются совместимым XZ-представлением по `halfHeightZ`. Полуширина `halfBreadthY` в этот CSV не добавляется, чтобы не менять существующий формат; точная эллиптическая геометрия доступна в `ProfileSnapshot` и 3D mesh.
+`body_x_m = L / 2 - s_m`, где `+X` направлен к носу. `half_breadth_y_m` задает точную полуось сечения по Body Y. `top_z_m = -halfHeightZ`, `bottom_z_m = +halfHeightZ`, потому что в SNAME/NED положительная Body Z направлена вниз.
 
 ## SVG Export: Side View
 

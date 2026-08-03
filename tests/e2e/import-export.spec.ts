@@ -132,8 +132,8 @@ test("SVG, CSV и теоретический SVG экспортируются и
 
   const csv = await downloadText(page, "#download-csv");
   expect(csv.filename).toBe("underwater-vehicle-profile.csv");
-  expect(csv.text).toContain("N;s;radius_top;radius_bottom");
-  expect(csv.text).toContain("23;8;0;0");
+  expect(csv.text).toContain("N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m");
+  expect(csv.text).toContain("23;8;-4;0;0;0");
 
   const theoreticalSvg = await downloadText(page, "#download-theoretical-drawing-svg");
   expect(theoreticalSvg.filename).toBe("underwater-vehicle-theoretical-drawing.svg");
