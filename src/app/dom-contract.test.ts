@@ -97,4 +97,19 @@ describe("app DOM contract", () => {
     expect(main).toContain("resizeObserver?.disconnect()");
     expect(main).toContain('window.addEventListener("resize", scheduleRenderResize)');
   });
+
+  it("keeps imported gravity wired through the application controller", () => {
+    const main = readFileSync("src/app/main.ts", "utf8");
+    const importGravity = main.indexOf("appState.applyImportedGravityMPerS2(project.balanceSettings.gravityMPerS2)");
+    const importUpdate = main.indexOf('update("height")', importGravity);
+    const reset = main.indexOf("appState.reset()");
+    const resetUpdate = main.indexOf('update("slenderness")', reset);
+
+    expect(importGravity).toBeGreaterThan(-1);
+    expect(importUpdate).toBeGreaterThan(importGravity);
+    expect(main).toContain("appState.makeCurrentBalanceSettings(readWaterDensity(waterDensityInput))");
+    expect(main).toContain("buildProjectJson(currentProjectState)");
+    expect(reset).toBeGreaterThan(-1);
+    expect(resetUpdate).toBeGreaterThan(reset);
+  });
 });
