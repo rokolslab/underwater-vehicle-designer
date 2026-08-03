@@ -185,7 +185,7 @@ Source: `.ai-factory/RESEARCH.md` (Active Summary, Updated: 2026-07-31 09:58, SH
 
 <!-- Commit checkpoint: задачи 1-5 -->
 
-- [ ] **Задача 6: Синхронизировать factual context и выполнить полные quality gates**
+- [x] **Задача 6: Синхронизировать factual context и выполнить полные quality gates**
   - В рамках разрешённых factual deltas `/aif-implement` обновить structural map/key entry points в `AGENTS.md`: добавить `commands.ts`/`reducer.ts`, уточнить роли `store.ts` и `main.ts`, зафиксировать pure/no-logger boundary.
   - В рамках разрешённого factual architecture delta `/aif-implement` обновить `.ai-factory/ARCHITECTURE.md`: заменить утверждение «ещё не reducer/command bus», скорректировать aspirational subscription example и сохранить явные import failure-ordering semantics. Если изменение выходит за factual delta, передать файл владельцу `/aif-architecture`.
   - Использовать единственный обязательный completion docs checkpoint `/aif-implement` с `/aif-docs` для `docs/architecture.md` и `docs/testing.md`: architecture описывает `DOM event → command → reducer → ProjectStore → explicit runtime commit → publication`, command scope, view-state boundary и отсутствие production subscription; testing описывает reducer/store matrix, dependency closure, no-log assertions и E2E gates.

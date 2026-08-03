@@ -11,20 +11,22 @@
 ```text
 index.html
   -> src/app/main.ts
-    -> appState / import adapters normalize inputs
-    -> ProjectStore commits canonical ProjectInputs
+    -> appState / import adapters normalize inputs into ProjectCommand
+    -> reduceProject() computes immutable ProjectInputs transition
+    -> ProjectStore.dispatch() commits canonical ProjectInputs
     -> deriveProject(ProjectInputs) creates ProjectEvaluation
     -> projectEvaluationRuntime publishes { inputsSnapshot, evaluation }
     -> adapters render Canvas, Three.js, tables, metrics and exports
 ```
 
-`main.ts` является composition root и browser controller. Он не содержит формул корпуса и больше не собирает временный `ProjectState`; производные данные создаются чистым `deriveProject()` и публикуются одной coherent парой через `src/app/projectEvaluationRuntime.ts`.
+`main.ts` является composition root и browser controller. Он не содержит формул корпуса и больше не собирает временный `ProjectState`; canonical mutations идут через typed `ProjectCommand` и `ProjectStore.dispatch()`, а производные данные создаются чистым `deriveProject()` и публикуются одной coherent парой через `src/app/projectEvaluationRuntime.ts`.
 
 ## Current Module Boundaries
 
 | Module | Responsibility | Must Not Do |
 | --- | --- | --- |
-| `src/app/` | Bootstrap, DOM wiring, runtime publication и adapter orchestration | Дублировать расчётные формулы |
+| `src/app/` | Bootstrap, DOM events → commands, explicit runtime commit и adapter orchestration | Дублировать расчётные формулы |
+| `src/application/project/` | Commands, reducer, store, normalization и `deriveProject()` | Импортировать DOM, rendering, persistence или logger в reducer/store |
 | `geometry/` | Профиль, стратегии геометрии, станции, theoretical drawing data | Читать DOM, Canvas или Three.js |
 | `equipment/` | Оборудование, placement, containment и intersections | Рендерить UI |
 | `balance/` | Equipment-only CG/CB, силы и stability diagnostics | Считать геометрию корпуса заново |
@@ -53,13 +55,15 @@ index.html
 ```text
 DOM event / JSON import
   -> normalize inputs
-  -> ProjectStore commit
+  -> ProjectCommand
+  -> reduceProject()
+  -> ProjectStore.dispatch()
   -> deriveProject(ProjectInputs)
   -> publish { inputsSnapshot, ProjectEvaluation }
   -> render adapters
 ```
 
-View-only события (`showGrid`, `showPoints`, 3D settings, resize) повторно используют текущую publication и не запускают `deriveProject()`. Если derive падает после canonical commit, store остается обновленным, а engineering rendering/export продолжает использовать предыдущую coherent publication; JSON export отражает свежий store.
+View-only события (`showGrid`, `showPoints`, 3D settings, resize) повторно используют текущую publication и не запускают `deriveProject()`. Production subscription `ProjectStore` → render не используется: `main.ts` явно вызывает runtime commit после changed command. Если derive падает после canonical commit, store остается обновленным, а engineering rendering/export продолжает использовать предыдущую coherent publication; JSON export отражает свежий store.
 
 ## Target Pattern
 
@@ -80,7 +84,7 @@ adapters ---------------------+
 | Layer | Responsibility |
 | --- | --- |
 | `core` | Geometry, equipment, constraints, mass properties, hydrostatics и другие pure calculations |
-| `application` | Канонический project state, commands, normalization и `deriveProject()` |
+| `application` | Канонический project state, commands, reducer, normalization и `deriveProject()` |
 | `adapters` | DOM, Canvas, Three.js, JSON, CSV, SVG, browser files и logging |
 | `app` | Создание зависимостей, subscriptions и startup |
 
@@ -92,7 +96,8 @@ DOM становится adapter, а не источником истины:
 
 ```text
 DOM event
-  -> application command
+  -> ProjectCommand
+  -> reduceProject()
   -> ProjectStore
   -> canonical ProjectInputs
   -> deriveProject()
@@ -108,11 +113,14 @@ File
   -> schema migration
   -> shared normalization
   -> ReplaceProject command
+  -> replace ProjectViewState
+  -> ProjectStore.dispatch()
+  -> write controls
   -> deriveProject()
-  -> render
+  -> publish/render
 ```
 
-Запись JSON-данных в controls с последующим чтением обратно не входит в целевую архитектуру.
+Запись JSON-данных в controls с последующим чтением обратно не входит в целевую архитектуру. Ошибка чтения/prepare до dispatch не меняет store/view; ошибка controls или render после dispatch не откатывает canonical state.
 
 ## State Contracts
 
@@ -201,7 +209,7 @@ Rendering и engineering export не пересчитывают geometry или 
 | --- | --- |
 | Core calculations | Unit, invariants и fixture regressions |
 | Coordinates | Frame conversions и signs |
-| Application | Commands, normalization и `deriveProject()` |
+| Application | Commands, reducer/store matrix, normalization и `deriveProject()` |
 | Persistence | Migration, normalization и round-trip |
 | Rendering data | Mesh/drawing primitives без WebGL |
 | Browser adapters | Targeted integration или Playwright smoke |
@@ -210,7 +218,7 @@ Rendering и engineering export не пересчитывают geometry или 
 ## Evolution Order
 
 1. Закрепить import/export integration tests, включая gravity и уникальность equipment IDs.
-2. Ввести canonical `ProjectInputs` и единый application API.
+2. Ввести canonical `ProjectInputs` и единый command/reducer/store API. ✅ Реализовано для текущих canonical mutations.
 3. Объединить DOM и JSON normalization.
 4. Извлечь pure `deriveProject()` и оставить в `main.ts` только wiring. ✅ Реализовано для текущих geometry/drawing/constraints/equipment-only balance.
 5. Разделить domain inputs, view settings и persistence DTO.

@@ -21,6 +21,13 @@ docker compose run --rm app npm run test
 docker compose run --rm app npm run build
 ```
 
+Playwright E2E через project e2e service:
+
+```bash
+docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm install
+docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
+```
+
 Browser E2E через Playwright требует установленный браузер:
 
 ```bash
@@ -36,10 +43,10 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
 
 Текущий Docker app image основан на Alpine и не является основным окружением для browser automation. Для CI/browser smoke предпочтительнее запускать Playwright локально или в отдельном Playwright container image.
 
-Docker-запуск через официальный Playwright image:
+Docker-запуск через официальный Playwright image после установки зависимостей в e2e volume:
 
 ```bash
-docker compose -f compose.e2e.yml run --rm e2e
+docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 ```
 
 ## Test Layout
@@ -55,7 +62,7 @@ docker compose -f compose.e2e.yml run --rm e2e
 | `src/modules/persistence/` | `csv.test.ts`, `svg.test.ts`, `project-json.test.ts` |
 | `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts` |
 | `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `projectEvaluationRuntime.test.ts`, `dom-contract.test.ts` |
-| `src/application/project/` | `derive.test.ts`, `dependency-contract.test.ts`, `normalize.test.ts`, `store.test.ts` |
+| `src/application/project/` | `derive.test.ts`, `dependency-contract.test.ts`, `normalize.test.ts`, `reducer.test.ts`, `store.test.ts` |
 | `tests/e2e/` | `import-export.spec.ts` |
 
 ## Geometry Regression
@@ -122,15 +129,17 @@ docker compose -f compose.e2e.yml run --rm e2e
 - import → `addEquipmentItem()` uniqueness for IDs like `equipment-1`;
 - rejection of invalid JSON/root/schema.
 
-`placement.test.ts` separately covers collection-level ID allocation: empty list starts at `equipment-1`, gaps and deletes reuse the first free default ID, independent branches from `[]` are deterministic, custom factories are called once, blank custom IDs fall back to default allocation, and collisions use the first free suffix.
+`placement.test.ts` separately covers logger-free equipment transitions and collection-level ID allocation: empty list starts at `equipment-1`, gaps and deletes reuse the first free default ID, independent branches from `[]` are deterministic, custom factories are called once, blank custom IDs fall back to default allocation, and collisions use the first free suffix.
 
-`application-gravity.test.ts` checks the browser-free application seam: parsed JSON applies imported gravity to canonical inputs, unrelated updates preserve it through `ProjectStore`, export/import keeps it without warnings, and reset returns gravity to `DEFAULT_GRAVITY_M_PER_S2`.
+`application-gravity.test.ts` checks the browser-free application seam: parsed JSON applies imported gravity to canonical inputs, unrelated `ProjectCommand` dispatches preserve it through `ProjectStore`, export/import keeps it without warnings, and reset returns gravity to `DEFAULT_GRAVITY_M_PER_S2`.
+
+`reducer.test.ts` covers every `ProjectCommand` variant, caller ownership, deep freeze, structural sharing, no-op rules, deterministic equipment IDs, shape defaults, unknown equipment IDs and preservation of `gravityMPerS2` on unrelated commands.
 
 `derive.test.ts` checks `deriveProject(ProjectInputs)`: current/legacy modes, independent `B/H`, ЦВК, drawing coherence, constraints, custom density/gravity, equipment-only buoyancy discriminator and no console side effects.
 
-`dependency-contract.test.ts` walks the value-import runtime closure from `src/application/project/derive.ts` with the TypeScript compiler API and rejects adapter/browser/logger dependencies in the pure calculation graph.
+`dependency-contract.test.ts` walks value-import runtime closures from `derive.ts`, `reducer.ts` and `store.ts` with the TypeScript compiler API and rejects adapter/browser/logger dependencies in the pure calculation and application mutation graph.
 
-`projectEvaluationRuntime.test.ts` checks atomic publication semantics: derive failure keeps the previous pair, render failure publishes the new pair, and view-only rerender does not call derive.
+`projectEvaluationRuntime.test.ts` checks atomic publication semantics and explicit harness `dispatch result -> runtime.commit`: derive failure keeps the previous pair, render failure publishes the new pair, changed commands call derive once, no-op commands and view-only rerender do not call derive.
 
 ## Coordinate and Migration Regressions
 
@@ -149,7 +158,7 @@ docker compose -f compose.e2e.yml run --rm e2e
 
 ## Browser E2E Tests
 
-`tests/e2e/import-export.spec.ts` запускает приложение в Chromium и проверяет пользовательский workflow: импорт JSON v2 с `gravityMPerS2`, отображение импортированного оборудования, добавление нового оборудования без collision по ID, экспорт проекта и сохранение `gravityMPerS2`, `waterDensityKgPerM3` и уникальных `equipment.id`.
+`tests/e2e/import-export.spec.ts` запускает приложение в Chromium и проверяет пользовательские workflow: импорт JSON v2 с `gravityMPerS2`, отображение импортированного оборудования, добавление нового оборудования без collision по ID, экспорт проекта и сохранение `gravityMPerS2`, `waterDensityKgPerM3` и уникальных `equipment.id`; reset после import; invalid JSON nonmutation после изменений; SVG/CSV/theoretical SVG exports; mobile viewport без горизонтального overflow.
 
 ## Encoding Check
 
@@ -225,7 +234,7 @@ Current run, 2026-07-27:
 - production image build passed после явного production build; checklist выше использует отдельный `APP_IMAGE`, чтобы не перезаписывать development image tag;
 - production `/healthz` returned `ok` and `/` returned `HTTP/1.1 200 OK` on `127.0.0.1:80`;
 - Docker health status reached `healthy`;
-- desktop browser and smartphone/emulated viewport smoke не были выполнены в запуске 2026-07-27; в репозитории по-прежнему нет committed browser test suite, но проектный `opencode.json` теперь предоставляет Playwright MCP для agent-assisted smoke.
+- desktop browser and smartphone/emulated viewport smoke не были выполнены в запуске 2026-07-27; последующие версии добавили committed Playwright suite `tests/e2e/import-export.spec.ts` для основных import/export/reset/mobile сценариев.
 
 ## Agent-Assisted Browser Smoke
 
@@ -241,7 +250,7 @@ npx -y @playwright/mcp@latest
 opencode mcp list
 ```
 
-Playwright MCP предназначен для интерактивной проверки работающего приложения через OpenCode. Он не заменяет `npm run test` и пока не является committed end-to-end test suite. После изменения `opencode.json` перезапустите OpenCode, потому что текущая сессия не перечитывает configuration автоматически.
+Playwright MCP предназначен для интерактивной проверки работающего приложения через OpenCode. Он дополняет committed `npm run test:e2e`, но не заменяет Vitest, build и encoding gates. После изменения `opencode.json` перезапустите OpenCode, потому что текущая сессия не перечитывает configuration автоматически.
 
 ## When to Add Tests
 
