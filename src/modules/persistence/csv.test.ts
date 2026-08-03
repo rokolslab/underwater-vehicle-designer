@@ -32,7 +32,7 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
 });
 
 describe("csv export", () => {
-  it("preserves current semicolon-separated station export", () => {
+  it("exports semicolon-separated station coordinates in Body/SNAME-NED", () => {
     const snapshot = makeProfileSnapshot({
       length: 6,
       breadth: 2,
@@ -48,10 +48,10 @@ describe("csv export", () => {
     const csv = buildCsv(snapshot);
     const rows = csv.split("\n");
 
-    expect(rows[0]).toBe("N;s;radius_top;radius_bottom");
+    expect(rows[0]).toBe("N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m");
     expect(rows).toHaveLength(24);
-    expect(rows[1]).toBe("1;0;0;0");
-    expect(rows.at(-1)).toBe("23;6;0;0");
+    expect(rows[1]).toBe("1;0;3;0;0;0");
+    expect(rows.at(-1)).toBe("23;6;-3;0;0;0");
   });
 
   it("keeps station coordinates within the declared total length when insert is present", () => {
@@ -69,16 +69,16 @@ describe("csv export", () => {
 
     const rows = buildCsv(snapshot).split("\n");
 
-    expect(rows.at(-1)).toBe("23;6;0;0");
+    expect(rows.at(-1)).toBe("23;6;-3;0;0;0");
   });
 
-  it("keeps existing scalar columns and uses snapshot station ordinates", () => {
+  it("uses exact snapshot half breadth and half height section extents", () => {
     const rows = buildCsv(snapshotFromRows).split("\n");
 
     expect(rows).toEqual([
-      "N;s;radius_top;radius_bottom",
-      "1;0;0.25;-0.35",
-      "2;1;0.45;-0.55",
+      "N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m",
+      "1;0;0.5;0.8;-0.1;0.1",
+      "2;1;-0.5;0.9;-0.2;0.2",
     ]);
   });
 });

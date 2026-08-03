@@ -133,31 +133,37 @@ body.z = -old.y
 | `equipment.orientation` | неизвестное значение -> `x` |
 | `equipment.massKg` | `> 0` |
 | dimensions | `> 0` |
-| duplicate ids | получают suffix `-index` |
+| duplicate ids | получают первый свободный collision-safe suffix |
+| `balanceSettings.waterDensityKgPerM3` | `> 0`, fallback на default воды |
+| `balanceSettings.gravityMPerS2` | `> 0`, fallback на default gravity |
 
 Ошибки JSON syntax, root type, schema version и отсутствие `project` возвращают `ok: false`.
 
+`waterDensityKgPerM3` доступен в UI, а `gravityMPerS2` остается скрытой настройкой проекта: импортированное положительное значение сохраняется через application workflow, экспорт и повторный импорт. Общий reset возвращает gravity к `DEFAULT_GRAVITY_M_PER_S2`.
+
+Уникальность `equipment.id` гарантируется на import normalization boundary и при последующем `addEquipmentItem()`. Уже уникальные ID не переименовываются. При конфликте requested ID считается opaque строкой: если `payload` занят и `payload-3` тоже занят, следующий duplicate `payload` станет `payload-4`; это не обещание одной попытки `-index`, а поиск первого свободного suffix. После нормализованного import → export → import повторный import не должен создавать новые duplicate-ID warnings.
+
 ## CSV Export
 
-CSV строится из `ProfileSnapshot.stationPoints`.
+CSV строится из `ProfileSnapshot.stationPoints` и экспортирует станции в Body/SNAME-NED координатах. Поле `s_m` сохраняется как traceability-координата профиля от носа к корме.
 
 Header:
 
 ```text
-N;s;radius_top;radius_bottom
+N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m
 ```
 
 Rows:
 
 ```text
-1;0;0;0
-2;0.15;0.33;-0.33
+1;0;3;0;0;0
+2;0.15;2.85;0.33;-0.33;0.33
 ...
 ```
 
 Разделитель — `;`. CSV соответствует панели `Параметрические точки профиля`.
 
-Колонки `radius_top` и `radius_bottom` остаются совместимым XZ-представлением по `halfHeightZ`. Полуширина `halfBreadthY` в этот CSV не добавляется, чтобы не менять существующий формат; точная эллиптическая геометрия доступна в `ProfileSnapshot` и 3D mesh.
+`body_x_m = L / 2 - s_m`, где `+X` направлен к носу. `half_breadth_y_m` задает точную полуось сечения по Body Y. `top_z_m = -halfHeightZ`, `bottom_z_m = +halfHeightZ`, потому что в SNAME/NED положительная Body Z направлена вниз.
 
 ## SVG Export: Side View
 
@@ -197,6 +203,8 @@ Rows:
 - Новые поля JSON должны иметь fallback при импорте.
 - `profile.geometryMode` остается optional в JSON v2; missing defaults to `current-formula`, unsupported values normalize with warning.
 - `profile.breadth`/`profile.height` остаются optional в JSON v2; missing dimensions fall back through `diameter`, then `length / slenderness`.
+- `balanceSettings.waterDensityKgPerM3` и `balanceSettings.gravityMPerS2` входят в JSON v2; gravity не имеет отдельного UI control, но импортированное значение сохраняется до reset.
+- `equipment.id` должен оставаться уникальным после import и после добавления нового оборудования; collision suffix выбирается как первый свободный.
 - CSV должен оставаться построенным из `stationPoints`.
 - SVG не должен пересчитывать геометрию независимо от `ProfileSnapshot`.
 - Русские UI-строки должны проходить `npm run check:encoding`.

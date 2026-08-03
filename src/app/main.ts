@@ -1,7 +1,7 @@
 import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
 import { makeProjectState, type ProjectState } from "./projectState";
-import { calculateEquipmentBalance, DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../modules/balance/equipment-balance";
+import { calculateEquipmentBalance, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../modules/balance/equipment-balance";
 import type { EquipmentBalanceResult } from "../modules/balance/model";
 import { evaluateEquipmentConstraints, type EquipmentConstraintReport } from "../modules/equipment/constraints";
 import { addEquipmentItem, deleteEquipmentItem, updateEquipmentItem } from "../modules/equipment/placement";
@@ -242,10 +242,12 @@ function applyImportedProject(project: SerializableProjectState): void {
   equipmentItems = project.equipment;
   writeScene3dControls(scene3dControls, project.scene3dSettings);
   writeNumericInput(waterDensityInput, project.balanceSettings.waterDensityKgPerM3);
+  appState.applyImportedGravityMPerS2(project.balanceSettings.gravityMPerS2);
   update("height");
   logger.info("project json import applied", {
     equipmentCount: project.equipment.length,
     waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
+    gravityMPerS2: currentProjectState.balanceSettings.gravityMPerS2,
   });
 }
 
@@ -316,10 +318,7 @@ function update(source: LastEdited = appState.getLastEdited()): void {
     maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
     maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
   });
-  const balanceSettings = {
-    waterDensityKgPerM3: readWaterDensity(waterDensityInput),
-    gravityMPerS2: DEFAULT_GRAVITY_M_PER_S2,
-  };
+  const balanceSettings = appState.makeCurrentBalanceSettings(readWaterDensity(waterDensityInput));
   currentProjectState = makeProjectState(profile, equipmentItems, scene3dSettings, balanceSettings);
 
   try {

@@ -1,3 +1,5 @@
+import { DEFAULT_GRAVITY_M_PER_S2 } from "../modules/balance/equipment-balance";
+import type { BalanceSettings } from "../modules/balance/model";
 import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../modules/geometry/model";
 import { clampNumber } from "../shared/math";
 import { logger } from "../shared/logger";
@@ -17,12 +19,15 @@ const defaults = {
 
 export interface AppStateController {
   readonly readState: (source?: LastEdited) => ProfileState;
+  readonly applyImportedGravityMPerS2: (gravityMPerS2: number) => void;
+  readonly makeCurrentBalanceSettings: (waterDensityKgPerM3: number) => BalanceSettings;
   readonly reset: () => ProfileState;
   readonly getLastEdited: () => LastEdited;
 }
 
 export function createAppStateController(inputs: ControlElements): AppStateController {
   let lastEdited: LastEdited = "slenderness";
+  let currentGravityMPerS2 = DEFAULT_GRAVITY_M_PER_S2;
 
   function readState(source: LastEdited = lastEdited): ProfileState {
     lastEdited = source;
@@ -83,6 +88,20 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     return state;
   }
 
+  function applyImportedGravityMPerS2(gravityMPerS2: number): void {
+    currentGravityMPerS2 = clampNumber(gravityMPerS2, DEFAULT_GRAVITY_M_PER_S2, Number.EPSILON);
+    logger.debug("app state imported gravity applied", { gravityMPerS2: currentGravityMPerS2 });
+  }
+
+  function makeCurrentBalanceSettings(waterDensityKgPerM3: number): BalanceSettings {
+    const balanceSettings = Object.freeze({
+      waterDensityKgPerM3,
+      gravityMPerS2: currentGravityMPerS2,
+    });
+    logger.debug("app state balance settings assembled", balanceSettings);
+    return balanceSettings;
+  }
+
   function reset(): ProfileState {
     logger.debug("app state reset");
     inputs.length.value = String(defaults.length);
@@ -95,11 +114,14 @@ export function createAppStateController(inputs: ControlElements): AppStateContr
     inputs.showGrid.checked = true;
     inputs.showPoints.checked = true;
     lastEdited = "slenderness";
+    currentGravityMPerS2 = DEFAULT_GRAVITY_M_PER_S2;
     return readState("slenderness");
   }
 
   return {
     readState,
+    applyImportedGravityMPerS2,
+    makeCurrentBalanceSettings,
     reset,
     getLastEdited: () => lastEdited,
   };

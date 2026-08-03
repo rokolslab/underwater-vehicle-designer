@@ -30,12 +30,24 @@ const defaults = {
   heightZ: 0.4,
 };
 
-let nextGeneratedId = 1;
+function allocateDefaultEquipmentId(occupiedIds: ReadonlySet<string>): string {
+  let suffix = 1;
+  while (occupiedIds.has(`equipment-${suffix}`)) suffix += 1;
+  return `equipment-${suffix}`;
+}
 
-function defaultIdFactory(): string {
-  const id = `equipment-${nextGeneratedId}`;
-  nextGeneratedId += 1;
-  return id;
+export function allocateUniqueEquipmentId(
+  requestedId: string | undefined,
+  occupiedIds: ReadonlySet<string>,
+  preferredSuffix: number,
+): string {
+  const normalizedRequestedId = requestedId?.trim() ?? "";
+  if (!normalizedRequestedId) return allocateDefaultEquipmentId(occupiedIds);
+  if (!occupiedIds.has(normalizedRequestedId)) return normalizedRequestedId;
+
+  let suffix = Math.max(2, Math.floor(preferredSuffix));
+  while (occupiedIds.has(`${normalizedRequestedId}-${suffix}`)) suffix += 1;
+  return `${normalizedRequestedId}-${suffix}`;
 }
 
 function normalizePositive(value: unknown, fallback: number, field: string, id: string): number {
@@ -130,22 +142,28 @@ function createItem(id: string, shape: EquipmentShape, name: string): EquipmentI
   return Object.freeze({ ...base, shape, dimensions: defaultBoxDimensions() });
 }
 
-export function createDefaultEquipmentItem(options: CreateEquipmentOptions = {}): EquipmentItem {
+function makeDefaultEquipmentItem(id: string, options: CreateEquipmentOptions = {}): EquipmentItem {
   const shape = options.shape ?? "sphere";
-  const id = (options.idFactory ?? defaultIdFactory)();
   const name = normalizeName(options.name, "Оборудование");
   const item = createItem(id, shape, name);
   logger.debug("equipment item created", { id, shape, name });
   return item;
 }
 
+export function createDefaultEquipmentItem(options: CreateEquipmentOptions = {}): EquipmentItem {
+  const id = allocateUniqueEquipmentId(options.idFactory?.(), new Set<string>(), 1);
+  return makeDefaultEquipmentItem(id, options);
+}
+
 export function addEquipmentItem(
   items: readonly EquipmentItem[],
   options: CreateEquipmentOptions = {},
 ): readonly EquipmentItem[] {
-  const item = createDefaultEquipmentItem(options);
+  const occupiedIds = new Set(items.map((item) => item.id));
+  const id = allocateUniqueEquipmentId(options.idFactory?.(), occupiedIds, items.length + 1);
+  const item = makeDefaultEquipmentItem(id, options);
   const next = Object.freeze([...items, item]);
-  logger.debug("equipment item added", { id: item.id, shape: item.shape, count: next.length });
+  logger.debug("equipment item added", { id: item.id, shape: item.shape, occupiedIdCount: occupiedIds.size, count: next.length });
   return next;
 }
 
