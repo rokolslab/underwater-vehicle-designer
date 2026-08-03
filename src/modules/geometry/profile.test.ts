@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import formulaFixture from "../../../tests/fixtures/formula-profile.json";
 import {
   cylindricalInsertLengthToLegacyLc,
@@ -100,12 +100,12 @@ describe("profile geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     expect(snapshot.state.diameter).toBe(2);
     expect(snapshot.state.cylindricalInsertLength).toBe(2);
+    expect(snapshot.state).not.toHaveProperty("showGrid");
+    expect(snapshot.state).not.toHaveProperty("showPoints");
     expect(snapshot.extents.totalLength).toBe(6);
     expect(snapshot.extents.maxHalfBreadthY).toBeCloseTo(snapshot.extents.maxRadius, 12);
     expect(snapshot.extents.maxHalfHeightZ).toBeCloseTo(snapshot.extents.maxRadius, 12);
@@ -123,8 +123,6 @@ describe("profile geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 1,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
     const maxPoint = snapshot.smoothPoints.find((point) => point.s === snapshot.extents.maxRadiusS);
 
@@ -192,8 +190,6 @@ describe("profile geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 10,
-      showGrid: true,
-      showPoints: true,
     });
     const plateauPoint = snapshot.smoothPoints.find((point) => point.s === 4);
 
@@ -217,13 +213,40 @@ describe("profile geometry", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 10,
-      showGrid: true,
-      showPoints: true,
     });
     const plateauPoint = snapshot.smoothPoints.find((point) => point.s === 4);
 
     expect(plateauPoint?.halfBreadthY).toBeCloseTo(2, 12);
     expect(plateauPoint?.halfHeightZ).toBeCloseTo(1, 12);
     expect(plateauPoint?.radius).toBeCloseTo(1, 12);
+  });
+
+  it("does not write console output from pure profile snapshot calculation", () => {
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const consoleDebug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      makeProfileSnapshot({
+        geometryMode: "legacy-dsnp-pa",
+        length: 10,
+        breadth: 4,
+        height: 2,
+        slenderness: 5,
+        diameter: 2,
+        cylindricalInsertLength: 2,
+        stations: 10,
+      });
+
+      expect(consoleInfo).not.toHaveBeenCalled();
+      expect(consoleDebug).not.toHaveBeenCalled();
+      expect(consoleWarn).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleInfo.mockRestore();
+      consoleDebug.mockRestore();
+      consoleWarn.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });

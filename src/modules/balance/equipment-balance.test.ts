@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import type { EquipmentItem } from "../equipment/model";
 import { calculateEquipmentBalance, DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "./equipment-balance";
 
@@ -121,5 +121,25 @@ describe("equipment balance", () => {
   it("preserves normalized tolerance in an invalid result", () => {
     expect(calculateEquipmentBalance({ equipment: [], alignmentToleranceM: 0.25 }).alignmentToleranceM).toBe(0.25);
     expect(calculateEquipmentBalance({ equipment: [], alignmentToleranceM: -1 }).alignmentToleranceM).toBe(0.001);
+  });
+
+  it("does not write console output from pure balance calculation", () => {
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const consoleDebug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      calculateEquipmentBalance({ equipment: [{ ...sphere, massKg: 10_000, displacedVolume: 0.01 }] });
+
+      expect(consoleInfo).not.toHaveBeenCalled();
+      expect(consoleDebug).not.toHaveBeenCalled();
+      expect(consoleWarn).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleInfo.mockRestore();
+      consoleDebug.mockRestore();
+      consoleWarn.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });

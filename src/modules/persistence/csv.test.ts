@@ -13,8 +13,6 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
     diameter: 9,
     cylindricalInsertLength: 0,
     stations: 3,
-    showGrid: true,
-    showPoints: true,
   }),
   smoothPoints: Object.freeze([]),
   stationPoints: Object.freeze([
@@ -41,8 +39,6 @@ describe("csv export", () => {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     const csv = buildCsv(snapshot);
@@ -63,8 +59,6 @@ describe("csv export", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     const rows = buildCsv(snapshot).split("\n");

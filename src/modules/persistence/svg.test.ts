@@ -13,8 +13,6 @@ const snapshotFromProfilePoints: ProfileSnapshot = Object.freeze({
     diameter: 9,
     cylindricalInsertLength: 0,
     stations: 3,
-    showGrid: true,
-    showPoints: true,
   }),
   smoothPoints: Object.freeze([
     Object.freeze({ s: 0, radius: 0.2, halfBreadthY: 0.8, halfHeightZ: 0.2 }),
@@ -44,8 +42,6 @@ describe("svg export", () => {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     const svg = buildSvg(snapshot);
@@ -69,8 +65,6 @@ describe("svg export", () => {
       diameter: 2,
       cylindricalInsertLength: 2,
       stations: 20,
-      showGrid: true,
-      showPoints: true,
     });
 
     const svg = buildSvg(snapshot);

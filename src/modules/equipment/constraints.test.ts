@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeProfileSnapshot } from "../geometry/profile";
 import type { ProfileSnapshot } from "../geometry/model";
 import type { EquipmentAxis, EquipmentItem } from "./model";
@@ -13,8 +13,6 @@ function snapshot(overrides: Partial<ProfileSnapshot["state"]> = {}): ProfileSna
     diameter: 2,
     cylindricalInsertLength: 0,
     stations: 10,
-    showGrid: true,
-    showPoints: true,
     ...overrides,
   });
 }
@@ -29,8 +27,6 @@ function ellipticalSnapshot(): ProfileSnapshot {
     diameter: 4,
     cylindricalInsertLength: 0,
     stations: 2,
-    showGrid: true,
-    showPoints: true,
   });
   const smoothPoints = Object.freeze(
     [0, 5, 10].map((s) => Object.freeze({ s, radius: 1, halfBreadthY: 2, halfHeightZ: 1 })),
@@ -256,5 +252,28 @@ describe("equipment constraints", () => {
 
     expect(equipmentStatus(report, "outside")).toBe("outsideHull");
     expect(equipmentIssues(report, "outside").some((issue) => issue.reason === "intersects")).toBe(true);
+  });
+
+  it("does not write console output from pure constraint evaluation", () => {
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const consoleDebug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      evaluateEquipmentConstraints(snapshot(), [
+        sphere("outside", { x: 1, y: 1.2, z: 0 }, 0.3),
+        sphere("other", { x: 1.2, y: 1.2, z: 0 }, 0.3),
+      ]);
+
+      expect(consoleInfo).not.toHaveBeenCalled();
+      expect(consoleDebug).not.toHaveBeenCalled();
+      expect(consoleWarn).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleInfo.mockRestore();
+      consoleDebug.mockRestore();
+      consoleWarn.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });

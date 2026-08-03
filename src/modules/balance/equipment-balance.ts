@@ -4,7 +4,6 @@ import {
   validateEquipmentItem,
   type EquipmentItem,
 } from "../equipment/model";
-import { logger } from "../../shared/logger";
 import type { BodyPoint3, BodyVector3 } from "../../shared/body-coordinates";
 import type { BalanceWarning, BalanceWarningCode, EquipmentBalanceInput, EquipmentBalanceResult } from "./model";
 import { calculateStability, normalizeAlignmentToleranceM } from "./stability";
@@ -26,9 +25,7 @@ function isPositiveFinite(value: number): boolean {
 }
 
 function warning(code: BalanceWarningCode, message: string, equipmentId?: string): BalanceWarning {
-  const item = Object.freeze({ code, message, ...(equipmentId ? { equipmentId } : {}) });
-  logger.warn("equipment balance warning", { code, equipmentId });
-  return item;
+  return Object.freeze({ code, message, ...(equipmentId ? { equipmentId } : {}) });
 }
 
 function addWeightedVector(current: BodyVector3, center: BodyPoint3, weight: number): BodyVector3 {
@@ -111,12 +108,6 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
     ),
   );
 
-  logger.debug("equipment balance calculation started", {
-    equipmentCount: input.equipment.length,
-    waterDensityKgPerM3,
-    gravityMPerS2,
-  });
-
   if (input.equipment.length === 0) {
     warnings.push(warning("emptyEquipment", "No equipment is available for balance calculation."));
   }
@@ -137,12 +128,6 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
     !isPositiveFinite(accumulator.totalMassKg) ||
     !isPositiveFinite(accumulator.displacedVolumeM3)
   ) {
-    logger.debug("equipment balance calculation completed", {
-      equipmentCount: input.equipment.length,
-      totalMassKg: accumulator.totalMassKg,
-      displacedVolumeM3: accumulator.displacedVolumeM3,
-      warningCount: warnings.length,
-    });
     return emptyResult(warnings, alignmentToleranceM);
   }
 
@@ -165,32 +150,18 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
 
   if (netBuoyancyN <= 0) {
     warnings.push(warning("nonPositiveBuoyancy", "Net buoyancy is zero or negative."));
-    logger.warn("equipment balance has non-positive buoyancy", { netBuoyancyN });
   }
 
   if (!stability.isVerticallyStable) {
     warnings.push(warning("unstableVerticalCenters", "Center of buoyancy is not above center of gravity in body/NED."));
-    logger.warn("equipment balance has non-positive BG", {
-      bgM: stability.bgM,
-      centerOfGravityZ: centerOfGravity.z,
-      centerOfBuoyancyZ: centerOfBuoyancy.z,
-    });
   }
 
   if (Math.abs(stability.deltaX) > stability.alignmentToleranceM) {
     warnings.push(warning("longitudinalCentersMisaligned", "Longitudinal CG/CB offset exceeds tolerance."));
-    logger.warn("equipment balance longitudinal centers exceed tolerance", {
-      deltaX: stability.deltaX,
-      alignmentToleranceM: stability.alignmentToleranceM,
-    });
   }
 
   if (Math.abs(stability.deltaY) > stability.alignmentToleranceM) {
     warnings.push(warning("transverseCentersMisaligned", "Transverse CG/CB offset exceeds tolerance."));
-    logger.warn("equipment balance transverse centers exceed tolerance", {
-      deltaY: stability.deltaY,
-      alignmentToleranceM: stability.alignmentToleranceM,
-    });
   }
 
   const result = Object.freeze({
@@ -214,21 +185,6 @@ export function calculateEquipmentBalance(input: EquipmentBalanceInput): Equipme
     momentNm: stability.momentNm,
     restoringMomentNm: stability.restoringMomentNm,
     warnings: Object.freeze([...warnings]),
-  });
-
-  logger.debug("equipment balance calculation completed", {
-    equipmentCount: input.equipment.length,
-    totalMassKg: result.totalMassKg,
-    displacedVolumeM3: result.displacedVolumeM3,
-    netBuoyancyN: result.netBuoyancyN,
-    deltaX: result.deltaX,
-    deltaY: result.deltaY,
-    bgM: result.bgM,
-    restoringMomentNm: result.restoringMomentNm,
-    alignmentToleranceM: result.alignmentToleranceM,
-    momentNm: result.momentNm,
-    momentOrigin: input.momentOrigin ?? zeroVector,
-    warningCount: result.warnings.length,
   });
 
   return result;

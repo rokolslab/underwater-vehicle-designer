@@ -145,7 +145,7 @@ function renderCurrentViewsForSize(): void {
     return;
   }
 
-  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderCanvasProfile(canvas, currentSnapshot, projectViewState, currentProjectState.equipment, currentConstraintReport);
   renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
   hullScene3d.resize();
 }
@@ -398,7 +398,7 @@ function renderCommittedState(inputsSnapshot: ProjectInputs, view: ProjectViewSt
     balanceWarningCount: currentBalanceResult.warnings.length,
   });
 
-  renderCanvasProfile(canvas, currentSnapshot, currentProjectState.equipment, currentConstraintReport);
+  renderCanvasProfile(canvas, currentSnapshot, view, currentProjectState.equipment, currentConstraintReport);
   renderTheoreticalDrawing(theoreticalDrawingCanvas, currentTheoreticalDrawing);
   renderEquipment();
   renderTable(tableBody, pointCountEl, currentSnapshot);

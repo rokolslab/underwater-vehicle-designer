@@ -1,6 +1,75 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EquipmentItem } from "../equipment/model";
-import { equipmentXzProjection } from "./canvas2d";
+import type { ProfileSnapshot } from "../geometry/model";
+import { equipmentXzProjection, renderCanvasProfile } from "./canvas2d";
+
+const snapshot: ProfileSnapshot = Object.freeze({
+  state: Object.freeze({
+    geometryMode: "current-formula",
+    length: 2,
+    breadth: 1,
+    height: 1,
+    slenderness: 2,
+    diameter: 1,
+    cylindricalInsertLength: 0,
+    stations: 2,
+  }),
+  smoothPoints: Object.freeze([
+    Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+    Object.freeze({ s: 1, radius: 0.5, halfBreadthY: 0.5, halfHeightZ: 0.5 }),
+    Object.freeze({ s: 2, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+  ]),
+  stationPoints: Object.freeze([
+    Object.freeze({ s: 1, radius: 0.5, halfBreadthY: 0.5, halfHeightZ: 0.5, topRadius: 0.5, bottomRadius: -0.5 }),
+  ]),
+  extents: Object.freeze({
+    maxRadius: 0.5,
+    maxHalfBreadthY: 0.5,
+    maxHalfHeightZ: 0.5,
+    maxHeight: 1,
+    maxRadiusS: 1,
+    totalLength: 2,
+  }),
+});
+
+function makeContext() {
+  return {
+    save: vi.fn(),
+    restore: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    fill: vi.fn(),
+    fillText: vi.fn(),
+    setTransform: vi.fn(),
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    setLineDash: vi.fn(),
+    closePath: vi.fn(),
+    arc: vi.fn(),
+    ellipse: vi.fn(),
+    rect: vi.fn(),
+    strokeStyle: "",
+    fillStyle: "",
+    lineWidth: 1,
+    font: "",
+  } as unknown as CanvasRenderingContext2D & { fillText: ReturnType<typeof vi.fn>; arc: ReturnType<typeof vi.fn> };
+}
+
+function makeCanvas(context: CanvasRenderingContext2D): HTMLCanvasElement {
+  return {
+    id: "profile-canvas",
+    width: 0,
+    height: 0,
+    getBoundingClientRect: () => ({ width: 600, height: 300 }),
+    getContext: () => context,
+  } as unknown as HTMLCanvasElement;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("equipment XZ projection", () => {
   it("uses Body x/z and lengthX/heightZ for a non-cubic box", () => {
@@ -37,5 +106,27 @@ describe("equipment XZ projection", () => {
     };
 
     expect(equipmentXzProjection(item)).toMatchObject({ halfWidth, halfHeight });
+  });
+});
+
+describe("canvas profile render options", () => {
+  it.each([
+    [{ showGrid: false, showPoints: false }, 3, 0],
+    [{ showGrid: true, showPoints: true }, 22, 2],
+  ] as const)("renders grid and station points from explicit options %#", (options, fillTextCalls, arcCalls) => {
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    vi.stubGlobal("Path2D", class {
+      moveTo = vi.fn();
+      lineTo = vi.fn();
+      closePath = vi.fn();
+    });
+    const context = makeContext();
+
+    renderCanvasProfile(makeCanvas(context), snapshot, options);
+
+    expect(context.fillText).toHaveBeenCalledTimes(fillTextCalls);
+    expect(context.arc).toHaveBeenCalledTimes(arcCalls);
+    expect(snapshot.state).not.toHaveProperty("showGrid");
+    expect(snapshot.state).not.toHaveProperty("showPoints");
   });
 });

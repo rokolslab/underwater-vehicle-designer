@@ -1,10 +1,9 @@
 import { sectionExtentsAt } from "../geometry/profile";
-import { normalizeGeometryMode, type GeometryMode, type ProfileSnapshot, type SectionExtents } from "../geometry/model";
+import { normalizeGeometryMode, type ProfileSnapshot, type SectionExtents } from "../geometry/model";
 import { profileSFromBodyX } from "../../shared/body-coordinates";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentItem } from "./model";
 import { validateEquipmentItem } from "./model";
-import { logger } from "../../shared/logger";
 
 export type EquipmentConstraintStatus = "ok" | "outsideHull" | "intersects" | "invalidEquipment";
 export type EquipmentConstraintReason = "outsideHull" | "outsideLength" | "intersects" | "invalidEquipment";
@@ -42,7 +41,6 @@ interface ContainmentPointSample {
 }
 
 interface ProfileSectionEvaluator {
-  readonly geometryMode: GeometryMode;
   sectionExtentsAtS(s: number): SectionExtents;
 }
 
@@ -187,7 +185,6 @@ function makeProfileSectionEvaluator(snapshot: ProfileSnapshot): ProfileSectionE
   const geometryMode = normalizeGeometryMode(snapshot.state.geometryMode);
 
   return Object.freeze({
-    geometryMode,
     sectionExtentsAtS(s: number): SectionExtents {
       if (geometryMode === "legacy-dsnp-pa") return sectionExtentsFromSnapshot(snapshot, s);
       return sectionExtentsAt(snapshot.state, s);
@@ -326,20 +323,6 @@ function evaluateEllipticalContainmentSample(
 
   if (value <= 1 + 1e-12) return null;
 
-  const requiredRadius = Math.hypot(sample.y, sample.z);
-  logger.warn("equipment outside hull radius", {
-    id: item.id,
-    shape: item.shape,
-    geometryMode: evaluator.geometryMode,
-    bodyX: sample.bodyX,
-    bodyY: sample.y,
-    bodyZ: sample.z,
-    stationS: sample.stationS,
-    requiredRadius,
-    hullRadius: sectionExtents.radius,
-    sectionExtents,
-    ellipseValue: value,
-  });
   return makeIssue(
     item.id,
     "outsideHull",
@@ -366,28 +349,7 @@ function evaluateContainment(
   const maxX = item.position.x + extents.x;
   const issues: EquipmentConstraintIssue[] = [];
 
-  logger.debug("equipment body bounds resolved", {
-    id: item.id,
-    shape: item.shape,
-    geometryMode: evaluator.geometryMode,
-    bodyPosition: item.position,
-    bodyBounds: { minX, maxX },
-    hullBodyBounds: { minX: bodyMinX, maxX: bodyMaxX },
-  });
-
   if (minX < bodyMinX || maxX > bodyMaxX) {
-    logger.warn("equipment outside length bounds", {
-      id: item.id,
-      shape: item.shape,
-      geometryMode: evaluator.geometryMode,
-      bodyX: item.position.x,
-      bodyY: item.position.y,
-      bodyZ: item.position.z,
-      minX,
-      maxX,
-      bodyMinX,
-      bodyMaxX,
-    });
     issues.push(
       makeIssue(item.id, "outsideLength", `Оборудование выходит за длину корпуса: ${minX.toFixed(2)}..${maxX.toFixed(2)} м.`),
     );
@@ -437,10 +399,9 @@ function equipmentDisplayName(item: EquipmentItem): string {
   return item.name.trim() || item.id;
 }
 
-function evaluateIntersections(items: readonly EquipmentItem[], geometryMode: GeometryMode): readonly EquipmentConstraintIssue[] {
+function evaluateIntersections(items: readonly EquipmentItem[]): readonly EquipmentConstraintIssue[] {
   const issues: EquipmentConstraintIssue[] = [];
   const aabbs = new Map<string, Aabb>();
-  let checkedPairs = 0;
 
   for (const item of items) {
     const aabb = itemAabb(item);
@@ -456,25 +417,14 @@ function evaluateIntersections(items: readonly EquipmentItem[], geometryMode: Ge
       const second = items[secondIndex];
       const secondAabb = aabbs.get(second.id);
       if (!secondAabb) continue;
-      checkedPairs += 1;
-
       if (!pairIntersects(first, second, firstAabb, secondAabb)) continue;
 
-      const method = first.shape === "sphere" && second.shape === "sphere" ? "sphere-distance" : "conservative-aabb";
       const firstName = equipmentDisplayName(first);
       const secondName = equipmentDisplayName(second);
-      logger.warn("equipment intersection detected", { id: first.id, otherId: second.id, firstName, secondName, method, geometryMode });
-      logger.debug("[FIX] equipment intersection warning uses display names", { id: first.id, otherId: second.id, geometryMode });
       issues.push(makeIssue(first.id, "intersects", `Пересекается с оборудованием ${secondName}.`, second.id));
       issues.push(makeIssue(second.id, "intersects", `Пересекается с оборудованием ${firstName}.`, first.id));
     }
   }
-
-  logger.debug("equipment intersection checks completed", {
-    checkedPairs,
-    intersections: issues.length / 2,
-    geometryMode,
-  });
 
   return freezeIssues(issues);
 }
@@ -498,9 +448,7 @@ export function evaluateEquipmentConstraints(
   items: readonly EquipmentItem[],
 ): EquipmentConstraintReport {
   const evaluator = makeProfileSectionEvaluator(snapshot);
-  logger.debug("equipment constraints evaluation started", { equipmentCount: items.length, geometryMode: evaluator.geometryMode });
   if (items.length === 0) {
-    logger.debug("equipment constraints evaluation completed", { equipmentCount: 0, issueCount: 0, geometryMode: evaluator.geometryMode });
     return emptyReport(items);
   }
 
@@ -510,12 +458,6 @@ export function evaluateEquipmentConstraints(
   for (const item of items) {
     const validation = validateEquipmentItem(item);
     if (!validation.isValid) {
-      logger.warn("invalid equipment item in constraints", {
-        id: item.id,
-        shape: item.shape,
-        geometryMode: evaluator.geometryMode,
-        reason: validation.reason,
-      });
       issues.push(makeIssue(item.id, "invalidEquipment", validation.reason ?? "Данные оборудования некорректны."));
       continue;
     }
@@ -524,20 +466,9 @@ export function evaluateEquipmentConstraints(
     issues.push(...evaluateContainment(snapshot, evaluator, item));
   }
 
-  issues.push(...evaluateIntersections(validItems, evaluator.geometryMode));
+  issues.push(...evaluateIntersections(validItems));
 
-  const report = buildReport(items, issues);
-  const outsideCount = issues.filter((issue) => issue.reason === "outsideHull" || issue.reason === "outsideLength").length;
-  const invalidCount = issues.filter((issue) => issue.reason === "invalidEquipment").length;
-  logger.debug("equipment containment checks completed", { checked: validItems.length, outsideCount, geometryMode: evaluator.geometryMode });
-  logger.debug("equipment constraints evaluation completed", {
-    equipmentCount: items.length,
-    issueCount: report.issues.length,
-    invalidCount,
-    geometryMode: evaluator.geometryMode,
-  });
-
-  return report;
+  return buildReport(items, issues);
 }
 
 export function equipmentStatusSummary(report: EquipmentConstraintReport | undefined): Record<EquipmentConstraintStatus, number> {

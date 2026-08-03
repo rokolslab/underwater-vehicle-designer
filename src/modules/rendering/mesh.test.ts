@@ -12,8 +12,6 @@ function makeSnapshot(cylindricalInsertLength = 0) {
     diameter: 2,
     cylindricalInsertLength,
     stations: 20,
-    showGrid: true,
-    showPoints: true,
   });
 }
 
@@ -28,8 +26,6 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
       diameter: 2,
       cylindricalInsertLength: 0,
       stations: 8,
-      showGrid: true,
-      showPoints: true,
     }),
     smoothPoints: Object.freeze([
       Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),

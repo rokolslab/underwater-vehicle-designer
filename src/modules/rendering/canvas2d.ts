@@ -6,6 +6,7 @@ import { bodyXFromProfileS } from "../../shared/body-coordinates";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 import { bodyPointToXzProjection, type ScreenProjection2 } from "./coordinate-adapter";
+import type { RenderOptions } from "./model";
 
 interface CanvasScale {
   readonly map: (point: ScreenProjection2) => Readonly<{ x: number; y: number }>;
@@ -180,6 +181,7 @@ function drawEquipmentOverlay(
 export function renderCanvasProfile(
   canvas: HTMLCanvasElement,
   snapshot: ProfileSnapshot,
+  options: RenderOptions,
   equipment: readonly EquipmentItem[] = [],
   report?: EquipmentConstraintReport,
 ): void {
@@ -198,7 +200,7 @@ export function renderCanvasProfile(
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, scale.width, scale.height);
 
-  if (snapshot.state.showGrid) {
+  if (options.showGrid) {
     drawGrid(context, scale, totalLength);
   }
 
@@ -244,7 +246,7 @@ export function renderCanvasProfile(
 
   drawEquipmentOverlay(context, scale, equipment, report);
 
-  if (snapshot.state.showPoints) {
+  if (options.showPoints) {
     context.fillStyle = "#2563eb";
     context.strokeStyle = "#ffffff";
     context.lineWidth = 1.5;

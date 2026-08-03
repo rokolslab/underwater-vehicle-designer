@@ -97,8 +97,6 @@ describe("equipment ui", () => {
         diameter: 2,
         cylindricalInsertLength: 0,
         stations: 10,
-        showGrid: true,
-        showPoints: true,
       }),
       [item],
     );
