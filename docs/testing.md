@@ -9,6 +9,7 @@
 ```bash
 npm run check:encoding
 npm run test
+npm run test:e2e
 npm run build
 ```
 
@@ -18,6 +19,27 @@ Docker equivalents:
 docker compose run --rm app npm run check:encoding
 docker compose run --rm app npm run test
 docker compose run --rm app npm run build
+```
+
+Browser E2E через Playwright требует установленный браузер:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+По умолчанию Playwright сам запускает Vite dev server на `127.0.0.1:5173`. Для проверки уже запущенного приложения задайте `PLAYWRIGHT_BASE_URL`, например:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
+```
+
+Текущий Docker app image основан на Alpine и не является основным окружением для browser automation. Для CI/browser smoke предпочтительнее запускать Playwright локально или в отдельном Playwright container image.
+
+Docker-запуск через официальный Playwright image:
+
+```bash
+docker compose -f compose.e2e.yml run --rm e2e
 ```
 
 ## Test Layout
@@ -33,6 +55,7 @@ docker compose run --rm app npm run build
 | `src/modules/persistence/` | `csv.test.ts`, `svg.test.ts`, `project-json.test.ts` |
 | `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts` |
 | `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `dom-contract.test.ts` |
+| `tests/e2e/` | `import-export.spec.ts` |
 
 ## Geometry Regression
 
@@ -116,6 +139,10 @@ docker compose run --rm app npm run build
 `dom-contract.test.ts` защищает DOM ids, которые требуются `main.ts`. Если в `index.html` переименовать элемент без изменения `main.ts`, тест должен упасть.
 
 `equipment.test.ts` проверяет HTML editor и чтение updates из строк оборудования.
+
+## Browser E2E Tests
+
+`tests/e2e/import-export.spec.ts` запускает приложение в Chromium и проверяет пользовательский workflow: импорт JSON v2 с `gravityMPerS2`, отображение импортированного оборудования, добавление нового оборудования без collision по ID, экспорт проекта и сохранение `gravityMPerS2`, `waterDensityKgPerM3` и уникальных `equipment.id`.
 
 ## Encoding Check
 
