@@ -1,128 +1,95 @@
-import { DEFAULT_GRAVITY_M_PER_S2 } from "../modules/balance/equipment-balance";
-import type { BalanceSettings } from "../modules/balance/model";
-import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../modules/geometry/model";
-import { clampNumber } from "../shared/math";
+import type { ProfileState } from "../modules/geometry/model";
+import { DEFAULT_PROJECT_PROFILE_INPUTS } from "../application/project/defaults";
+import { normalizeProjectProfileInputs, projectProfileInputsToProfileState } from "../application/project/normalize";
 import { logger } from "../shared/logger";
 import type { ControlElements } from "../modules/ui/controls";
 import { writeIntegerInput, writeNumericInput } from "../modules/ui/controls";
 
 export type LastEdited = "slenderness" | "height";
 
-const defaults = {
-  geometryMode: defaultGeometryMode,
-  length: 6,
-  breadth: 2,
-  slenderness: 3,
-  cylindricalInsertLength: 0,
-  stations: 20,
-};
+const defaultSlenderness = DEFAULT_PROJECT_PROFILE_INPUTS.length / DEFAULT_PROJECT_PROFILE_INPUTS.height;
 
 export interface AppStateController {
   readonly readState: (source?: LastEdited) => ProfileState;
-  readonly applyImportedGravityMPerS2: (gravityMPerS2: number) => void;
-  readonly makeCurrentBalanceSettings: (waterDensityKgPerM3: number) => BalanceSettings;
   readonly reset: () => ProfileState;
   readonly getLastEdited: () => LastEdited;
+  readonly setLastEdited: (source: LastEdited) => void;
 }
 
 export function createAppStateController(inputs: ControlElements): AppStateController {
   let lastEdited: LastEdited = "slenderness";
-  let currentGravityMPerS2 = DEFAULT_GRAVITY_M_PER_S2;
 
   function readState(source: LastEdited = lastEdited): ProfileState {
     lastEdited = source;
-    const length = clampNumber(inputs.length.value, defaults.length, 0.1);
-    const breadth = clampNumber(inputs.breadth.value, defaults.breadth, 0.01);
-    let slenderness = clampNumber(inputs.slenderness.value, defaults.slenderness, 0.1);
-    let height = clampNumber(inputs.height.value, length / slenderness, 0.01);
-    const maxCylindricalInsertLength = length / 2;
     const requestedCylindricalInsertLength = Number(inputs.cylindricalInsertLength.value);
-    const geometryMode = normalizeGeometryMode(inputs.geometryMode.value);
-    const cylindricalInsertLength = clampNumber(
-      inputs.cylindricalInsertLength.value,
-      defaults.cylindricalInsertLength,
-      0,
-      maxCylindricalInsertLength,
+    const result = normalizeProjectProfileInputs(
+      {
+        geometryMode: inputs.geometryMode.value,
+        length: inputs.length.value,
+        breadth: inputs.breadth.value,
+        height: inputs.height.value,
+        slenderness: inputs.slenderness.value,
+        cylindricalInsertLength: inputs.cylindricalInsertLength.value,
+        stations: inputs.stations.value,
+      },
+      lastEdited === "height" ? "interactive-height" : "interactive-slenderness",
     );
+    const { profile } = result;
+    const maxCylindricalInsertLength = profile.length / 2;
 
     if (
       Number.isFinite(requestedCylindricalInsertLength) &&
-      requestedCylindricalInsertLength !== cylindricalInsertLength
+      requestedCylindricalInsertLength !== profile.cylindricalInsertLength
     ) {
       logger.warn("[FIX] cylindrical insert length clamped", {
         requested: requestedCylindricalInsertLength,
-        normalized: cylindricalInsertLength,
+        normalized: profile.cylindricalInsertLength,
         max: maxCylindricalInsertLength,
       });
     }
 
     if (lastEdited === "height") {
-      slenderness = length / height;
-      writeNumericInput(inputs.slenderness, slenderness);
+      writeNumericInput(inputs.slenderness, result.slenderness);
     } else {
-      height = length / slenderness;
-      writeNumericInput(inputs.height, height);
+      writeNumericInput(inputs.height, profile.height);
     }
 
-    const stations = Math.round(clampNumber(inputs.stations.value, defaults.stations, 8, 80));
-    writeNumericInput(inputs.length, length);
-    writeNumericInput(inputs.breadth, breadth);
-    inputs.geometryMode.value = geometryMode;
+    writeNumericInput(inputs.length, profile.length);
+    writeNumericInput(inputs.breadth, profile.breadth);
+    inputs.geometryMode.value = profile.geometryMode;
     inputs.cylindricalInsertLength.max = String(maxCylindricalInsertLength);
-    writeNumericInput(inputs.cylindricalInsertLength, cylindricalInsertLength);
-    writeIntegerInput(inputs.stations, stations);
+    writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
+    writeIntegerInput(inputs.stations, profile.stations);
 
-    const state = {
-      geometryMode,
-      length,
-      breadth,
-      height,
-      slenderness,
-      diameter: height,
-      cylindricalInsertLength,
-      stations,
+    const state = projectProfileInputsToProfileState(result, {
       showGrid: inputs.showGrid.checked,
       showPoints: inputs.showPoints.checked,
-    };
+    });
     logger.debug("app state normalized", { source: lastEdited, state });
     return state;
   }
 
-  function applyImportedGravityMPerS2(gravityMPerS2: number): void {
-    currentGravityMPerS2 = clampNumber(gravityMPerS2, DEFAULT_GRAVITY_M_PER_S2, Number.EPSILON);
-    logger.debug("app state imported gravity applied", { gravityMPerS2: currentGravityMPerS2 });
-  }
-
-  function makeCurrentBalanceSettings(waterDensityKgPerM3: number): BalanceSettings {
-    const balanceSettings = Object.freeze({
-      waterDensityKgPerM3,
-      gravityMPerS2: currentGravityMPerS2,
-    });
-    logger.debug("app state balance settings assembled", balanceSettings);
-    return balanceSettings;
-  }
-
   function reset(): ProfileState {
     logger.debug("app state reset");
-    inputs.length.value = String(defaults.length);
-    inputs.breadth.value = String(defaults.breadth);
-    inputs.slenderness.value = String(defaults.slenderness);
-    inputs.height.value = String(defaults.length / defaults.slenderness);
-    inputs.cylindricalInsertLength.value = String(defaults.cylindricalInsertLength);
-    inputs.geometryMode.value = defaults.geometryMode;
-    inputs.stations.value = String(defaults.stations);
+    inputs.length.value = String(DEFAULT_PROJECT_PROFILE_INPUTS.length);
+    inputs.breadth.value = String(DEFAULT_PROJECT_PROFILE_INPUTS.breadth);
+    inputs.slenderness.value = String(defaultSlenderness);
+    inputs.height.value = String(DEFAULT_PROJECT_PROFILE_INPUTS.height);
+    inputs.cylindricalInsertLength.value = String(DEFAULT_PROJECT_PROFILE_INPUTS.cylindricalInsertLength);
+    inputs.geometryMode.value = DEFAULT_PROJECT_PROFILE_INPUTS.geometryMode;
+    inputs.stations.value = String(DEFAULT_PROJECT_PROFILE_INPUTS.stations);
     inputs.showGrid.checked = true;
     inputs.showPoints.checked = true;
     lastEdited = "slenderness";
-    currentGravityMPerS2 = DEFAULT_GRAVITY_M_PER_S2;
     return readState("slenderness");
   }
 
   return {
     readState,
-    applyImportedGravityMPerS2,
-    makeCurrentBalanceSettings,
     reset,
     getLastEdited: () => lastEdited,
+    setLastEdited: (source) => {
+      lastEdited = source;
+    },
   };
 }

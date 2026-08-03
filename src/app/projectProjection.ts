@@ -1,5 +1,6 @@
 import type { ProjectInputs, ProjectProfileInputs } from "../application/project/model";
 import { projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
+import { normalizeGeometryMode } from "../modules/geometry/model";
 import type { SerializableProjectState } from "../modules/persistence/project-json";
 import type { Scene3dSettings } from "../modules/rendering/model";
 
@@ -11,7 +12,7 @@ export interface ProjectViewState {
 
 function projectProfileFromSerializable(project: SerializableProjectState): ProjectProfileInputs {
   return Object.freeze({
-    geometryMode: project.profile.geometryMode,
+    geometryMode: normalizeGeometryMode(project.profile.geometryMode),
     length: project.profile.length,
     breadth: project.profile.breadth,
     height: project.profile.height,

@@ -89,7 +89,7 @@ Source: .ai-factory/RESEARCH.md (Active Summary, Updated: 2026-07-31 09:58, SHA2
   - Dependency notes: зависит от Task 2; Task 1 не требуется для preparation. Не вводить новую parse metadata/error-code model в этом инкременте и не называть существующие string errors/warnings structured diagnostics.
 
 ### Phase 4: Incremental Runtime Adoption
-- [ ] Task 4: Сделать store владельцем canonical inputs и применить prepared import одним commit без повторного чтения DOM.
+- [x] Task 4: Сделать store владельцем canonical inputs и применить prepared import одним commit без повторного чтения DOM.
   - Deliverable: создать store и отдельный in-memory `ProjectViewState` при bootstrap; заменить `equipmentItems` и gravity closure; направить profile/equipment/balance/view events в соответствующих владельцев; вынести небольшой testable apply seam с порядком `prepare -> replace view state -> store.replaceProject() -> project controls -> renderCommittedState(inputs, view)`.
   - Profile edits: adapter получает exact текущий profile из store, читает только изменённый control, применяет существующую interactive policy и commit-ит результат; equipment, density, grid, scene и resize events не перечитывают profile controls. Добавить явный adapter API для `lastEdited`: successful import устанавливает `height`, reset устанавливает `slenderness`, render его не меняет.
   - Import behavior: browser handler использует монотонный request token с policy latest-selection-wins; stale read/prepare не commit-ит, не показывает notice и не очищает input активной операции. Pre-commit read/parse failure оставляет store/view по identity; post-commit control/render failure не откатывает state и показывается как ошибка отображения, а не чтения файла.
@@ -100,7 +100,7 @@ Source: .ai-factory/RESEARCH.md (Active Summary, Updated: 2026-07-31 09:58, SHA2
   - Dependency notes: зависит от Tasks 1-3. Store subscribers не запускают rendering в этом инкременте. Существующий calculation/render body может остаться в `main.ts`, но должен принимать committed inputs/view и не читать canonical values из DOM; не извлекать `deriveProject()` и не переписывать Canvas/Three.js lifecycle.
 
 ### Phase 5: Regression Gate
-- [ ] Task 5: Закрепить ownership, атомарность, precision и compatibility без дублирования существующих matrices.
+- [x] Task 5: Закрепить ownership, атомарность, precision и compatibility без дублирования существующих matrices.
   - Store tests: initial/deep ownership, mutation caller arguments, slice identity/no-op, full replace, unsubscribe, duplicate registrations, listener failure с продолжением рассылки, запрет reentrant commit и отсутствие browser/persistence/rendering/logger dependencies.
   - Projection/import tests: exact split/reverse projection canonical + view, отсутствие aliases/view в `ProjectInputs`, values с precision больше четырёх знаков, failed prepare без mutation/notification, warnings/migration passthrough, один integration case import → add equipment и fresh export из store/view.
   - Runtime tests: один canonical commit и один render на successful import; field-specific edit/view/equipment/density events не изменяют untouched exact profile/balance slices; stale import A после committed B игнорируется; post-commit render throw сохраняет imported state/export; reset использует non-default imported density и проверяет default density/gravity/equipment, сохранение scene/camera semantics.

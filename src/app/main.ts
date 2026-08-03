@@ -3,17 +3,20 @@ import { createAppStateController, type LastEdited } from "./appState";
 import { makeProjectState, type ProjectState } from "./projectState";
 import { calculateEquipmentBalance, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../modules/balance/equipment-balance";
 import type { EquipmentBalanceResult } from "../modules/balance/model";
+import { createDefaultProjectInputs } from "../application/project/defaults";
+import type { ProjectInputs, ProjectProfileInputs } from "../application/project/model";
+import { projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
+import { createProjectStore } from "../application/project/store";
 import { evaluateEquipmentConstraints, type EquipmentConstraintReport } from "../modules/equipment/constraints";
 import { addEquipmentItem, deleteEquipmentItem, updateEquipmentItem } from "../modules/equipment/placement";
-import type { EquipmentItem } from "../modules/equipment/model";
 import { makeProfileSnapshot } from "../modules/geometry/profile";
 import { makeTheoreticalDrawing, type TheoreticalDrawing } from "../modules/geometry/theoretical-drawing";
 import { renderCanvasProfile } from "../modules/rendering/canvas2d";
 import { renderTheoreticalDrawing } from "../modules/rendering/theoretical-drawing";
 import { createHullScene3d } from "../modules/rendering/scene3d";
-import { normalizeScene3dSettings } from "../modules/rendering/viewSettings";
+import { defaultScene3dSettings, normalizeScene3dSettings } from "../modules/rendering/viewSettings";
 import { buildCsv } from "../modules/persistence/csv";
-import { buildProjectJson, parseProjectJson, type SerializableProjectState } from "../modules/persistence/project-json";
+import { buildProjectJson } from "../modules/persistence/project-json";
 import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
 import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
@@ -24,6 +27,8 @@ import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
 import { geometryModePresentation, normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
+import { prepareProjectImport, type PreparedProjectImportResult } from "./projectImport";
+import { inputsAndViewToSerializableProject, type ProjectViewState } from "./projectProjection";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
   const element = document.querySelector(selector);
@@ -119,7 +124,12 @@ function writeGeometryModePresentation(geometryMode: unknown): void {
 }
 
 const panelDetails = Array.from(document.querySelectorAll<HTMLDetailsElement>(".panel-details"));
-let equipmentItems: readonly EquipmentItem[] = [];
+const projectStore = createProjectStore(createDefaultProjectInputs());
+let projectViewState: ProjectViewState = Object.freeze({
+  showGrid: true,
+  showPoints: true,
+  scene3dSettings: defaultScene3dSettings,
+});
 let currentSnapshot: ProfileSnapshot;
 let currentTheoreticalDrawing: TheoreticalDrawing;
 let currentConstraintReport: EquipmentConstraintReport | undefined;
@@ -127,6 +137,7 @@ let currentBalanceResult: EquipmentBalanceResult;
 let currentProjectState: ProjectState;
 let hasRenderedProfile = false;
 let resizeFrame: number | null = null;
+let projectImportRequestToken = 0;
 
 function renderCurrentViewsForSize(): void {
   if (!hasRenderedProfile) {
@@ -191,7 +202,7 @@ function restoreEquipmentFocus(focusState: ReturnType<typeof focusedEquipmentFie
 
 function renderEquipment(): void {
   const focusState = focusedEquipmentField();
-  renderEquipmentEditor(equipmentList, equipmentItems, currentConstraintReport);
+  renderEquipmentEditor(equipmentList, currentProjectState.equipment, currentConstraintReport);
   restoreEquipmentFocus(focusState);
 }
 
@@ -212,43 +223,85 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
-function writeProfileControls(profile: SerializableProjectState["profile"]): void {
-  writeNumericInput(inputs.length, profile.length);
-  writeNumericInput(inputs.breadth, profile.breadth);
-  writeNumericInput(inputs.height, profile.height);
-  writeNumericInput(inputs.slenderness, profile.slenderness);
-  writeNumericInput(inputs.cylindricalInsertLength, profile.cylindricalInsertLength);
-  inputs.geometryMode.value = normalizeGeometryMode(profile.geometryMode);
-  writeGeometryModePresentation(profile.geometryMode);
-  writeIntegerInput(inputs.stations, profile.stations);
-  inputs.showGrid.checked = profile.showGrid;
-  inputs.showPoints.checked = profile.showPoints;
+function writeProfileControls(profile: ProjectProfileInputs, view: ProjectViewState): void {
+  const profileState = projectProfileInputsWithViewToProfileState(profile, view);
+  writeNumericInput(inputs.length, profileState.length);
+  writeNumericInput(inputs.breadth, profileState.breadth);
+  writeNumericInput(inputs.height, profileState.height);
+  writeNumericInput(inputs.slenderness, profileState.slenderness);
+  writeNumericInput(inputs.cylindricalInsertLength, profileState.cylindricalInsertLength);
+  inputs.geometryMode.value = normalizeGeometryMode(profileState.geometryMode);
+  writeGeometryModePresentation(profileState.geometryMode);
+  writeIntegerInput(inputs.stations, profileState.stations);
+  inputs.showGrid.checked = view.showGrid;
+  inputs.showPoints.checked = view.showPoints;
   logger.debug("profile controls written from project json", {
-    length: profile.length,
-    geometryMode: normalizeGeometryMode(profile.geometryMode),
-    breadth: profile.breadth,
-    height: profile.height,
-    slenderness: profile.slenderness,
-    stations: profile.stations,
+    length: profileState.length,
+    geometryMode: normalizeGeometryMode(profileState.geometryMode),
+    breadth: profileState.breadth,
+    height: profileState.height,
+    slenderness: profileState.slenderness,
+    stations: profileState.stations,
   });
 }
 
-function applyImportedProject(project: SerializableProjectState): void {
-  logger.debug("project json import applying", {
-    equipmentCount: project.equipment.length,
-    scene3dMode: project.scene3dSettings.mode,
+function scene3dBoundsFromSnapshot(snapshot: ProfileSnapshot) {
+  return Object.freeze({
+    totalLength: snapshot.extents.totalLength,
+    maxHalfBreadthY: snapshot.extents.maxHalfBreadthY,
+    maxHalfHeightZ: snapshot.extents.maxHalfHeightZ,
   });
-  writeProfileControls(project.profile);
-  equipmentItems = project.equipment;
-  writeScene3dControls(scene3dControls, project.scene3dSettings);
-  writeNumericInput(waterDensityInput, project.balanceSettings.waterDensityKgPerM3);
-  appState.applyImportedGravityMPerS2(project.balanceSettings.gravityMPerS2);
-  update("height");
-  logger.info("project json import applied", {
-    equipmentCount: project.equipment.length,
-    waterDensityKgPerM3: project.balanceSettings.waterDensityKgPerM3,
-    gravityMPerS2: currentProjectState.balanceSettings.gravityMPerS2,
+}
+
+function commitProfileFromControls(source: LastEdited): void {
+  const profileState = appState.readState(source);
+  projectStore.setProfile({
+    geometryMode: normalizeGeometryMode(profileState.geometryMode),
+    length: profileState.length,
+    breadth: profileState.breadth,
+    height: profileState.height,
+    cylindricalInsertLength: profileState.cylindricalInsertLength,
+    stations: profileState.stations,
   });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
+}
+
+function replaceProjectViewState(view: ProjectViewState): void {
+  projectViewState = Object.freeze({ ...view });
+}
+
+function applyPreparedProjectImport(result: Extract<PreparedProjectImportResult, { ok: true }>): void {
+  replaceProjectViewState(result.view);
+  const committed = projectStore.replaceProject(result.inputs);
+  logger.debug("projectImportCommitted", {
+    migrated: result.migratedFromVersion === 1,
+    warningCount: result.warnings.length,
+    equipmentCount: committed.equipment.length,
+  });
+
+  try {
+    appState.setLastEdited("height");
+    writeProfileControls(committed.profile, projectViewState);
+    writeScene3dControls(scene3dControls, projectViewState.scene3dSettings);
+    writeNumericInput(waterDensityInput, committed.balanceSettings.waterDensityKgPerM3);
+  } catch (error) {
+    logger.error("project json import post-commit controls failed", {
+      phase: "postCommitControls",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    window.alert("Проект импортирован, но не удалось обновить элементы управления.");
+    return;
+  }
+
+  try {
+    renderCommittedState(committed, projectViewState);
+  } catch (error) {
+    logger.error("project json import post-commit render failed", {
+      phase: "postCommitRender",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    window.alert("Проект импортирован, но не удалось обновить отображение.");
+  }
 }
 
 function userFacingImportWarnings(warnings: readonly string[]): readonly string[] {
@@ -287,39 +340,34 @@ function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: r
   logger.info("project json import notice shown", { migratedFromVersion, userWarningCount: messages.length });
 }
 
-function update(source: LastEdited = appState.getLastEdited()): void {
-  logger.debug("profile update started", { source, equipmentCount: equipmentItems.length });
-  const profile = appState.readState(source);
+function renderCommittedState(inputsSnapshot: ProjectInputs, view: ProjectViewState): void {
+  const profile = projectProfileInputsWithViewToProfileState(inputsSnapshot.profile, view);
+  logger.debug("profile render started", { source: appState.getLastEdited(), equipmentCount: inputsSnapshot.equipment.length });
   writeGeometryModePresentation(profile.geometryMode);
   currentSnapshot = makeProfileSnapshot(profile);
   currentTheoreticalDrawing = makeTheoreticalDrawing(currentSnapshot);
   logger.debug("theoretical drawing data updated", { sectionCount: currentTheoreticalDrawing.sections.length });
 
   try {
-    currentConstraintReport = evaluateEquipmentConstraints(currentSnapshot, equipmentItems);
+    currentConstraintReport = evaluateEquipmentConstraints(currentSnapshot, inputsSnapshot.equipment);
   } catch (error) {
     currentConstraintReport = undefined;
     logger.error("equipment constraints evaluation failed", {
-      equipmentCount: equipmentItems.length,
+      equipmentCount: inputsSnapshot.equipment.length,
       length: profile.length,
       cylindricalInsertLength: profile.cylindricalInsertLength,
       error: error instanceof Error ? error.message : String(error),
     });
   }
 
-  const scene3dBounds = {
-    totalLength: currentSnapshot.extents.totalLength,
-    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
-    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
-  };
+  const scene3dBounds = scene3dBoundsFromSnapshot(currentSnapshot);
   updateScene3dControlBounds(scene3dControls, scene3dBounds);
-  const scene3dSettings = normalizeScene3dSettings(readScene3dControls(scene3dControls), {
-    totalLength: currentSnapshot.extents.totalLength,
-    maxHalfBreadthY: currentSnapshot.extents.maxHalfBreadthY,
-    maxHalfHeightZ: currentSnapshot.extents.maxHalfHeightZ,
-  });
-  const balanceSettings = appState.makeCurrentBalanceSettings(readWaterDensity(waterDensityInput));
-  currentProjectState = makeProjectState(profile, equipmentItems, scene3dSettings, balanceSettings);
+  const scene3dSettings = normalizeScene3dSettings(view.scene3dSettings, scene3dBounds);
+  if (scene3dSettings !== view.scene3dSettings) {
+    replaceProjectViewState({ ...projectViewState, scene3dSettings });
+    writeScene3dControls(scene3dControls, scene3dSettings);
+  }
+  currentProjectState = makeProjectState(profile, inputsSnapshot.equipment, scene3dSettings, inputsSnapshot.balanceSettings);
 
   try {
     currentBalanceResult = calculateEquipmentBalance({
@@ -359,17 +407,31 @@ function update(source: LastEdited = appState.getLastEdited()): void {
   hasRenderedProfile = true;
 }
 
-inputs.length.addEventListener("input", () => update(appState.getLastEdited()));
-inputs.breadth.addEventListener("input", () => update(appState.getLastEdited()));
-inputs.slenderness.addEventListener("input", () => update("slenderness"));
-inputs.height.addEventListener("input", () => update("height"));
-inputs.cylindricalInsertLength.addEventListener("input", () => update(appState.getLastEdited()));
-inputs.geometryMode.addEventListener("change", () => update(appState.getLastEdited()));
-inputs.stations.addEventListener("input", () => update(appState.getLastEdited()));
-inputs.showGrid.addEventListener("change", () => update(appState.getLastEdited()));
-inputs.showPoints.addEventListener("change", () => update(appState.getLastEdited()));
-waterDensityInput.addEventListener("input", () => update(appState.getLastEdited()));
-bindScene3dControls(scene3dControls, () => update(appState.getLastEdited()));
+inputs.length.addEventListener("input", () => commitProfileFromControls(appState.getLastEdited()));
+inputs.breadth.addEventListener("input", () => commitProfileFromControls(appState.getLastEdited()));
+inputs.slenderness.addEventListener("input", () => commitProfileFromControls("slenderness"));
+inputs.height.addEventListener("input", () => commitProfileFromControls("height"));
+inputs.cylindricalInsertLength.addEventListener("input", () => commitProfileFromControls(appState.getLastEdited()));
+inputs.geometryMode.addEventListener("change", () => commitProfileFromControls(appState.getLastEdited()));
+inputs.stations.addEventListener("input", () => commitProfileFromControls(appState.getLastEdited()));
+inputs.showGrid.addEventListener("change", () => {
+  replaceProjectViewState({ ...projectViewState, showGrid: inputs.showGrid.checked });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
+});
+inputs.showPoints.addEventListener("change", () => {
+  replaceProjectViewState({ ...projectViewState, showPoints: inputs.showPoints.checked });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
+});
+waterDensityInput.addEventListener("input", () => {
+  const snapshot = projectStore.getSnapshot();
+  projectStore.setBalanceSettings({ ...snapshot.balanceSettings, waterDensityKgPerM3: readWaterDensity(waterDensityInput) });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
+});
+bindScene3dControls(scene3dControls, () => {
+  const scene3dSettings = normalizeScene3dSettings(readScene3dControls(scene3dControls), scene3dBoundsFromSnapshot(currentSnapshot));
+  replaceProjectViewState({ ...projectViewState, scene3dSettings });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
+});
 window.addEventListener("resize", scheduleRenderResize);
 window.addEventListener("beforeunload", () => {
   if (resizeFrame !== null) {
@@ -383,18 +445,20 @@ window.addEventListener("beforeunload", () => {
 addEquipmentButton.addEventListener("click", () => {
   const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");
   if (equipmentPanel) equipmentPanel.open = true;
-  equipmentItems = addEquipmentItem(equipmentItems);
-  logger.info("equipment added by user", { count: equipmentItems.length });
-  update(appState.getLastEdited());
+  const equipment = addEquipmentItem(projectStore.getSnapshot().equipment);
+  projectStore.setEquipment(equipment);
+  logger.info("equipment added by user", { count: equipment.length });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
 });
 
 equipmentList.addEventListener("click", (event) => {
   if (!isEquipmentDeleteEvent(event)) return;
   const id = equipmentIdFromEvent(event);
   if (!id) return;
-  equipmentItems = deleteEquipmentItem(equipmentItems, id);
-  logger.info("equipment deleted by user", { id, count: equipmentItems.length });
-  update(appState.getLastEdited());
+  const equipment = deleteEquipmentItem(projectStore.getSnapshot().equipment, id);
+  projectStore.setEquipment(equipment);
+  logger.info("equipment deleted by user", { id, count: equipment.length });
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
 });
 
 equipmentList.addEventListener("change", (event) => {
@@ -403,14 +467,14 @@ equipmentList.addEventListener("change", (event) => {
   if (!id || !(target instanceof HTMLElement)) return;
   const row = target.closest<HTMLElement>("[data-equipment-id]");
   if (!row) return;
-  const previousShape = equipmentItems.find((item) => item.id === id)?.shape;
+  const previousShape = projectStore.getSnapshot().equipment.find((item) => item.id === id)?.shape;
   const nextShape = row.querySelector<HTMLSelectElement>('[data-field="shape"]')?.value;
   const isShapeChange = target instanceof HTMLSelectElement && target.dataset.field === "shape" && previousShape !== nextShape;
   if (isShapeChange) {
     logger.debug("[FIX] equipment shape change uses default dimensions", { id, previousShape, nextShape });
   }
-  equipmentItems = updateEquipmentItem(equipmentItems, id, readEquipmentUpdate(row, { includeDimensions: !isShapeChange }));
-  update(appState.getLastEdited());
+  projectStore.setEquipment(updateEquipmentItem(projectStore.getSnapshot().equipment, id, readEquipmentUpdate(row, { includeDimensions: !isShapeChange })));
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
 });
 
 equipmentList.addEventListener("input", (event) => {
@@ -420,8 +484,8 @@ equipmentList.addEventListener("input", (event) => {
   const row = target.closest<HTMLElement>("[data-equipment-id]");
   if (!row) return;
   logger.debug("equipment state read from UI", { id });
-  equipmentItems = updateEquipmentItem(equipmentItems, id, readEquipmentUpdate(row));
-  update(appState.getLastEdited());
+  projectStore.setEquipment(updateEquipmentItem(projectStore.getSnapshot().equipment, id, readEquipmentUpdate(row)));
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
 });
 
 downloadSvgButton.addEventListener("click", () => {
@@ -434,7 +498,11 @@ downloadCsvButton.addEventListener("click", () => {
 
 downloadProjectJsonButton.addEventListener("click", () => {
   logger.info("project json export requested", { equipmentCount: currentProjectState.equipment.length });
-  download("underwater-vehicle-project.json", "application/json;charset=utf-8", buildProjectJson(currentProjectState));
+  download(
+    "underwater-vehicle-project.json",
+    "application/json;charset=utf-8",
+    buildProjectJson(inputsAndViewToSerializableProject(projectStore.getSnapshot(), projectViewState)),
+  );
 });
 
 uploadProjectJsonButton.addEventListener("click", () => {
@@ -445,17 +513,34 @@ uploadProjectJsonButton.addEventListener("click", () => {
 projectJsonInput.addEventListener("change", async () => {
   const file = projectJsonInput.files?.[0];
   if (!file) return;
+  const requestToken = projectImportRequestToken + 1;
+  projectImportRequestToken = requestToken;
 
   try {
-    const json = await readFileText(file);
-    const result = parseProjectJson(json);
+    let json: string;
+    try {
+      json = await readFileText(file);
+    } catch (error) {
+      if (requestToken !== projectImportRequestToken) return;
+      logger.error("project json import file read failed", {
+        phase: "fileRead",
+        fileName: file.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      window.alert("Не удалось прочитать файл проекта.");
+      return;
+    }
+    if (requestToken !== projectImportRequestToken) return;
+
+    const result = prepareProjectImport(json);
+    if (requestToken !== projectImportRequestToken) return;
     if (!result.ok) {
-      logger.warn("project json import rejected", { fileName: file.name, error: result.error });
+      logger.warn("project json import rejected", { phase: "prepare", fileName: file.name, error: result.error });
       window.alert(result.error);
       return;
     }
 
-    applyImportedProject(result.project);
+    applyPreparedProjectImport(result);
     if (result.warnings.length > 0) {
       logger.warn("project json import completed with normalization warnings", {
         fileName: file.name,
@@ -463,15 +548,16 @@ projectJsonInput.addEventListener("change", async () => {
       });
     }
     showProjectImportNotice(result.migratedFromVersion, result.warnings);
-    logger.info("project json import completed", { fileName: file.name, equipmentCount: result.project.equipment.length });
+    logger.info("project json import completed", { fileName: file.name, equipmentCount: result.inputs.equipment.length });
   } catch (error) {
     logger.error("project json import failed unexpectedly", {
+      phase: "prepare",
       fileName: file.name,
       error: error instanceof Error ? error.message : String(error),
     });
-    window.alert("Не удалось прочитать файл проекта.");
+    window.alert("Не удалось обработать файл проекта.");
   } finally {
-    projectJsonInput.value = "";
+    if (requestToken === projectImportRequestToken) projectJsonInput.value = "";
   }
 });
 
@@ -481,15 +567,25 @@ downloadTheoreticalDrawingSvgButton.addEventListener("click", () => {
 });
 
 resetButton.addEventListener("click", () => {
-  appState.reset();
-  equipmentItems = [];
+  appState.setLastEdited("slenderness");
+  replaceProjectViewState({ ...projectViewState, showGrid: true, showPoints: true });
+  const defaultProject = createDefaultProjectInputs();
+  const committed = projectStore.replaceProject({
+    ...defaultProject,
+    balanceSettings: { ...defaultProject.balanceSettings, waterDensityKgPerM3: DEFAULT_WATER_DENSITY_KG_PER_M3 },
+  });
+  writeProfileControls(committed.profile, projectViewState);
+  writeScene3dControls(scene3dControls, projectViewState.scene3dSettings);
   waterDensityInput.value = String(DEFAULT_WATER_DENSITY_KG_PER_M3);
-  update("slenderness");
+  renderCommittedState(committed, projectViewState);
 });
 
 try {
   logger.info("application started");
-  update("slenderness");
+  writeProfileControls(projectStore.getSnapshot().profile, projectViewState);
+  writeScene3dControls(scene3dControls, projectViewState.scene3dSettings);
+  waterDensityInput.value = String(DEFAULT_WATER_DENSITY_KG_PER_M3);
+  renderCommittedState(projectStore.getSnapshot(), projectViewState);
 } catch (error) {
   logger.error("application initialization failed", {
     error: error instanceof Error ? error.message : String(error),

@@ -98,18 +98,16 @@ describe("app DOM contract", () => {
     expect(main).toContain('window.addEventListener("resize", scheduleRenderResize)');
   });
 
-  it("keeps imported gravity wired through the application controller", () => {
+  it("keeps canonical project ownership out of DOM round-trips", () => {
     const main = readFileSync("src/app/main.ts", "utf8");
-    const importGravity = main.indexOf("appState.applyImportedGravityMPerS2(project.balanceSettings.gravityMPerS2)");
-    const importUpdate = main.indexOf('update("height")', importGravity);
-    const reset = main.indexOf("appState.reset()");
-    const resetUpdate = main.indexOf('update("slenderness")', reset);
 
-    expect(importGravity).toBeGreaterThan(-1);
-    expect(importUpdate).toBeGreaterThan(importGravity);
-    expect(main).toContain("appState.makeCurrentBalanceSettings(readWaterDensity(waterDensityInput))");
-    expect(main).toContain("buildProjectJson(currentProjectState)");
-    expect(reset).toBeGreaterThan(-1);
-    expect(resetUpdate).toBeGreaterThan(reset);
+    expect(main).toContain("const projectStore = createProjectStore(createDefaultProjectInputs())");
+    expect(main).toContain("prepareProjectImport(json)");
+    expect(main).toContain("projectStore.replaceProject(result.inputs)");
+    expect(main).toContain("inputsAndViewToSerializableProject(projectStore.getSnapshot(), projectViewState)");
+    expect(main).toContain("projectImportRequestToken");
+    expect(main).not.toContain("appState.applyImportedGravityMPerS2");
+    expect(main).not.toContain("appState.makeCurrentBalanceSettings");
+    expect(main).not.toContain("buildProjectJson(currentProjectState)");
   });
 });

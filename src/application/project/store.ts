@@ -95,21 +95,21 @@ export function createProjectStore(initialProject: ProjectInputs): ProjectStore 
     return snapshot;
   }
 
-  return Object.freeze({
+  const store: ProjectStore = {
     getSnapshot: () => snapshot,
-    setProfile: (profile) => {
+    setProfile: (profile: ProjectProfileInputs) => {
       if (profile === snapshot.profile) return snapshot;
       return commit(makeSnapshot(cloneProfile(profile), snapshot.equipment, snapshot.balanceSettings));
     },
-    setEquipment: (equipment) => {
+    setEquipment: (equipment: readonly EquipmentItem[]) => {
       if (equipment === snapshot.equipment) return snapshot;
       return commit(makeSnapshot(snapshot.profile, cloneEquipment(equipment), snapshot.balanceSettings));
     },
-    setBalanceSettings: (balanceSettings) => {
+    setBalanceSettings: (balanceSettings: BalanceSettings) => {
       if (balanceSettings === snapshot.balanceSettings) return snapshot;
       return commit(makeSnapshot(snapshot.profile, snapshot.equipment, cloneBalanceSettings(balanceSettings)));
     },
-    replaceProject: (project) => {
+    replaceProject: (project: ProjectInputs) => {
       if (project === snapshot) return snapshot;
       return commit(
         makeSnapshot(
@@ -121,7 +121,7 @@ export function createProjectStore(initialProject: ProjectInputs): ProjectStore 
         ),
       );
     },
-    subscribe: (listener) => {
+    subscribe: (listener: ProjectStoreListener) => {
       listeners.push(listener);
       let isSubscribed = true;
       return () => {
@@ -131,5 +131,6 @@ export function createProjectStore(initialProject: ProjectInputs): ProjectStore 
         if (index >= 0) listeners.splice(index, 1);
       };
     },
-  });
+  };
+  return Object.freeze(store);
 }

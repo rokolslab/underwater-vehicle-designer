@@ -45,7 +45,7 @@ describe("ProjectStore", () => {
     expect(Object.isFrozen(snapshot.balanceSettings)).toBe(true);
     expect(snapshot.profile.length).toBe(6);
     expect(snapshot.equipment[0].position.x).toBe(1);
-    expect(snapshot.equipment[0].dimensions.lengthX).toBe(1);
+    expect((snapshot.equipment[0] as BoxEquipmentItem).dimensions.lengthX).toBe(1);
     expect(snapshot.balanceSettings.gravityMPerS2).toBe(9.80665);
   });
 
@@ -84,7 +84,7 @@ describe("ProjectStore", () => {
     (equipmentItem.dimensions as { breadthY: number }).breadthY = 99;
 
     expect(snapshot.equipment[0].position.y).toBe(2);
-    expect(snapshot.equipment[0].dimensions.breadthY).toBe(0.5);
+    expect((snapshot.equipment[0] as BoxEquipmentItem).dimensions.breadthY).toBe(0.5);
   });
 
   it("supports duplicate subscriptions, idempotent unsubscribe, and fixed notification registrations", () => {

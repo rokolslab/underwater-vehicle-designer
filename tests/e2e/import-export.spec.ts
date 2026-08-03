@@ -36,7 +36,7 @@ const importedProject = {
       hullOpacity: 0.3,
       section: { type: "longitudinalPlane", plane: "xy", offset: -0.25 },
     },
-    balanceSettings: { waterDensityKgPerM3: 1025, gravityMPerS2: 9.81 },
+    balanceSettings: { waterDensityKgPerM3: 1001, gravityMPerS2: 9.81 },
   },
 };
 
@@ -86,7 +86,7 @@ test("импорт, добавление оборудования и JSON round-
 
   expect(exported.filename).toBe("underwater-vehicle-project.json");
   expect(exportedJson.project.balanceSettings.gravityMPerS2).toBe(9.81);
-  expect(exportedJson.project.balanceSettings.waterDensityKgPerM3).toBe(1025);
+  expect(exportedJson.project.balanceSettings.waterDensityKgPerM3).toBe(1001);
   expect(exportedJson.project.equipment.map((item) => item.id)).toEqual(["equipment-1", "equipment-2"]);
 });
 
@@ -111,6 +111,28 @@ test("reset после импорта возвращает gravity к default и
   expect(exportedJson.project.balanceSettings.gravityMPerS2).toBe(DEFAULT_GRAVITY_M_PER_S2);
   expect(exportedJson.project.balanceSettings.waterDensityKgPerM3).toBe(1025);
   expect(exportedJson.project.equipment).toEqual([]);
+});
+
+test("invalid JSON import после изменения проекта не меняет экспортируемый проект", async ({ page }) => {
+  await page.goto("/");
+
+  await page.locator("#length").fill("8");
+  await page.locator("#breadth").fill("3");
+  await page.locator("#water-density").fill("1007");
+  const before = JSON.parse((await downloadText(page, "#download-project-json")).text) as { project: unknown };
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("Некорректный JSON-файл проекта.");
+    await dialog.accept();
+  });
+  await page.locator("#project-json-input").setInputFiles({
+    name: "bad-project.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{bad json"),
+  });
+
+  const after = JSON.parse((await downloadText(page, "#download-project-json")).text) as { project: unknown };
+  expect(after.project).toEqual(before.project);
 });
 
 test("SVG, CSV и теоретический SVG экспортируются из видимого UI", async ({ page }) => {
