@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: Public Demo v1 сайта
 
 Branch: feature/public-demo-v1-site

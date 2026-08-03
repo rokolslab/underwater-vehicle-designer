@@ -1,4 +1,8 @@
-﻿# План реализации: расчет баланса оборудования
+﻿---
+archived: 2026-08-03
+---
+
+# План реализации: расчет баланса оборудования
 
 Branch: feature/balance-calculations
 Created: 2026-07-02
@@ -69,4 +73,3 @@ Rationale: Эта веха использует уже реализованну�
   - Файлы: `.ai-factory/ROADMAP.md`.
   - LOGGING REQUIREMENTS: production code не получает временные `console.log`; итоговые проверки фиксируются в финальном summary, а не отдельным отчетом.
   - Зависимости: Tasks 1-7.
-

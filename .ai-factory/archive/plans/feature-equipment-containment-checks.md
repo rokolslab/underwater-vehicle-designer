@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: проверки размещения оборудования внутри корпуса
 
 Branch: feature/equipment-containment-checks

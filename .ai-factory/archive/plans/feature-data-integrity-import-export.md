@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: Data-integrity import/export
 
 Ветка: `feature/data-integrity-import-export`

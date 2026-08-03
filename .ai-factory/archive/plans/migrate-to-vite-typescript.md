@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: перейти на Vite + TypeScript
 
 Branch: master

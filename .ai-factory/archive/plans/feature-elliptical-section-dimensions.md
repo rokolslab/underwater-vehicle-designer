@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: ширина/высота сечения и формулы геометрии
 
 Branch: feature/elliptical-section-dimensions

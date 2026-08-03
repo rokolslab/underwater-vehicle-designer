@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # Implementation Plan: восстановить UTF-8 кодировку интерфейса и документов
 
 Branch: none (`git.enabled: false` in `.ai-factory/config.yaml`; текущая Git-ветка: `master`)

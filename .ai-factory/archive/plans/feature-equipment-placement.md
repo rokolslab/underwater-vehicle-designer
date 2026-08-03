@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: оборудование, X-Ray и сечения корпуса
 
 Branch: feature/equipment-placement

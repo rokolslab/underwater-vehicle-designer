@@ -1,4 +1,8 @@
-﻿# РџРµСЂРµС…РѕРґ СЂР°Р·СЂР°Р±РѕС‚РєРё Рё VPS-РґРµРїР»РѕСЏ РЅР° Docker
+﻿---
+archived: 2026-08-03
+---
+
+# РџРµСЂРµС…РѕРґ СЂР°Р·СЂР°Р±РѕС‚РєРё Рё VPS-РґРµРїР»РѕСЏ РЅР° Docker
 
 **Branch:** `feature/docker-development-environment`
 **Created:** 2026-06-30
@@ -72,7 +76,6 @@ Single commit after all tasks:
 ```text
 build(docker): add development and VPS containers
 ```
-
 
 
 

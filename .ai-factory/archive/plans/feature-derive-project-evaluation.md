@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: чистый deriveProject и единый ProjectEvaluation
 
 Ветка: `feature/derive-project-evaluation`
