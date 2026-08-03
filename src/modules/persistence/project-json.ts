@@ -2,7 +2,7 @@ import { DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../ba
 import type { BalanceSettings } from "../balance/model";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentAxis, EquipmentItem, EquipmentShape } from "../equipment/model";
-import { createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
+import { allocateUniqueEquipmentId, createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
 import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../geometry/model";
 import type { Scene3dSettings } from "../rendering/model";
 import { defaultScene3dSettings, normalizeScene3dSettings } from "../rendering/viewSettings";
@@ -178,10 +178,10 @@ function normalizeEquipment(value: unknown, warnings: string[]): readonly Equipm
   const items = value.map((entry, index) => {
     const source = readRecord(entry, warnings, `project.equipment[${index}]`);
     const requestedId = readString(source.id, `equipment-${index + 1}`);
-    const id = usedIds.has(requestedId) ? `${requestedId}-${index + 1}` : requestedId;
+    const id = allocateUniqueEquipmentId(requestedId, usedIds, index + 1);
     if (id !== requestedId) {
       warnings.push(`equipment ${requestedId} duplicate id normalized`);
-      logger.warn("project json equipment duplicate id normalized", { requestedId, normalized: id });
+      logger.warn("project json equipment duplicate id normalized", { requestedId, normalizedId: id });
     }
     usedIds.add(id);
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import v1Fixture from "../../../tests/fixtures/project-v1-coordinate-migration.json";
 import v2Fixture from "../../../tests/fixtures/project-v2-sname-ned.json";
+import { addEquipmentItem } from "../equipment/placement";
 import type { SerializableProjectState } from "./project-json";
 import {
   buildProjectJson,
@@ -61,6 +62,57 @@ describe("project json persistence", () => {
     expect(roundTrip.warnings).toHaveLength(0);
     expect(roundTrip.project.profile.geometryMode).toBe("legacy-dsnp-pa");
     expect(roundTrip.project).toEqual(initial.project);
+  });
+
+  it("normalizes duplicate IDs once, preserves gravity, and keeps import add allocation unique", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    const project = source.project as Record<string, any>;
+    const [equipment] = project.equipment as Record<string, any>[];
+    project.equipment = [
+      { ...structuredClone(equipment), id: "payload" },
+      { ...structuredClone(equipment), id: "payload-3" },
+      { ...structuredClone(equipment), id: "payload" },
+    ];
+
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const parsed = parseFixture(source);
+
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) return;
+      expect(parsed.warnings).toEqual(["equipment payload duplicate id normalized"]);
+      expect(parsed.project.equipment.map((item) => item.id)).toEqual(["payload", "payload-3", "payload-4"]);
+      expect(new Set(parsed.project.equipment.map((item) => item.id)).size).toBe(parsed.project.equipment.length);
+      expect(parsed.project.balanceSettings.gravityMPerS2).toBe(9.81);
+      expect(consoleWarn).toHaveBeenCalledTimes(1);
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "[WARN] project json equipment duplicate id normalized",
+        expect.objectContaining({ requestedId: "payload", normalizedId: "payload-4" }),
+      );
+
+      const exported = buildProjectJson(parsed.project);
+      const raw = JSON.parse(exported) as { project: SerializableProjectState; exportedAt: string };
+      expect(raw.project.balanceSettings.gravityMPerS2).toBe(9.81);
+
+      const roundTrip = parseProjectJson(exported);
+      expect(roundTrip.ok).toBe(true);
+      if (!roundTrip.ok) return;
+      expect(roundTrip.warnings).toHaveLength(0);
+      expect(roundTrip.project).toEqual(parsed.project);
+      expect(roundTrip.project.equipment.map((item) => item.id)).toEqual(["payload", "payload-3", "payload-4"]);
+    } finally {
+      consoleWarn.mockRestore();
+    }
+
+    const addSource = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    (addSource.project as Record<string, any>).equipment = [{ ...structuredClone(equipment), id: "equipment-1" }];
+    const addParsed = parseFixture(addSource);
+    expect(addParsed.ok).toBe(true);
+    if (!addParsed.ok) return;
+    const next = addEquipmentItem(addParsed.project.equipment);
+    expect(next[0]).toBe(addParsed.project.equipment[0]);
+    expect(next.map((item) => item.id)).toEqual(["equipment-1", "equipment-2"]);
+    expect(new Set(next.map((item) => item.id)).size).toBe(next.length);
   });
 
   it("imports old v2 profile dimensions from diameter without warning", () => {

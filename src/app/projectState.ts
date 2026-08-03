@@ -27,6 +27,7 @@ export function makeProjectState(
     equipmentCount: state.equipment.length,
     scene3dMode: state.scene3dSettings.mode,
     waterDensityKgPerM3: state.balanceSettings.waterDensityKgPerM3,
+    gravityMPerS2: state.balanceSettings.gravityMPerS2,
   });
   return state;
 }

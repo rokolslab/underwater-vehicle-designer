@@ -9,6 +9,7 @@
 ```bash
 npm run check:encoding
 npm run test
+npm run test:e2e
 npm run build
 ```
 
@@ -18,6 +19,27 @@ Docker equivalents:
 docker compose run --rm app npm run check:encoding
 docker compose run --rm app npm run test
 docker compose run --rm app npm run build
+```
+
+Browser E2E через Playwright требует установленный браузер:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+По умолчанию Playwright сам запускает Vite dev server на `127.0.0.1:5173`. Для проверки уже запущенного приложения задайте `PLAYWRIGHT_BASE_URL`, например:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
+```
+
+Текущий Docker app image основан на Alpine и не является основным окружением для browser automation. Для CI/browser smoke предпочтительнее запускать Playwright локально или в отдельном Playwright container image.
+
+Docker-запуск через официальный Playwright image:
+
+```bash
+docker compose -f compose.e2e.yml run --rm e2e
 ```
 
 ## Test Layout
@@ -32,7 +54,8 @@ docker compose run --rm app npm run build
 | `src/modules/rendering/` | `mesh.test.ts`, `scene3d.test.ts`, `equipment3d.test.ts` |
 | `src/modules/persistence/` | `csv.test.ts`, `svg.test.ts`, `project-json.test.ts` |
 | `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts` |
-| `src/app/` | `appState.test.ts`, `dom-contract.test.ts` |
+| `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `dom-contract.test.ts` |
+| `tests/e2e/` | `import-export.spec.ts` |
 
 ## Geometry Regression
 
@@ -93,7 +116,14 @@ docker compose run --rm app npm run build
 - SVG path generation;
 - JSON schema version;
 - JSON normalization for profile, equipment, scene3d and balance settings;
+- canonical JSON round-trip без повторной duplicate-ID normalization;
+- preservation of `balanceSettings.gravityMPerS2` through parse/build/parse;
+- import → `addEquipmentItem()` uniqueness for IDs like `equipment-1`;
 - rejection of invalid JSON/root/schema.
+
+`placement.test.ts` separately covers collection-level ID allocation: empty list starts at `equipment-1`, gaps and deletes reuse the first free default ID, independent branches from `[]` are deterministic, custom factories are called once, blank custom IDs fall back to default allocation, and collisions use the first free suffix.
+
+`application-gravity.test.ts` checks the browser-free application seam: parsed JSON applies imported gravity to `AppStateController`, unrelated updates keep it in `makeProjectState()`, export/import preserves it without warnings, and reset returns gravity to `DEFAULT_GRAVITY_M_PER_S2`.
 
 ## Coordinate and Migration Regressions
 
@@ -109,6 +139,10 @@ docker compose run --rm app npm run build
 `dom-contract.test.ts` защищает DOM ids, которые требуются `main.ts`. Если в `index.html` переименовать элемент без изменения `main.ts`, тест должен упасть.
 
 `equipment.test.ts` проверяет HTML editor и чтение updates из строк оборудования.
+
+## Browser E2E Tests
+
+`tests/e2e/import-export.spec.ts` запускает приложение в Chromium и проверяет пользовательский workflow: импорт JSON v2 с `gravityMPerS2`, отображение импортированного оборудования, добавление нового оборудования без collision по ID, экспорт проекта и сохранение `gravityMPerS2`, `waterDensityKgPerM3` и уникальных `equipment.id`.
 
 ## Encoding Check
 
@@ -134,6 +168,14 @@ docker compose run --rm app npm run build
 8. Ввести наименование из двух слов.
 9. Скачать SVG, CSV и JSON.
 10. Загрузить JSON обратно.
+
+Data-integrity smoke for import/export:
+
+1. Импортировать v2 JSON, где `balanceSettings.gravityMPerS2` отличается от default, например `9.81`.
+2. Добавить оборудование после import и проверить, что новый ID не конфликтует с импортированными ID.
+3. Экспортировать проект и убедиться, что `waterDensityKgPerM3`, `gravityMPerS2` и все `equipment.id` сохранены.
+4. Повторно импортировать экспортированный JSON и проверить отсутствие новых duplicate-ID warnings.
+5. Выполнить reset и проверить, что gravity в следующем export вернулась к default `9.80665`.
 
 ## Public Demo v1 Smoke
 
