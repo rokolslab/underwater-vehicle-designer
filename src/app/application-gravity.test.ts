@@ -34,7 +34,7 @@ function writeProfileControls(controls: ControlElements, profile: SerializablePr
   controls.height.value = String(profile.height);
   controls.slenderness.value = String(profile.slenderness);
   controls.cylindricalInsertLength.value = String(profile.cylindricalInsertLength);
-  controls.geometryMode.value = profile.geometryMode;
+  controls.geometryMode.value = profile.geometryMode ?? "current-formula";
   controls.stations.value = String(profile.stations);
   controls.showGrid.checked = profile.showGrid;
   controls.showPoints.checked = profile.showPoints;

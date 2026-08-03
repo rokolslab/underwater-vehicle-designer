@@ -133,9 +133,15 @@ body.z = -old.y
 | `equipment.orientation` | неизвестное значение -> `x` |
 | `equipment.massKg` | `> 0` |
 | dimensions | `> 0` |
-| duplicate ids | получают suffix `-index` |
+| duplicate ids | получают первый свободный collision-safe suffix |
+| `balanceSettings.waterDensityKgPerM3` | `> 0`, fallback на default воды |
+| `balanceSettings.gravityMPerS2` | `> 0`, fallback на default gravity |
 
 Ошибки JSON syntax, root type, schema version и отсутствие `project` возвращают `ok: false`.
+
+`waterDensityKgPerM3` доступен в UI, а `gravityMPerS2` остается скрытой настройкой проекта: импортированное положительное значение сохраняется через application workflow, экспорт и повторный импорт. Общий reset возвращает gravity к `DEFAULT_GRAVITY_M_PER_S2`.
+
+Уникальность `equipment.id` гарантируется на import normalization boundary и при последующем `addEquipmentItem()`. Уже уникальные ID не переименовываются. При конфликте requested ID считается opaque строкой: если `payload` занят и `payload-3` тоже занят, следующий duplicate `payload` станет `payload-4`; это не обещание одной попытки `-index`, а поиск первого свободного suffix. После нормализованного import → export → import повторный import не должен создавать новые duplicate-ID warnings.
 
 ## CSV Export
 
@@ -197,6 +203,8 @@ Rows:
 - Новые поля JSON должны иметь fallback при импорте.
 - `profile.geometryMode` остается optional в JSON v2; missing defaults to `current-formula`, unsupported values normalize with warning.
 - `profile.breadth`/`profile.height` остаются optional в JSON v2; missing dimensions fall back through `diameter`, then `length / slenderness`.
+- `balanceSettings.waterDensityKgPerM3` и `balanceSettings.gravityMPerS2` входят в JSON v2; gravity не имеет отдельного UI control, но импортированное значение сохраняется до reset.
+- `equipment.id` должен оставаться уникальным после import и после добавления нового оборудования; collision suffix выбирается как первый свободный.
 - CSV должен оставаться построенным из `stationPoints`.
 - SVG не должен пересчитывать геометрию независимо от `ProfileSnapshot`.
 - Русские UI-строки должны проходить `npm run check:encoding`.
