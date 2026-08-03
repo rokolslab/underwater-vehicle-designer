@@ -52,7 +52,7 @@ describe("ProjectStore", () => {
   it("commits slice updates while preserving untouched slice identity", () => {
     const store = createProjectStore(createDefaultProjectInputs());
     const before = store.getSnapshot();
-    const after = store.setProfile({ ...before.profile, length: 8 });
+    const after = store.dispatch({ type: "ReplaceProfile", profile: { ...before.profile, length: 8 } });
 
     expect(after).not.toBe(before);
     expect(after.profile).not.toBe(before.profile);
@@ -67,17 +67,25 @@ describe("ProjectStore", () => {
     store.subscribe(listener);
     const before = store.getSnapshot();
 
-    expect(store.setProfile(before.profile)).toBe(before);
-    expect(store.setEquipment(before.equipment)).toBe(before);
-    expect(store.setBalanceSettings(before.balanceSettings)).toBe(before);
-    expect(store.replaceProject(before)).toBe(before);
+    expect(store.dispatch({ type: "ReplaceProfile", profile: before.profile })).toBe(before);
+    expect(store.dispatch({ type: "ReplaceBalanceSettings", balanceSettings: before.balanceSettings })).toBe(before);
+    expect(store.dispatch({ type: "ReplaceProject", project: before })).toBe(before);
+    expect(
+      store.dispatch({
+        type: "ReplaceProject",
+        project: { profile: before.profile, equipment: before.equipment, balanceSettings: before.balanceSettings },
+      }),
+    ).toBe(before);
     expect(listener).not.toHaveBeenCalled();
   });
 
   it("clones committed caller-owned objects", () => {
     const store = createProjectStore(createDefaultProjectInputs());
     const equipment = makeProject().equipment;
-    const snapshot = store.setEquipment(equipment);
+    const snapshot = store.dispatch({
+      type: "ReplaceProject",
+      project: { ...store.getSnapshot(), equipment },
+    });
     const equipmentItem = equipment[0] as BoxEquipmentItem;
 
     (equipmentItem.position as { y: number }).y = 99;
@@ -98,12 +106,12 @@ describe("ProjectStore", () => {
       store.subscribe(() => calls.push("late"));
     });
 
-    store.setProfile({ ...store.getSnapshot().profile, length: 7 });
+    store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 7 } });
     unsubscribeA();
     unsubscribeA();
-    store.setProfile({ ...store.getSnapshot().profile, length: 8 });
+    store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 8 } });
     unsubscribeB();
-    store.setProfile({ ...store.getSnapshot().profile, length: 9 });
+    store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 9 } });
 
     expect(calls).toEqual([
       "listener",
@@ -127,7 +135,7 @@ describe("ProjectStore", () => {
     });
     store.subscribe(second);
 
-    expect(() => store.setProfile({ ...store.getSnapshot().profile, length: 7 })).toThrow(error);
+    expect(() => store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 7 } })).toThrow(error);
     expect(second).toHaveBeenCalledWith(store.getSnapshot());
     expect(store.getSnapshot().profile.length).toBe(7);
   });
@@ -135,11 +143,23 @@ describe("ProjectStore", () => {
   it("rejects reentrant commits during notification", () => {
     const store = createProjectStore(createDefaultProjectInputs());
     store.subscribe(() => {
-      store.setProfile({ ...store.getSnapshot().profile, length: 9 });
+      store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 9 } });
     });
 
-    expect(() => store.setProfile({ ...store.getSnapshot().profile, length: 7 })).toThrow(/reentrant/i);
+    expect(() => store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 7 } })).toThrow(/reentrant/i);
     expect(store.getSnapshot().profile.length).toBe(7);
+  });
+
+  it("allows reentrant no-op dispatch during notification", () => {
+    const store = createProjectStore(createDefaultProjectInputs());
+    store.subscribe(() => {
+      store.dispatch({ type: "ReplaceProfile", profile: store.getSnapshot().profile });
+    });
+
+    const snapshot = store.dispatch({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 7 } });
+
+    expect(snapshot.profile.length).toBe(7);
+    expect(store.getSnapshot()).toBe(snapshot);
   });
 
   it("creates isolated default project inputs", () => {

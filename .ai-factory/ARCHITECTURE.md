@@ -4,7 +4,7 @@
 
 Underwater Vehicle Designer развивается как frontend-only модульный монолит. Расчётное ядро состоит из чистых TypeScript capabilities, application layer владеет каноническим состоянием проекта и последовательностью вычислений, а DOM, Canvas, Three.js, JSON и файловые операции остаются внешними adapters.
 
-Целевая схема развивается без big-bang rewrite. Текущие модули `geometry`, `equipment` и `balance` уже образуют functional core, а первый архитектурный переход выполнен: canonical `ProjectInputs`, общий normalization seam, pure `deriveProject()` и browser-free runtime publication отделяют расчетный граф от DOM/render adapters. `main.ts` остается composition root и adapter wiring, но еще не является полноценным reducer/command bus.
+Целевая схема развивается без big-bang rewrite. Текущие модули `geometry`, `equipment` и `balance` уже образуют functional core, а архитектурные seams введены инкрементально: canonical `ProjectInputs`, общий normalization seam, typed `ProjectCommand`, pure `reduceProject()`, pure `deriveProject()` и browser-free runtime publication отделяют canonical mutations и расчетный граф от DOM/render adapters. `main.ts` остается composition root и adapter wiring, но canonical изменения проходят через `ProjectStore.dispatch()`.
 
 ## Обоснование решения
 
@@ -20,9 +20,9 @@ Underwater Vehicle Designer развивается как frontend-only моду
 ```text
 src/
 ├── application/
-│   └── project/              # Первый seam: ProjectInputs, profile defaults и общий normalization pipeline
+│   └── project/              # ProjectInputs, commands/reducer/store, derive и normalization pipeline
 ├── app/
-│   ├── main.ts                 # Composition root и текущий application controller
+│   ├── main.ts                 # Composition root: DOM events -> commands -> explicit runtime commit
 │   ├── appState.ts             # DOM-backed profile adapter, использует application normalization seam
 │   └── projectEvaluationRuntime.ts # Atomic publication последней успешной ProjectEvaluation
 ├── modules/
@@ -49,8 +49,9 @@ src/
 │   │   ├── defaults.ts
 │   │   ├── normalize.ts                # Общий normalization pipeline
 │   │   ├── derive.ts                   # Чистый deriveProject() для текущего расчетного графа
-│   │   ├── reducer.ts                  # Команды изменения проекта
-│   │   └── store.ts                    # Каноническое application state
+│   │   ├── commands.ts                 # Typed ProjectCommand contract
+│   │   ├── reducer.ts                  # Pure immutable ProjectInputs transitions
+│   │   └── store.ts                    # Каноническое application state и dispatch notification contract
 │   └── diagnostics/
 │       └── model.ts                    # Коды и параметры диагностик
 ├── core/
@@ -130,11 +131,12 @@ application не зависит от DOM, Canvas, Three.js и browser files.
 - `DesignSnapshot` — versioned immutable состояние для comparison.
 - `ProjectDocumentV3` и последующие версии — persistence DTO, а не domain state.
 
-DOM event преобразуется в application command. Reducer или эквивалентный единый controller создаёт новое состояние, после чего `deriveProject()` вычисляет результаты, а adapters отображают их.
+DOM event преобразуется в typed application command. `reduceProject()` создаёт новое canonical состояние, `ProjectStore.dispatch()` коммитит frozen snapshot и возвращает его caller, после чего `main.ts` явно вызывает runtime commit. Production subscription store → render не используется, чтобы listener errors не смешивались с import/control/render ordering.
 
 ```text
 DOM event
-  -> application command
+  -> ProjectCommand
+  -> reduceProject(currentInputs, command)
   -> ProjectStore
   -> ProjectInputs
   -> deriveProject()
@@ -143,7 +145,7 @@ DOM event
   -> DOM / Canvas / Three.js / export adapters
 ```
 
-В текущей реализации `ProjectStore` уже коммитит canonical inputs, а `projectEvaluationRuntime` публикует новую coherent пару только после успешного derive. View-only события и resize повторно используют текущую publication без повторного engineering calculation.
+В текущей реализации `ProjectStore` коммитит canonical inputs через `dispatch()`, а `projectEvaluationRuntime` публикует новую coherent пару только после успешного derive. View-only события и resize повторно используют текущую publication без повторного engineering calculation.
 
 Импорт выполняется атомарно:
 
@@ -153,11 +155,14 @@ File
   -> schema migration
   -> normalizeProjectInputs()
   -> ReplaceProject command
+  -> replace view state
+  -> ProjectStore.dispatch()
+  -> write controls
   -> deriveProject()
-  -> render
+  -> publish/render
 ```
 
-Запись импортированных данных в DOM с последующим повторным чтением не допускается.
+Запись импортированных данных в DOM с последующим повторным чтением не допускается. Ошибка до dispatch не меняет store/view state; ошибка controls/render после dispatch не откатывает canonical state.
 
 ## Геометрический контракт
 
@@ -280,13 +285,10 @@ export function deriveProject(inputs: ProjectInputs): ProjectEvaluation {
 
 ```ts
 controls.onProfileChanged((rawInput) => {
-  projectStore.dispatch({ type: "profileChanged", rawInput });
-});
-
-projectStore.subscribe(({ inputs, evaluation }) => {
-  controls.render(inputs);
-  canvasRenderer.render(evaluation);
-  scene3dRenderer.render(evaluation);
+  const command = normalizeProfileCommand(rawInput);
+  const before = projectStore.getSnapshot();
+  const committed = projectStore.dispatch(command);
+  if (committed !== before) projectEvaluationRuntime.commit(committed);
 });
 ```
 

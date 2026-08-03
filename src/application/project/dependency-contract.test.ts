@@ -5,6 +5,7 @@ import ts from "typescript";
 
 const forbiddenImports = ["modules/ui", "modules/rendering", "modules/persistence", "shared/logger"];
 const forbiddenRuntimeImportFragments = ["/app/", "/modules/ui/", "/modules/rendering/", "/modules/persistence/", "/shared/logger", "/three"];
+const forbiddenRuntimeBareSpecifiers = ["three", "vite"];
 const forbiddenRuntimeSourcePatterns = [/import\.meta\.env/u, /\b(document|window|HTMLCanvasElement|HTMLElement|FileReader|ResizeObserver)\b/u];
 
 function resolveRelativeProductionImport(fromFile: string, specifier: string): string | undefined {
@@ -30,6 +31,7 @@ function collectRuntimeClosure(entryFile: string): readonly string[] {
       if (statement.importClause?.isTypeOnly) continue;
       const specifier = statement.moduleSpecifier;
       if (!ts.isStringLiteral(specifier)) continue;
+      expect(forbiddenRuntimeBareSpecifiers, `${file} must not import forbidden runtime package ${specifier.text}`).not.toContain(specifier.text);
 
       const resolvedImport = resolveRelativeProductionImport(file, specifier.text);
       if (resolvedImport) pending.push(resolvedImport);
@@ -72,6 +74,29 @@ describe("application project dependency contract", () => {
       const content = readFileSync(file, "utf8");
       for (const forbiddenPattern of forbiddenRuntimeSourcePatterns) {
         expect(content, `${normalized} must not reference browser/runtime globals`).not.toMatch(forbiddenPattern);
+      }
+    }
+  });
+
+  it("keeps reducer and store runtime closures free of adapters, browser globals, and logger", () => {
+    const projectRoot = process.cwd();
+    const entries = [
+      join(projectRoot, "src/application/project/reducer.ts"),
+      join(projectRoot, "src/application/project/store.ts"),
+    ];
+
+    for (const entry of entries) {
+      const closure = collectRuntimeClosure(entry);
+      for (const file of closure) {
+        const normalized = `/${normalize(relative(projectRoot, file)).replaceAll("\\", "/")}`;
+        for (const forbidden of forbiddenRuntimeImportFragments) {
+          expect(normalized, `${normalized} must not be in ${relative(projectRoot, entry)} runtime closure`).not.toContain(forbidden);
+        }
+
+        const content = readFileSync(file, "utf8");
+        for (const forbiddenPattern of forbiddenRuntimeSourcePatterns) {
+          expect(content, `${normalized} must not reference browser/runtime globals`).not.toMatch(forbiddenPattern);
+        }
       }
     }
   });

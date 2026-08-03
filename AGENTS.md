@@ -31,7 +31,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 
 ## Следующие целевые расширения
 
-- **Архитектура:** canonical `ProjectInputs`, общий normalization pipeline, чистый `deriveProject()` и runtime publication `{ inputsSnapshot, evaluation }`
+- **Архитектура:** развитие command/reducer layer, сокращение `main.ts` до wiring и subscriptions без big-bang переноса каталогов
 - **Геометрия:** общий `SectionShape`, дальнейшее развитие legacy DSNP_PA beyond elliptical first slice и параметры `Priam`/`Kr`
 - **Компоновка:** более точные CAD-подобные проверки оборудования внутри placement envelope
 - **Mass properties:** группы масс и полный тензор инерции
@@ -51,7 +51,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 ├── src/
 │   ├── shared/body-coordinates.ts # Body/Profile types and pure conversions
 │   ├── application/
-│   │   └── project/        # Canonical ProjectInputs, profile defaults and shared normalization seam
+│   │   └── project/        # Canonical ProjectInputs, commands/reducer/store, derive and normalization seam
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint, DOM wiring и adapter orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
@@ -85,13 +85,17 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | Файл | Назначение |
 | --- | --- |
 | `index.html` | Vite HTML shell, загружает `/src/app/main.ts` |
-| `src/app/main.ts` | Инициализация DOM, ProjectStore commits, publication render/export orchestration |
+| `src/app/main.ts` | DOM events → ProjectCommand dispatch, explicit runtime commit, render/export orchestration |
 | `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `H = L / lambda`, `lastEdited` |
 | `src/app/projectEvaluationRuntime.ts` | Browser-free coordinator: derive, atomic publication, rerender без повторного derive |
 | `src/application/project/model.ts` | Минимальный canonical `ProjectInputs`/`ProjectProfileInputs` contract |
 | `src/application/project/defaults.ts` | Общие defaults профиля для application normalizers и adapters |
 | `src/application/project/normalize.ts` | Pure profile normalization policies и projection в текущий `ProfileState` |
 | `src/application/project/derive.ts` | Pure `deriveProject(ProjectInputs) -> ProjectEvaluation` для geometry/drawing/constraints/equipment balance |
+| `src/application/project/commands.ts` | Typed `ProjectCommand` contract для canonical mutations |
+| `src/application/project/reducer.ts` | Pure logger-free `reduceProject()` для immutable ProjectInputs transitions |
+| `src/application/project/ownership.ts` | Общий clone/freeze ownership helper для reducer/store snapshots |
+| `src/application/project/store.ts` | `ProjectStore.dispatch()` и notification contract без production render subscription |
 | `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/geometry/current-formula.ts` | Текущая формула радиуса и ЦВК |
@@ -100,7 +104,8 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
 | `src/modules/balance/equipment-balance.ts` | Pure equipment balance calculation: CG, CB, mass, buoyancy, weight, moment arms and warning codes |
 | `src/modules/equipment/model.ts` | Типы оборудования, объем, центр и displaced-volume helpers |
-| `src/modules/equipment/placement.ts` | Создание, update/delete/rename и нормализация equipment list |
+| `src/modules/equipment/placement-core.ts` | Pure logger-free equipment transitions для reducer/persistence/UI tests |
+| `src/modules/equipment/placement.ts` | Compatibility re-export существующего equipment placement API |
 | `src/modules/equipment/constraints.ts` | Проверки выхода оборудования за корпус, пересечений и status report для UI/2D/3D |
 | `src/shared/body-coordinates.ts` | Body/SNAME-NED types, Profile s↔Body X, vector operations |
 | `src/modules/rendering/coordinate-adapter.ts` | Body↔Three and XZ/XY/YZ projection adapters |

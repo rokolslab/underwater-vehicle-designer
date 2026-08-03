@@ -66,14 +66,22 @@ describe("project evaluation runtime", () => {
     const store = createProjectStore(createDefaultProjectInputs());
     const derive = vi.fn(() => evaluation(1));
     const runtime = createProjectEvaluationRuntime({ derive, render: vi.fn() });
-    store.subscribe((snapshot) => runtime.commit(snapshot));
+
+    function dispatchAndCommit(command: Parameters<typeof store.dispatch>[0]): void {
+      const before = store.getSnapshot();
+      const committed = store.dispatch(command);
+      if (committed !== before) runtime.commit(committed);
+    }
 
     runtime.commit(store.getSnapshot());
     runtime.rerender();
-    store.setProfile({ ...store.getSnapshot().profile, length: 7 });
-    store.setEquipment([]);
-    store.setBalanceSettings({ ...store.getSnapshot().balanceSettings, waterDensityKgPerM3: 997 });
+    dispatchAndCommit({ type: "ReplaceProfile", profile: { ...store.getSnapshot().profile, length: 7 } });
+    dispatchAndCommit({ type: "UpdateEquipment", id: "missing", update: { name: "No-op" } });
+    dispatchAndCommit({
+      type: "ReplaceBalanceSettings",
+      balanceSettings: { ...store.getSnapshot().balanceSettings, waterDensityKgPerM3: 997 },
+    });
 
-    expect(derive).toHaveBeenCalledTimes(4);
+    expect(derive).toHaveBeenCalledTimes(3);
   });
 });

@@ -1,12 +1,12 @@
 import "./styles.css";
 import { createAppStateController, type LastEdited } from "./appState";
 import { DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../modules/balance/equipment-balance";
+import type { ProjectCommand } from "../application/project/commands";
 import { createDefaultProjectInputs } from "../application/project/defaults";
 import { deriveProject } from "../application/project/derive";
 import type { ProjectInputs, ProjectProfileInputs } from "../application/project/model";
 import { projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
 import { createProjectStore } from "../application/project/store";
-import { addEquipmentItem, deleteEquipmentItem, updateEquipmentItem } from "../modules/equipment/placement";
 import { renderCanvasProfile } from "../modules/rendering/canvas2d";
 import { renderTheoreticalDrawing } from "../modules/rendering/theoretical-drawing";
 import { createHullScene3d } from "../modules/rendering/scene3d";
@@ -288,24 +288,33 @@ function writeProfileControls(profile: ProjectProfileInputs, view: ProjectViewSt
 
 function commitProfileFromControls(source: LastEdited): void {
   const profileState = appState.readState(source);
-  const committed = projectStore.setProfile({
-    geometryMode: normalizeGeometryMode(profileState.geometryMode),
-    length: profileState.length,
-    breadth: profileState.breadth,
-    height: profileState.height,
-    cylindricalInsertLength: profileState.cylindricalInsertLength,
-    stations: profileState.stations,
+  commitProjectCommand({
+    type: "ReplaceProfile",
+    profile: {
+      geometryMode: normalizeGeometryMode(profileState.geometryMode),
+      length: profileState.length,
+      breadth: profileState.breadth,
+      height: profileState.height,
+      cylindricalInsertLength: profileState.cylindricalInsertLength,
+      stations: profileState.stations,
+    },
   });
-  renderCommittedState(committed);
 }
 
 function replaceProjectViewState(view: ProjectViewState): void {
   projectViewState = Object.freeze({ ...view });
 }
 
+function commitProjectCommand(command: ProjectCommand): ProjectInputs {
+  const before = projectStore.getSnapshot();
+  const committed = projectStore.dispatch(command);
+  if (committed !== before) renderCommittedState(committed);
+  return committed;
+}
+
 function applyPreparedProjectImport(result: Extract<PreparedProjectImportResult, { ok: true }>): void {
   replaceProjectViewState(result.view);
-  const committed = projectStore.replaceProject(result.inputs);
+  const committed = projectStore.dispatch({ type: "ReplaceProject", project: result.inputs });
   logger.debug("projectImportCommitted", {
     migrated: result.migratedFromVersion === 1,
     warningCount: result.warnings.length,
@@ -393,8 +402,10 @@ inputs.showPoints.addEventListener("change", () => {
 });
 waterDensityInput.addEventListener("input", () => {
   const snapshot = projectStore.getSnapshot();
-  const committed = projectStore.setBalanceSettings({ ...snapshot.balanceSettings, waterDensityKgPerM3: readWaterDensity(waterDensityInput) });
-  renderCommittedState(committed);
+  commitProjectCommand({
+    type: "ReplaceBalanceSettings",
+    balanceSettings: { ...snapshot.balanceSettings, waterDensityKgPerM3: readWaterDensity(waterDensityInput) },
+  });
 });
 bindScene3dControls(scene3dControls, () => {
   const publication = projectEvaluationRuntime.getPublication();
@@ -416,20 +427,16 @@ window.addEventListener("beforeunload", () => {
 addEquipmentButton.addEventListener("click", () => {
   const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");
   if (equipmentPanel) equipmentPanel.open = true;
-  const equipment = addEquipmentItem(projectStore.getSnapshot().equipment);
-  const committed = projectStore.setEquipment(equipment);
-  logger.info("equipment added by user", { count: equipment.length });
-  renderCommittedState(committed);
+  const committed = commitProjectCommand({ type: "AddEquipment" });
+  logger.info("equipment added by user", { count: committed.equipment.length });
 });
 
 equipmentList.addEventListener("click", (event) => {
   if (!isEquipmentDeleteEvent(event)) return;
   const id = equipmentIdFromEvent(event);
   if (!id) return;
-  const equipment = deleteEquipmentItem(projectStore.getSnapshot().equipment, id);
-  const committed = projectStore.setEquipment(equipment);
-  logger.info("equipment deleted by user", { id, count: equipment.length });
-  renderCommittedState(committed);
+  const committed = commitProjectCommand({ type: "DeleteEquipment", id });
+  logger.info("equipment deleted by user", { id, count: committed.equipment.length });
 });
 
 equipmentList.addEventListener("change", (event) => {
@@ -444,8 +451,11 @@ equipmentList.addEventListener("change", (event) => {
   if (isShapeChange) {
     logger.debug("[FIX] equipment shape change uses default dimensions", { id, previousShape, nextShape });
   }
-  const committed = projectStore.setEquipment(updateEquipmentItem(projectStore.getSnapshot().equipment, id, readEquipmentUpdate(row, { includeDimensions: !isShapeChange })));
-  renderCommittedState(committed);
+  commitProjectCommand({
+    type: "UpdateEquipment",
+    id,
+    update: readEquipmentUpdate(row, { includeDimensions: !isShapeChange }),
+  });
 });
 
 equipmentList.addEventListener("input", (event) => {
@@ -455,8 +465,7 @@ equipmentList.addEventListener("input", (event) => {
   const row = target.closest<HTMLElement>("[data-equipment-id]");
   if (!row) return;
   logger.debug("equipment state read from UI", { id });
-  const committed = projectStore.setEquipment(updateEquipmentItem(projectStore.getSnapshot().equipment, id, readEquipmentUpdate(row)));
-  renderCommittedState(committed);
+  commitProjectCommand({ type: "UpdateEquipment", id, update: readEquipmentUpdate(row) });
 });
 
 downloadSvgButton.addEventListener("click", () => {
@@ -545,9 +554,12 @@ resetButton.addEventListener("click", () => {
   appState.setLastEdited("slenderness");
   replaceProjectViewState({ ...projectViewState, showGrid: true, showPoints: true });
   const defaultProject = createDefaultProjectInputs();
-  const committed = projectStore.replaceProject({
-    ...defaultProject,
-    balanceSettings: { ...defaultProject.balanceSettings, waterDensityKgPerM3: DEFAULT_WATER_DENSITY_KG_PER_M3 },
+  const committed = projectStore.dispatch({
+    type: "ReplaceProject",
+    project: {
+      ...defaultProject,
+      balanceSettings: { ...defaultProject.balanceSettings, waterDensityKgPerM3: DEFAULT_WATER_DENSITY_KG_PER_M3 },
+    },
   });
   writeProfileControls(committed.profile, projectViewState);
   writeScene3dControls(scene3dControls, projectViewState.scene3dSettings);

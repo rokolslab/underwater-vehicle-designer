@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { addEquipmentItem, createDefaultEquipmentItem, deleteEquipmentItem, renameEquipmentItem, updateEquipmentItem } from "./placement";
 
 describe("equipment placement", () => {
@@ -147,5 +147,25 @@ describe("equipment placement", () => {
 
     expect(updateEquipmentItem(items, "missing", { name: "Nope" })).toBe(items);
     expect(deleteEquipmentItem(items, "missing")).toBe(items);
+  });
+
+  it("does not log from pure placement transitions", () => {
+    const consoleDebug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const item = createDefaultEquipmentItem({ idFactory: () => "a", name: " Battery " });
+      const updated = updateEquipmentItem([item], "a", {
+        massKg: -1,
+        position: { x: Number.NaN },
+        dimensions: { radius: -1 },
+      });
+      deleteEquipmentItem(updated, "missing");
+
+      expect(consoleDebug).not.toHaveBeenCalled();
+      expect(consoleWarn).not.toHaveBeenCalled();
+    } finally {
+      consoleDebug.mockRestore();
+      consoleWarn.mockRestore();
+    }
   });
 });
