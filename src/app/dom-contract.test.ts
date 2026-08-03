@@ -102,8 +102,9 @@ describe("app DOM contract", () => {
     const main = readFileSync("src/app/main.ts", "utf8");
 
     expect(main).toContain("const projectStore = createProjectStore(createDefaultProjectInputs())");
+    expect(main).toContain("import type { ProjectCommand }");
     expect(main).toContain("prepareProjectImport(json)");
-    expect(main).toContain("projectStore.replaceProject(result.inputs)");
+    expect(main).toContain('projectStore.dispatch({ type: "ReplaceProject", project: result.inputs })');
     expect(main).toContain("inputsAndViewToSerializableProject(projectStore.getSnapshot(), projectViewState)");
     expect(main).toContain("projectImportRequestToken");
     expect(main).not.toContain("appState.applyImportedGravityMPerS2");
