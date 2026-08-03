@@ -4,14 +4,14 @@
 
 ## Актуальный фокус
 
-Базовая визуализация, оборудование, equipment-only balance, JSON v2, Body/SNAME-NED, эллиптические режимы геометрии и data-integrity import/export уже реализованы. Следующая фаза — эволюционно ввести канонический application state и единый расчетный граф; только после этого расширять legacy geometry и добавлять новые инженерные модели.
+Базовая визуализация, оборудование, equipment-only balance, JSON v2, Body/SNAME-NED, эллиптические режимы геометрии, data-integrity import/export, canonical `ProjectInputs`, `ProjectStore` и единый `deriveProject()`/`ProjectEvaluation` уже реализованы. Следующая фаза — ввести command/reducer layer поверх `ProjectStore` и `SectionShape`; только после этого расширять legacy geometry и добавлять новые инженерные модели.
 
 ## Вехи
 
 ### Application foundation
 
-- [ ] **Ввести канонический `ProjectInputs` и общий normalization pipeline** — разделить domain inputs, `ProjectViewState`, compatibility aliases и persistence DTO, чтобы DOM и JSON использовали одни pure normalizers.
-- [ ] **Извлечь `deriveProject()` и сократить `main.ts` до composition root** — централизованно получать `ProjectEvaluation` для geometry, drawing, constraints, balance, diagnostics и export, оставив в entrypoint только wiring и subscriptions.
+- [x] **Ввести канонический `ProjectInputs` и общий normalization pipeline** — разделить domain inputs, `ProjectViewState`, compatibility aliases и persistence DTO, чтобы DOM и JSON использовали одни pure normalizers.
+- [x] **Извлечь `deriveProject()` и сократить `main.ts` до composition root** — централизованно получать `ProjectEvaluation` для geometry, drawing, constraints, balance, diagnostics и export, оставив в entrypoint только wiring и subscriptions.
 - [ ] **Обобщить геометрию сечений через `SectionShape`** — ввести единые pure operations для площади, containment и sampling контура, чтобы mesh, constraints, theoretical drawing, integration и export не ветвились по `geometryMode`.
 
 ### Следующие возможности
@@ -56,3 +56,5 @@
 | Подготовить Docker и Public Demo v1 | 2026-07-27 |
 | Закрепить data-integrity import/export | 2026-08-03 |
 | Ввести `ProjectStore` и атомарный import workflow | 2026-08-03 |
+| Ввести канонический `ProjectInputs` и общий normalization pipeline | 2026-08-03 |
+| Извлечь `deriveProject()` и единый `ProjectEvaluation` | 2026-08-03 |
