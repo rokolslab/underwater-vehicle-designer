@@ -1,22 +1,27 @@
 # Дорожная карта проекта
 
-> Underwater Vehicle Designer развивается как модульный браузерный инженерный инструмент для 2D/3D-геометрии корпуса, компоновки оборудования и воспроизводимых расчетов в едином координатном и application-state контракте.
+> Underwater Vehicle Designer развивается как frontend-only инженерный инструмент для 2D/3D-геометрии корпуса, компоновки оборудования, воспроизводимых расчетов и инженерного экспорта в едином координатном и application-state контракте.
+
+## Актуальный фокус
+
+Базовая визуализация, оборудование, equipment-only balance, JSON v2, Body/SNAME-NED, эллиптические режимы геометрии и data-integrity import/export уже реализованы. Следующая фаза — эволюционно ввести канонический application state и единый расчетный граф; только после этого расширять legacy geometry и добавлять новые инженерные модели.
 
 ## Вехи
 
-### Текущий приоритет
+### Application foundation
 
-- [ ] **Стабилизировать целостность данных проекта** — закрепить import/export integration tests, сохранять импортированную `gravityMPerS2` и гарантировать уникальность equipment ID после сценария import → add equipment.
-- [ ] **Ввести канонический application foundation** — сделать `ProjectInputs` и единый application API источником истины, объединить DOM/JSON normalization и получать geometry, constraints, balance и drawing data через чистый `deriveProject()` без DOM-backed state.
-- [ ] **Обобщить геометрию сечений через `SectionShape`** — определить общий контракт и pure operations для площади, containment и sampling контура, чтобы rendering, constraints, theoretical drawing и integration не ветвились по каждой `geometryMode`.
+- [ ] **Ввести канонический `ProjectInputs` и общий normalization pipeline** — разделить domain inputs, `ProjectViewState`, compatibility aliases и persistence DTO, чтобы DOM и JSON использовали одни pure normalizers.
+- [ ] **Ввести `ProjectStore` и атомарный import workflow** — проводить изменения через единый application API и заменять состояние проекта без использования DOM как промежуточного источника истины.
+- [ ] **Извлечь `deriveProject()` и сократить `main.ts` до composition root** — централизованно получать `ProjectEvaluation` для geometry, drawing, constraints, balance, diagnostics и export, оставив в entrypoint только wiring и subscriptions.
+- [ ] **Обобщить геометрию сечений через `SectionShape`** — ввести единые pure operations для площади, containment и sampling контура, чтобы mesh, constraints, theoretical drawing, integration и export не ветвились по `geometryMode`.
 
 ### Следующие возможности
 
-- [ ] **Расширить legacy DSNP_PA geometry mode** — после `SectionShape` добавить и независимо проверить rounded-rectangle сечения `Priam`/`Kr`, legacy-семантику `Lcw` и regression fixtures, сохранив DSNP_PA как reference/traceability source, а не единственный инженерный oracle.
-- [ ] **Добавить mass properties и тензор инерции** — считать собственные моменты поддерживаемых тел, перенос к общей точке, суммарный тензор и диагностические roll/pitch moments в Body/SNAME-NED.
-- [ ] **Добавить массовую модель и группы нагрузок** — отделить оборудование от корпуса, балласта, запасов и других mass groups с воспроизводимыми design mass, CG и источниками значений.
+- [ ] **Расширить legacy DSNP_PA geometry mode** — после `SectionShape` добавить и независимо проверить `Lcw`, rounded-rectangle сечения `Priam`/`Kr`, батоксы, ватерлинии и дополнительные regressions без смешивания с текущей формулой `formula.xlsx`.
+- [ ] **Добавить mass properties и тензор инерции** — считать собственные моменты поддерживаемых тел, перенос к общей точке, суммарный тензор и roll/pitch diagnostics в Body/SNAME-NED.
+- [ ] **Добавить массовую модель и группы нагрузок** — отделить оборудование от корпуса, балласта, запасов и других mass groups с воспроизводимыми design mass, CG, единицами и provenance.
 - [ ] **Добавить `WatertightEnvelope` и полный ЦВ корпуса** — отделить equipment-only displacement от герметичного вытесняющего объема, ввести явный `BuoyancyModel` и считать объем/ЦВ с контрактом затопляемости и точности интегрирования.
-- [ ] **Завершить engineering exports** — дополнить существующие JSON, profile CSV/SVG и theoretical drawing SVG экспортом координат сечений, таблицы оборудования и расчетных результатов из общего `ProjectEvaluation`, не читая данные из DOM.
+- [ ] **Завершить engineering exports** — дополнить существующие JSON, profile CSV/SVG и theoretical drawing SVG экспортом координат сечений, таблицы оборудования и расчетных результатов из `ProjectEvaluation`, не читая данные из DOM.
 - [ ] **Ввести сравнение проекта и прототипа** — поддержать два versioned `DesignSnapshot` и объяснимые deltas по геометрии, массам, балансу и выбранным показателям без неявных преобразований координат.
 
 ### Исследовательский backlog
@@ -28,26 +33,27 @@
 
 ### Завершенные возможности
 
-- [x] **Собрать первичный 2D-прототип обводов** — реализовать статическую страницу, расчет формулы, canvas-профиль, таблицу станций и базовый SVG/CSV export.
+- [x] **Собрать первичный 2D-прототип обводов** — реализовать расчет профиля, canvas, таблицу станций и базовый SVG/CSV export.
 - [x] **Настроить AI Factory context** — создать описание проекта, архитектурные правила, базовые правила и карту `AGENTS.md`.
 - [x] **Восстановить и закрепить корректную русскую кодировку** — привести пользовательские тексты и проектные документы к UTF-8 и добавить автоматическую проверку.
 - [x] **Перейти на Vite + TypeScript** — заменить плоский `index.html`/`script.js` типизированной модульной сборкой.
 - [x] **Выделить расчетную геометрию в чистый модуль** — вынести формулу, станции, экстремумы и сечения из UI-кода в тестируемый geometry layer.
 - [x] **Добавить регрессионные тесты по `formula.xlsx`** — зафиксировать численное совпадение ключевых расчетов с табличным источником.
 - [x] **Реализовать ЦВК, цилиндрическую вставку корпуса** — добавить `Lcyl` внутри общей длины `L`, ограничение `Lcyl <= L / 2` и непрерывные переходы нос/вставка/корма.
-- [x] **Построить интерактивное 3D-представление корпуса** — создать Three.js-просмотр, который использует общий geometry snapshot и поддерживает эллиптические кольца, X-Ray и Cutaway.
+- [x] **Построить интерактивное 3D-представление корпуса** — создать Three.js-просмотр на общем geometry snapshot с эллиптическими кольцами, X-Ray и Cutaway.
 - [x] **Добавить модель оборудования и размещение внутри корпуса** — поддержать sphere, cylinder и box с координатами, массой, размерами и ориентацией по главным осям.
 - [x] **Реализовать проверки ограничений размещения** — выявлять выход за placement envelope, пересечения и invalid equipment с согласованной индикацией в UI/2D/3D.
 - [x] **Рассчитать equipment-only ЦТ, ЦВ и баланс** — показывать CG, CB по displaced volume оборудования, плавучесть, вес, плечи и stability diagnostics без заявления о полном ЦВ герметичного корпуса.
 - [x] **Добавить persistence проекта и базовые exports** — сохранять и загружать versioned JSON, экспортировать профиль в CSV/SVG и теоретический чертеж в SVG.
 - [x] **Закрепить координатный контракт Body/SNAME-NED** — централизовать domain coordinates, adapters для Canvas/Three.js и одностороннюю миграцию JSON v1 → v2.
-- [x] **Формализовать наследие DSNP_PA как reference source** — создать карту Pascal-системы, модель данных, каталог расчетов и отдельную integration roadmap без прямого переноса legacy-кода.
-- [x] **Реализовать базовый legacy DSNP_PA geometry mode** — добавить выбор `legacy-dsnp-pa`, регрессии `MaxWl(B)`/`MaxBt(H)`, эллиптические сечения `B/H` и использование общего `ProfileSnapshot` в UI, 2D/3D, persistence и theoretical drawing.
-- [x] **Подготовить Public Demo v1** — оформить visualization-first интерфейс, responsive layout, WebGL fallback, production container smoke и честное описание границ прототипа.
+- [x] **Формализовать наследие DSNP_PA как reference source** — создать карту Pascal-системы, модель данных, каталог расчетов и integration roadmap без прямого переноса legacy-кода.
+- [x] **Реализовать базовый legacy DSNP_PA geometry mode** — добавить `legacy-dsnp-pa`, регрессии `MaxWl(B)`/`MaxBt(H)`, размеры `B/H`, эллиптические downstream consumers и формульный UI contract.
+- [x] **Подготовить Docker и Public Demo v1** — добавить воспроизводимое Docker/Compose окружение, responsive visualization-first UI, WebGL fallback, production smoke и QA checklist.
+- [x] **Закрепить data-integrity import/export** — сохранить `gravityMPerS2`, исключить duplicate equipment IDs после import, проверить round-trip, перевести CSV в Body coordinates и добавить Playwright regressions.
 
-## Release Gates
+## Release gates
 
-**QA release gate применяется к каждому публичному релизу и каждой новой инженерной capability.** Gate включает релевантные regression/unit/integration tests, `npm run check:encoding`, `npm run test`, `npm run build`, проверку согласованности 2D/3D/export и targeted browser/mobile smoke при изменениях UI или rendering. Для новых формул дополнительно обязательны источник методики, диапазон применимости и независимые fixtures; недоступный manual smoke фиксируется как blocker, а не считается автоматически пройденным.
+**QA release gate применяется к каждому публичному релизу и каждой новой инженерной capability.** Gate включает релевантные regression/unit/integration и Playwright tests, `npm run check:encoding`, `npm run test`, `npm run build`, согласованность 2D/3D/export и targeted desktop/mobile smoke при изменениях UI или rendering. Для новых формул обязательны источник методики, диапазон применимости и независимые fixtures; недоступный manual smoke фиксируется как blocker, а не считается автоматически пройденным.
 
 ## Завершено
 
@@ -68,4 +74,5 @@
 | Закрепить координатный контракт Body/SNAME-NED | 2026-07-11 |
 | Формализовать наследие DSNP_PA как reference source | 2026-07-23 |
 | Реализовать базовый legacy DSNP_PA geometry mode | 2026-07-27 |
-| Подготовить Public Demo v1 | 2026-07-27 |
+| Подготовить Docker и Public Demo v1 | 2026-07-27 |
+| Закрепить data-integrity import/export | 2026-08-03 |
