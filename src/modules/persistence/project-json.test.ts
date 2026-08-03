@@ -132,6 +132,37 @@ describe("project json persistence", () => {
     expect(parsed.project.profile.slenderness).toBeCloseTo(10 / 3, 12);
   });
 
+  it("prefers persisted height over diameter and slenderness", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    source.project.profile.length = 12;
+    source.project.profile.height = 3;
+    source.project.profile.diameter = 4;
+    source.project.profile.slenderness = 2;
+    delete source.project.profile.breadth;
+
+    const parsed = parseFixture(source);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.warnings).toHaveLength(0);
+    expect(parsed.project.profile.height).toBe(3);
+    expect(parsed.project.profile.diameter).toBe(3);
+    expect(parsed.project.profile.breadth).toBe(3);
+    expect(parsed.project.profile.slenderness).toBe(4);
+  });
+
+  it("rounds fractional stations without changing warning count", () => {
+    const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
+    source.project.profile.stations = 12.7;
+
+    const parsed = parseFixture(source);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.warnings).toHaveLength(0);
+    expect(parsed.project.profile.stations).toBe(13);
+  });
+
   it("normalizes invalid breadth and height with warnings", () => {
     const source = structuredClone(v2Fixture) as unknown as Record<string, any>;
     source.project.profile.breadth = 0;

@@ -1,9 +1,12 @@
 import { DEFAULT_GRAVITY_M_PER_S2, DEFAULT_WATER_DENSITY_KG_PER_M3 } from "../balance/equipment-balance";
 import type { BalanceSettings } from "../balance/model";
+import { DEFAULT_PROJECT_PROFILE_INPUTS } from "../../application/project/defaults";
+import { normalizeProjectProfileInputs, projectProfileInputsToProfileState } from "../../application/project/normalize";
+import type { NormalizationNotice } from "../../application/project/normalize";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentAxis, EquipmentItem, EquipmentShape } from "../equipment/model";
 import { allocateUniqueEquipmentId, createDefaultEquipmentItem, updateEquipmentItem, type EquipmentUpdate } from "../equipment/placement";
-import { defaultGeometryMode, normalizeGeometryMode, type ProfileState } from "../geometry/model";
+import { normalizeGeometryMode, type ProfileState } from "../geometry/model";
 import type { Scene3dSettings } from "../rendering/model";
 import { defaultScene3dSettings, normalizeScene3dSettings } from "../rendering/viewSettings";
 import { logger } from "../../shared/logger";
@@ -37,14 +40,14 @@ export type ProjectJsonParseResult =
   | { readonly ok: false; readonly error: string; readonly warnings: readonly string[] };
 
 const defaultProfile: ProfileState = Object.freeze({
-  geometryMode: defaultGeometryMode,
-  length: 6,
-  breadth: 2,
-  height: 2,
-  slenderness: 3,
-  diameter: 2,
-  cylindricalInsertLength: 0,
-  stations: 20,
+  geometryMode: DEFAULT_PROJECT_PROFILE_INPUTS.geometryMode,
+  length: DEFAULT_PROJECT_PROFILE_INPUTS.length,
+  breadth: DEFAULT_PROJECT_PROFILE_INPUTS.breadth,
+  height: DEFAULT_PROJECT_PROFILE_INPUTS.height,
+  slenderness: DEFAULT_PROJECT_PROFILE_INPUTS.length / DEFAULT_PROJECT_PROFILE_INPUTS.height,
+  diameter: DEFAULT_PROJECT_PROFILE_INPUTS.height,
+  cylindricalInsertLength: DEFAULT_PROJECT_PROFILE_INPUTS.cylindricalInsertLength,
+  stations: DEFAULT_PROJECT_PROFILE_INPUTS.stations,
   showGrid: true,
   showPoints: true,
 });
@@ -79,49 +82,30 @@ function readString(value: unknown, fallback: string): string {
   return trimmed || fallback;
 }
 
-function readGeometryMode(value: unknown, warnings: string[]): ProfileState["geometryMode"] {
-  const normalized = normalizeGeometryMode(value);
-  if (value !== undefined && value !== normalized) {
-    warnings.push("project.profile.geometryMode normalized");
-    logger.warn("project json geometry mode normalized", { requested: value, normalized });
+function profileNoticePath(notice: NormalizationNotice): string {
+  return `project.profile.${notice.field}`;
+}
+
+function applyProfileNotices(notices: readonly NormalizationNotice[], warnings: string[]): void {
+  for (const notice of notices) {
+    if (!notice.supplied) continue;
+    if (notice.field === "geometryMode") {
+      warnings.push("project.profile.geometryMode normalized");
+      logger.warn("project json geometry mode normalized", { requested: notice.requested, normalized: notice.normalized });
+      continue;
+    }
+
+    const path = profileNoticePath(notice);
+    warnings.push(`${path} normalized`);
+    logger.warn("project json number normalized", { path, requested: notice.requested, normalized: notice.normalized });
   }
-  return normalized;
 }
 
 function normalizeProfile(value: unknown, warnings: string[]): ProfileState {
   const source = readRecord(value, warnings, "project.profile");
-  const length = readNumber(source.length, defaultProfile.length, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.length");
-  const sourceSlenderness = readNumber(source.slenderness, defaultProfile.slenderness, 0.1, Number.POSITIVE_INFINITY, warnings, "project.profile.slenderness");
-  const heightSource = source.height ?? source.diameter;
-  const height = readNumber(
-    heightSource,
-    length / sourceSlenderness,
-    0.01,
-    Number.POSITIVE_INFINITY,
-    warnings,
-    source.height === undefined && source.diameter !== undefined ? "project.profile.diameter" : "project.profile.height",
-  );
-  const breadth = readNumber(source.breadth, height, 0.01, Number.POSITIVE_INFINITY, warnings, "project.profile.breadth");
-  const slenderness = length / height;
-  const cylindricalInsertLength = readNumber(
-    source.cylindricalInsertLength,
-    defaultProfile.cylindricalInsertLength,
-    0,
-    length / 2,
-    warnings,
-    "project.profile.cylindricalInsertLength",
-  );
-  const stations = Math.round(readNumber(source.stations, defaultProfile.stations, 8, 80, warnings, "project.profile.stations"));
-
-  return Object.freeze({
-    geometryMode: readGeometryMode(source.geometryMode, warnings),
-    length,
-    breadth,
-    height,
-    slenderness,
-    diameter: height,
-    cylindricalInsertLength,
-    stations,
+  const result = normalizeProjectProfileInputs(source, "persisted-profile");
+  applyProfileNotices(result.notices, warnings);
+  return projectProfileInputsToProfileState(result, {
     showGrid: readBoolean(source.showGrid, defaultProfile.showGrid),
     showPoints: readBoolean(source.showPoints, defaultProfile.showPoints),
   });

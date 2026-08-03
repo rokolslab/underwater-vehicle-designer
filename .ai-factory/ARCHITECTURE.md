@@ -19,9 +19,11 @@ Underwater Vehicle Designer развивается как frontend-only моду
 
 ```text
 src/
+├── application/
+│   └── project/              # Первый seam: ProjectInputs, profile defaults и общий normalization pipeline
 ├── app/
 │   ├── main.ts                 # Composition root и текущий application controller
-│   ├── appState.ts             # Чтение и нормализация profile controls
+│   ├── appState.ts             # DOM-backed profile adapter, использует application normalization seam
 │   └── projectState.ts         # Временный aggregate текущего проекта
 ├── modules/
 │   ├── geometry/               # Профиль, стратегии геометрии, сечения, theoretical drawing data

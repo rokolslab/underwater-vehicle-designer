@@ -11,7 +11,7 @@
 ### Application foundation
 
 - [ ] **Ввести канонический `ProjectInputs` и общий normalization pipeline** — разделить domain inputs, `ProjectViewState`, compatibility aliases и persistence DTO, чтобы DOM и JSON использовали одни pure normalizers.
-- [ ] **Ввести `ProjectStore` и атомарный import workflow** — проводить изменения через единый application API и заменять состояние проекта без использования DOM как промежуточного источника истины.
+- [x] **Ввести `ProjectStore` и атомарный import workflow** — проводить изменения через единый application API и заменять состояние проекта без использования DOM как промежуточного источника истины.
 - [ ] **Извлечь `deriveProject()` и сократить `main.ts` до composition root** — централизованно получать `ProjectEvaluation` для geometry, drawing, constraints, balance, diagnostics и export, оставив в entrypoint только wiring и subscriptions.
 - [ ] **Обобщить геометрию сечений через `SectionShape`** — ввести единые pure operations для площади, containment и sampling контура, чтобы mesh, constraints, theoretical drawing, integration и export не ветвились по `geometryMode`.
 
@@ -76,3 +76,4 @@
 | Реализовать базовый legacy DSNP_PA geometry mode | 2026-07-27 |
 | Подготовить Docker и Public Demo v1 | 2026-07-27 |
 | Закрепить data-integrity import/export | 2026-08-03 |
+| Ввести `ProjectStore` и атомарный import workflow | 2026-08-03 |

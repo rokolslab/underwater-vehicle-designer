@@ -50,6 +50,8 @@ Underwater Vehicle Designer — браузерный инженерный инс
 ├── docs/                     # Документация по разработке и эксплуатации
 ├── src/
 │   ├── shared/body-coordinates.ts # Body/Profile types and pure conversions
+│   ├── application/
+│   │   └── project/        # Canonical ProjectInputs, profile defaults and shared normalization seam
 │   ├── app/
 │   │   ├── main.ts           # Vite entrypoint и UI orchestration
 │   │   ├── appState.ts       # Нормализация ввода корпуса, lastEdited, reset
@@ -86,6 +88,9 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `src/app/main.ts` | Инициализация DOM, сборка ProjectState, canvas/table/metrics/3D/export orchestration |
 | `src/app/appState.ts` | Нормализация пользовательского ввода корпуса, связь `H = L / lambda`, `lastEdited` |
 | `src/app/projectState.ts` | App-layer aggregate для `profile`, `equipment`, `scene3dSettings`, `balanceSettings` |
+| `src/application/project/model.ts` | Минимальный canonical `ProjectInputs`/`ProjectProfileInputs` contract |
+| `src/application/project/defaults.ts` | Общие defaults профиля для application normalizers и adapters |
+| `src/application/project/normalize.ts` | Pure profile normalization policies и projection в текущий `ProfileState` |
 | `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/geometry/current-formula.ts` | Текущая формула радиуса и ЦВК |

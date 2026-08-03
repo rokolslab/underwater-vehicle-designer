@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createAppStateController } from "./appState";
 import type { ControlElements } from "../modules/ui/controls";
 
@@ -158,6 +158,26 @@ describe("app state", () => {
     expect(state.cylindricalInsertLength).toBe(3);
     expect(controls.cylindricalInsertLength.value).toBe("3");
     expect(controls.cylindricalInsertLength.max).toBe("3");
+  });
+
+  it("warns only for finite clamped cylindrical insert length", () => {
+    const finite = makeControls();
+    finite.cylindricalInsertLength.value = "4";
+    const nonFinite = makeControls();
+    nonFinite.cylindricalInsertLength.value = "bad";
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      createAppStateController(finite).readState("slenderness");
+      createAppStateController(nonFinite).readState("slenderness");
+
+      expect(consoleWarn).toHaveBeenCalledTimes(1);
+      expect(consoleWarn).toHaveBeenCalledWith(
+        "[WARN] [FIX] cylindrical insert length clamped",
+        expect.objectContaining({ requested: 4, normalized: 3, max: 3 }),
+      );
+    } finally {
+      consoleWarn.mockRestore();
+    }
   });
 
   it("clamps stations and resets toggles", () => {
