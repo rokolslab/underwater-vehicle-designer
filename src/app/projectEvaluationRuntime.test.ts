@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDefaultProjectInputs } from "../application/project/defaults";
 import type { ProjectEvaluation } from "../application/project/model";
+import { createProjectStore } from "../application/project/store";
 import { createProjectEvaluationRuntime } from "./projectEvaluationRuntime";
 
 function evaluation(id: number): ProjectEvaluation {
@@ -59,5 +60,20 @@ describe("project evaluation runtime", () => {
     expect(runtime.rerender()).toBe(publication);
     expect(derive).toHaveBeenCalledTimes(1);
     expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  it("derives for canonical store commits and not for view-only rerenders", () => {
+    const store = createProjectStore(createDefaultProjectInputs());
+    const derive = vi.fn(() => evaluation(1));
+    const runtime = createProjectEvaluationRuntime({ derive, render: vi.fn() });
+    store.subscribe((snapshot) => runtime.commit(snapshot));
+
+    runtime.commit(store.getSnapshot());
+    runtime.rerender();
+    store.setProfile({ ...store.getSnapshot().profile, length: 7 });
+    store.setEquipment([]);
+    store.setBalanceSettings({ ...store.getSnapshot().balanceSettings, waterDensityKgPerM3: 997 });
+
+    expect(derive).toHaveBeenCalledTimes(4);
   });
 });
