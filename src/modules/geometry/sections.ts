@@ -1,5 +1,6 @@
 import { sectionExtentsAt } from "./profile";
 import type { GeometryMode, GeometryProfileState, SectionExtents } from "./model";
+import { sectionArea as sectionShapeArea } from "./section-shape";
 
 export interface Section extends SectionExtents {
   readonly x: number;
@@ -7,11 +8,11 @@ export interface Section extends SectionExtents {
 }
 
 export function sectionArea(sectionExtents: SectionExtents): number {
-  return Math.PI * sectionExtents.halfBreadthY * sectionExtents.halfHeightZ;
+  return sectionShapeArea(sectionExtents.shape);
 }
 
 function isSectionExtents(value: GeometryProfileState | SectionExtents): value is SectionExtents {
-  return "radius" in value && "halfBreadthY" in value && "halfHeightZ" in value;
+  return "shape" in value && "radius" in value && "halfBreadthY" in value && "halfHeightZ" in value;
 }
 
 export function makeSection(x: number, state: GeometryProfileState): Section;

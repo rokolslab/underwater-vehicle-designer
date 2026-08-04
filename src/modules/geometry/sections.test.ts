@@ -16,8 +16,11 @@ describe("section geometry", () => {
     });
 
     expect(section.radius).toBeCloseTo(1, 12);
+    expect(section.shape.kind).toBe("ellipse");
     expect(section.halfBreadthY).toBeCloseTo(1, 12);
     expect(section.halfHeightZ).toBeCloseTo(1, 12);
+    expect(section.shape.halfBreadthY).toBeCloseTo(section.halfBreadthY, 12);
+    expect(section.shape.halfHeightZ).toBeCloseTo(section.halfHeightZ, 12);
     expect(section.area).toBeCloseTo(Math.PI, 12);
   });
 
@@ -32,8 +35,11 @@ describe("section geometry", () => {
     const section = makeSection(4, sectionExtents);
 
     expect(section.radius).toBeCloseTo(1, 12);
+    expect(section.shape.kind).toBe("ellipse");
     expect(section.halfBreadthY).toBeCloseTo(2, 12);
     expect(section.halfHeightZ).toBeCloseTo(1, 12);
+    expect(section.shape.halfBreadthY).toBeCloseTo(section.halfBreadthY, 12);
+    expect(section.shape.halfHeightZ).toBeCloseTo(section.halfHeightZ, 12);
     expect(section.area).toBeCloseTo(Math.PI * 2 * 1, 12);
   });
 

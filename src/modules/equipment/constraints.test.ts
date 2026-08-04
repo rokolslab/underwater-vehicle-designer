@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { makeProfileSnapshot } from "../geometry/profile";
 import type { ProfileSnapshot } from "../geometry/model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import type { EquipmentAxis, EquipmentItem } from "./model";
 import { equipmentIssues, equipmentStatus, evaluateEquipmentConstraints } from "./constraints";
 
@@ -28,8 +31,9 @@ function ellipticalSnapshot(): ProfileSnapshot {
     cylindricalInsertLength: 0,
     stations: 2,
   });
+  const shape = makeEllipseSectionShape(2, 1);
   const smoothPoints = Object.freeze(
-    [0, 5, 10].map((s) => Object.freeze({ s, radius: 1, halfBreadthY: 2, halfHeightZ: 1 })),
+    [0, 5, 10].map((s) => Object.freeze({ s, shape, ...sectionShapeExtents(shape) })),
   );
   const stationPoints = Object.freeze(
     smoothPoints.map((point) => Object.freeze({ ...point, topRadius: point.halfHeightZ, bottomRadius: -point.halfHeightZ })),
@@ -242,6 +246,17 @@ describe("equipment constraints", () => {
 
     expect(equipmentStatus(report, "inside-y")).toBe("ok");
     expect(equipmentStatus(report, "outside-z")).toBe("outsideHull");
+  });
+
+  it("keeps containment shape-aware without adapter, logger or local ellipse math dependencies", () => {
+    const source = readFileSync(join(process.cwd(), "src/modules/equipment/constraints.ts"), "utf8");
+
+    expect(source).toContain("containsSectionPoint");
+    expect(source).not.toContain("function ellipseValue");
+    expect(source).not.toContain("../rendering");
+    expect(source).not.toContain("../ui");
+    expect(source).not.toContain("shared/logger");
+    expect(source).not.toMatch(/\b(document|window|HTMLCanvasElement|HTMLElement)\b/u);
   });
 
   it("uses deterministic severity priority for display status", () => {
