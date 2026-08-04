@@ -55,7 +55,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 
 | Area | Examples |
 | --- | --- |
-| `src/modules/geometry/` | `profile.test.ts`, `theoretical-drawing.test.ts` |
+| `src/modules/geometry/` | `section-shape.test.ts`, `profile.test.ts`, `theoretical-drawing.test.ts` |
 | `src/modules/equipment/` | `model.test.ts`, `placement.test.ts`, `constraints.test.ts` |
 | `src/modules/balance/` | `equipment-balance.test.ts` |
 | `src/modules/rendering/` | `mesh.test.ts`, `scene3d.test.ts`, `equipment3d.test.ts` |
@@ -67,11 +67,14 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 
 ## Geometry Regression
 
+`section-shape.test.ts` проверяет pure `SectionShape` operations: ellipse area, containment, contour sampling order, normals, zero-section behavior, waterline/buttock intersections and no console side effects.
+
 `profile.test.ts` проверяет:
 
 - `height`/compatibility `diameter` являются полной максимальной высотой;
 - current-formula масштабирует эллиптические сечения по независимым `B`/`H`;
 - legacy mode передает `B` в `MaxWl`, `H` в `MaxBt`;
+- current/legacy section evaluations несут `shape.kind = "ellipse"` alongside compatibility extents;
 - `radiusAt` совпадает с fixture из `tests/fixtures/formula-profile.json`;
 - contract станций: `0`, half-step, равномерные станции, `L - halfStep`, `L`;
 - ЦВК дает постоянный радиус на вставке;
@@ -85,6 +88,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 - секции строятся из station points;
 - `Корпус` делит секции на носовые, кормовые и мидель;
 - батоксы и ватерлинии создают внутренние curves;
+- internal curves делегируют intersections в `SectionShape`, а body-plan sections несут sampled contour points;
 - waterlines симметричны, buttocks положительные.
 
 ## Equipment and Constraint Tests
@@ -95,7 +99,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 - валидация id, name, mass, dimensions, displaced volume;
 - создание, update, rename, delete;
 - сохранение пробелов в `Наименование`;
-- выход за эллиптическое сечение корпуса;
+- выход за shape-aware сечение корпуса;
 - выход за продольные границы;
 - пересечения sphere-sphere;
 - консервативная AABB-проверка для остальных форм;
@@ -137,7 +141,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 
 `derive.test.ts` checks `deriveProject(ProjectInputs)`: current/legacy modes, independent `B/H`, ЦВК, drawing coherence, constraints, custom density/gravity, equipment-only buoyancy discriminator and no console side effects.
 
-`dependency-contract.test.ts` walks value-import runtime closures from `derive.ts`, `reducer.ts` and `store.ts` with the TypeScript compiler API and rejects adapter/browser/logger dependencies in the pure calculation and application mutation graph.
+`dependency-contract.test.ts` walks value-import runtime closures from `derive.ts`, `reducer.ts`, `store.ts`, `section-shape.ts`, theoretical drawing core and constraints with the TypeScript compiler API. It rejects adapter/browser/logger dependencies in pure calculation/application mutation graphs and guards rendering/export adapters against `geometryMode` branches for shape-derived flows.
 
 `projectEvaluationRuntime.test.ts` checks atomic publication semantics and explicit harness `dispatch result -> runtime.commit`: derive failure keeps the previous pair, render failure publishes the new pair, changed commands call derive once, no-op commands and view-only rerender do not call derive.
 

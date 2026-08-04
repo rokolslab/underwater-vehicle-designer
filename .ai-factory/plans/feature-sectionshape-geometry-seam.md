@@ -147,7 +147,7 @@ Source: `.ai-factory/RESEARCH.md` (Active Summary, Updated: 2026-08-03 20:45, SH
 
 ### Фаза 3: Документация и full gates
 
-- [ ] **Задача 7: Синхронизировать context/docs и выполнить полные quality gates**
+- [x] **Задача 7: Синхронизировать context/docs и выполнить полные quality gates**
   - Обновить `AGENTS.md`, `.ai-factory/ARCHITECTURE.md`, `docs/architecture.md`, `docs/calculations.md` и `docs/testing.md` factual deltas: `SectionShape` seam, current ellipse-only implementation, compatibility extents, consumer ownership and no-logger/dependency rules.
   - Не закрывать roadmap milestone автоматически до `/aif-verify`; если implementation полностью завершит seam, roadmap update выполняется отдельным owner step или final docs checkpoint после verify.
   - Выполнить `docker compose run --rm app npm run check:encoding`, `docker compose run --rm app npm run test`, `docker compose run --rm app npm run build` и Playwright E2E через `docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e` при затронутых rendering/export flows.
