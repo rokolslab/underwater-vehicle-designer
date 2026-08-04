@@ -4,7 +4,7 @@
 
 ## Актуальный фокус
 
-Базовая визуализация, оборудование, equipment-only balance, JSON v2, Body/SNAME-NED, эллиптические режимы геометрии, data-integrity import/export, canonical `ProjectInputs`, `ProjectStore` и единый `deriveProject()`/`ProjectEvaluation` уже реализованы. Следующая фаза — ввести command/reducer layer поверх `ProjectStore` и `SectionShape`; только после этого расширять legacy geometry и добавлять новые инженерные модели.
+Базовая визуализация, оборудование, equipment-only balance, JSON v2, Body/SNAME-NED, эллиптические режимы геометрии, data-integrity import/export, canonical `ProjectInputs`, `ProjectStore`, command/reducer layer и единый `deriveProject()`/`ProjectEvaluation` уже реализованы. Следующая фаза — обобщить геометрию сечений через `SectionShape` и дальше сокращать `main.ts` до wiring без big-bang переноса каталогов; только после этого расширять legacy geometry и добавлять новые инженерные модели.
 
 ## Вехи
 
@@ -12,6 +12,7 @@
 
 - [x] **Ввести канонический `ProjectInputs` и общий normalization pipeline** — разделить domain inputs, `ProjectViewState`, compatibility aliases и persistence DTO, чтобы DOM и JSON использовали одни pure normalizers.
 - [x] **Извлечь `deriveProject()` и сократить `main.ts` до composition root** — централизованно получать `ProjectEvaluation` для geometry, drawing, constraints, balance, diagnostics и export, оставив в entrypoint только wiring и subscriptions.
+- [x] **Ввести command/reducer layer поверх `ProjectStore`** — направить canonical mutations через typed `ProjectCommand`, pure `reduceProject()` и `ProjectStore.dispatch()` без production render subscription.
 - [ ] **Обобщить геометрию сечений через `SectionShape`** — ввести единые pure operations для площади, containment и sampling контура, чтобы mesh, constraints, theoretical drawing, integration и export не ветвились по `geometryMode`.
 
 ### Следующие возможности
@@ -58,3 +59,4 @@
 | Ввести `ProjectStore` и атомарный import workflow | 2026-08-03 |
 | Ввести канонический `ProjectInputs` и общий normalization pipeline | 2026-08-03 |
 | Извлечь `deriveProject()` и единый `ProjectEvaluation` | 2026-08-03 |
+| Ввести command/reducer layer поверх `ProjectStore` | 2026-08-03 |

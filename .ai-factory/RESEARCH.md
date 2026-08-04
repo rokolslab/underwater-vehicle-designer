@@ -1,6 +1,6 @@
 # Исследование
 
-Обновлено: 2026-07-31 09:58
+Обновлено: 2026-08-03 20:45
 Статус: активно
 
 ## Активное резюме для `/aif-plan`
@@ -21,8 +21,8 @@
 - Целевая архитектура: Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters.
 - Не использовать строгие Vertical Slices как основной стиль: общие расчётные capabilities нужны нескольким UI/export/rendering сценариям.
 - Не вводить полную Clean/Hexagonal Architecture с repository/service abstraction: для текущего browser-only приложения это избыточно.
-- Ввести канонический `ProjectInputs` и единый `ProjectStore`; DOM перестаёт быть источником истины.
-- Ввести чистый `deriveProject(projectInputs)`, возвращающий geometry snapshot, constraints, mass/balance results и presentation-neutral drawing data.
+- Ввести канонический `ProjectInputs` и единый `ProjectStore`; DOM перестаёт быть источником истины. Реализовано: canonical mutations проходят через typed `ProjectCommand`, pure `reduceProject()` и `ProjectStore.dispatch()`.
+- Ввести чистый `deriveProject(projectInputs)`, возвращающий geometry snapshot, constraints, mass/balance results и presentation-neutral drawing data. Реализовано для текущего geometry/drawing/constraints/equipment-only balance graph.
 - Разделить сохраняемые `ProjectInputs`, локальный `ProjectViewState`, производный `ProjectEvaluation` и versioned persistence DTO `ProjectDocumentV3`.
 - Объединить DOM- и JSON-нормализацию вокруг общих pure normalizers.
 - Разделить `HullDefinition` и `ProfileViewSettings`; compatibility aliases держать только на migration/export boundaries.
@@ -39,15 +39,15 @@
 - `ProfileState` смешивает domain inputs, производные compatibility aliases и display settings.
 - Constraints пересчитывает current-formula sections из state, но интерполирует legacy sections из snapshot.
 - Domain-like модули имеют logging side effects через Vite-aware global logger.
-- После импорта возможен duplicate equipment ID из-за несинхронизированного ID generator.
-- Импортированное `gravityMPerS2` теряется: application layer заменяет его default-константой.
+- После импорта возможен duplicate equipment ID из-за несинхронизированного ID generator. Закрыто data-integrity regressions и command/reducer transition path.
+- Импортированное `gravityMPerS2` теряется: application layer заменяет его default-константой. Закрыто browser-free и E2E regressions.
 - `ProjectState` и `SerializableProjectState` дублируют один aggregate contract.
 - `constraints.ts`, `scene3d.ts` и `main.ts` имеют несколько независимых ответственностей.
 - Canvas и SVG реализации теоретического чертежа частично дублируют layout/projection logic.
 
 Открытые вопросы:
 - Должен ли `ProjectViewState` входить в основной JSON-документ или сохраняться отдельной секцией с независимой версией.
-- Нужен ли минимальный custom store/reducer или достаточно application controller с immutable state и `dispatch`.
+- Какой следующий seam выбрать для дальнейшего сокращения `main.ts`: application controller/use-cases, явный import/reset workflow module или более узкие browser-free harnesses.
 - Какой точный contract выбрать для `SectionShape`: discriminated data union, набор pure functions или derived `HullGeometry` с evaluator methods.
 - Какие compatibility aliases можно удалить сразу, а какие нужны для существующих JSON и внешних consumers.
 - Следует ли вынести `constraints` в самостоятельный top-level core module или оставить под `equipment`.
@@ -65,7 +65,7 @@
 - Добавление rounded-rectangle section не требует отдельных веток в mesh, constraints и theoretical drawing.
 - Архитектурные dependency rules проверяются тестом или статическим инструментом.
 
-Следующий шаг: Создать `/aif-plan full` для поэтапного рефакторинга, начиная с data-integrity tests, канонического `ProjectInputs`, общего normalization pipeline и чистого `deriveProject()`.
+Следующий шаг: Создать `/aif-plan full` для следующего increment: либо `SectionShape` как prerequisite legacy DSNP_PA `Priam`/`Kr`, либо дальнейшее сокращение `main.ts` через application controller/use-cases с сохранением explicit runtime commit ordering.
 <!-- aif:active-summary:end -->
 
 ## Сессии
@@ -97,4 +97,23 @@
 - `src/modules/geometry/profile.ts`
 - `src/modules/equipment/constraints.ts`
 - `src/modules/persistence/project-json.ts`
+
+### 2026-08-03 20:45 — Command/reducer layer закрыт
+Что изменилось: Реализован и смержен PR #10 `feature/project-store-commands-reducer`: canonical project mutations переведены на typed `ProjectCommand`, pure `reduceProject()` и `ProjectStore.dispatch()`. Equipment placement transition path вынесен в logger-free `placement-core.ts`; `main.ts` сохраняет explicit runtime commit без production subscription store → render.
+
+Ключевые заметки:
+- Старые public slice setters `setProfile`, `setEquipment`, `setBalanceSettings` и `replaceProject` удалены из `ProjectStore` API.
+- Reducer/store/dependency tests закрепляют browser-free и logger-free boundary для command/reducer layer.
+- Data-integrity regressions закрывают import → add equipment unique IDs и preservation imported `gravityMPerS2` через unrelated commands.
+- Документация обновлена под flow `DOM event -> ProjectCommand -> reduceProject() -> ProjectStore.dispatch() -> explicit runtime commit -> publication`.
+- Следующий архитектурный выбор: `SectionShape` до расширения legacy geometry или отдельный application controller/use-cases seam для дальнейшего уменьшения `main.ts`.
+
+Ссылки:
+- PR #10: https://github.com/rokolslab/underwater-vehicle-designer/pull/10
+- `src/application/project/commands.ts`
+- `src/application/project/reducer.ts`
+- `src/application/project/store.ts`
+- `src/modules/equipment/placement-core.ts`
+- `docs/architecture.md`
+- `docs/testing.md`
 <!-- aif:sessions:end -->

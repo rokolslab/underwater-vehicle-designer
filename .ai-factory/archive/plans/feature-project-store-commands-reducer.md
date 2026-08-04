@@ -1,3 +1,7 @@
+---
+archived: 2026-08-03
+---
+
 # План реализации: ProjectStore commands/reducer
 
 Ветка: `feature/project-store-commands-reducer`
