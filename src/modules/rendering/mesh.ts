@@ -1,4 +1,5 @@
 import { normalizeGeometryMode, type GeometryMode, type ProfileSnapshot } from "../geometry/model";
+import { sampleSectionContour, sectionNormalAtPoint } from "../geometry/section-shape";
 import { logger } from "../../shared/logger";
 import { profilePointToThree } from "./coordinate-adapter";
 
@@ -102,24 +103,17 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
 
   for (let ringIndex = 0; ringIndex < ringCount; ringIndex += 1) {
     const point = rings[ringIndex];
-    const halfBreadthY = Math.max(0, point.halfBreadthY);
-    const halfHeightZ = Math.max(0, point.halfHeightZ);
+    const contour = sampleSectionContour(point.shape, radialSegments);
 
     for (let radialIndex = 0; radialIndex <= radialSegments; radialIndex += 1) {
-      const angle = (radialIndex / radialSegments) * Math.PI * 2;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const normalY = halfBreadthY > 0 ? cos / halfBreadthY : 0;
-      const normalZ = halfHeightZ > 0 ? sin / halfHeightZ : 0;
-      const normalLength = Math.hypot(normalY, normalZ);
-      const normalizedNormalY = normalLength > 0 ? normalY / normalLength : cos;
-      const normalizedNormalZ = normalLength > 0 ? normalZ / normalLength : sin;
+      const contourPoint = contour[radialIndex % radialSegments] ?? { y: 0, z: 0 };
+      const contourNormal = sectionNormalAtPoint(point.shape, contourPoint);
       const vertexIndex = ringIndex * verticesPerRing + radialIndex;
       const positionOffset = vertexIndex * 3;
       const uvOffset = vertexIndex * 2;
 
-      const position = profilePointToThree(point.s, halfBreadthY * cos, halfHeightZ * sin, totalLength);
-      const normal = profilePointToThree(totalLength / 2, normalizedNormalY, normalizedNormalZ, totalLength);
+      const position = profilePointToThree(point.s, contourPoint.y, contourPoint.z, totalLength);
+      const normal = profilePointToThree(totalLength / 2, contourNormal.y, contourNormal.z, totalLength);
       positions[positionOffset] = position.x;
       positions[positionOffset + 1] = position.y;
       positions[positionOffset + 2] = position.z;

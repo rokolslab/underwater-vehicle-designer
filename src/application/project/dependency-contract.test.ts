@@ -100,4 +100,46 @@ describe("application project dependency contract", () => {
       }
     }
   });
+
+  it("keeps section shape core and shape-aware consumers free of adapter and logger dependencies", () => {
+    const projectRoot = process.cwd();
+    const entries = [
+      join(projectRoot, "src/modules/geometry/section-shape.ts"),
+      join(projectRoot, "src/modules/geometry/theoretical-drawing.ts"),
+      join(projectRoot, "src/modules/equipment/constraints.ts"),
+    ];
+
+    for (const entry of entries) {
+      const closure = collectRuntimeClosure(entry);
+      for (const file of closure) {
+        const normalized = `/${normalize(relative(projectRoot, file)).replaceAll("\\", "/")}`;
+        for (const forbidden of forbiddenRuntimeImportFragments) {
+          expect(normalized, `${normalized} must not be in ${relative(projectRoot, entry)} runtime closure`).not.toContain(forbidden);
+        }
+
+        const content = readFileSync(file, "utf8");
+        for (const forbiddenPattern of forbiddenRuntimeSourcePatterns) {
+          expect(content, `${normalized} must not reference browser/runtime globals`).not.toMatch(forbiddenPattern);
+        }
+      }
+    }
+  });
+
+  it("keeps rendering and export adapters on shape-derived data instead of geometry mode branches", () => {
+    const projectRoot = process.cwd();
+    const adapterFiles = [
+      "src/modules/rendering/mesh.ts",
+      "src/modules/rendering/theoretical-drawing.ts",
+      "src/modules/persistence/theoretical-drawing-svg.ts",
+    ];
+
+    for (const file of adapterFiles) {
+      const content = readFileSync(join(projectRoot, file), "utf8");
+      expect(content, `${file} must not branch on geometryMode`).not.toMatch(/\b(if|switch)\s*\([^)]*geometryMode/u);
+      expect(content, `${file} must not call local ellipse arc rendering for theoretical sections`).not.toContain("sectionArcPath");
+    }
+
+    expect(readFileSync(join(projectRoot, "src/modules/rendering/mesh.ts"), "utf8")).toContain("sampleSectionContour");
+    expect(readFileSync(join(projectRoot, "src/modules/equipment/constraints.ts"), "utf8")).not.toContain("function ellipseValue");
+  });
 });

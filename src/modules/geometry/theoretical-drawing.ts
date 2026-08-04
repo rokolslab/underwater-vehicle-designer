@@ -1,4 +1,11 @@
 import type { ProfilePoint, ProfileSnapshot } from "./model";
+import {
+  intersectSectionWithButtockY,
+  intersectSectionWithWaterlineZ,
+  sampleSectionContour,
+  sectionShapeExtents,
+  type SectionPointYZ,
+} from "./section-shape";
 
 export interface TheoreticalGridLine {
   readonly value: number;
@@ -25,6 +32,7 @@ export interface TheoreticalSection {
   readonly radius: number;
   readonly halfBreadthY: number;
   readonly halfHeightZ: number;
+  readonly contourPoints: readonly SectionPointYZ[];
   readonly side: TheoreticalBodySectionSide;
 }
 
@@ -40,6 +48,7 @@ export interface TheoreticalDrawing {
   readonly halfBreadthPoints: readonly TheoreticalPoint[];
   readonly profileButtockCurves: readonly TheoreticalCurve[];
   readonly halfBreadthWaterlineCurves: readonly TheoreticalCurve[];
+  readonly maxSectionContourPoints: readonly SectionPointYZ[];
   readonly sections: readonly TheoreticalSection[];
   readonly forwardSections: readonly TheoreticalSection[];
   readonly aftSections: readonly TheoreticalSection[];
@@ -49,6 +58,7 @@ export interface TheoreticalDrawing {
 }
 
 const gridDivisions = 4;
+const bodyPlanContourSamples = 64;
 
 function formatGridLabel(value: number): string {
   if (Math.abs(value) < 1e-9) return "0";
@@ -86,22 +96,22 @@ function classifyBodyPlanSide(s: number, midshipS: number, totalLength: number):
 function makeOffsetCurve(
   points: readonly ProfilePoint[],
   offset: number,
-  sourceAxis: "halfBreadthY" | "halfHeightZ",
-  targetAxis: "halfBreadthY" | "halfHeightZ",
+  intersectionAxis: "buttockY" | "waterlineZ",
 ): readonly TheoreticalPoint[] {
-  const tolerance = 1e-9;
   return Object.freeze(
     points
-      .filter((point) => point[sourceAxis] + tolerance >= offset)
       .map((point) => {
-        const sourceExtent = Math.max(point[sourceAxis], tolerance);
-        const targetExtent = point[targetAxis];
-        const ratio = offset / sourceExtent;
-        return Object.freeze({
-          s: point.s,
-          radius: targetExtent * Math.sqrt(Math.max(0, 1 - ratio * ratio)),
-        });
-      }),
+        const intersections = intersectionAxis === "buttockY"
+          ? intersectSectionWithButtockY(point.shape, offset)
+          : intersectSectionWithWaterlineZ(point.shape, offset);
+        if (intersections.length === 0) return undefined;
+
+        const radius = Math.max(
+          ...intersections.map((intersection) => Math.abs(intersectionAxis === "buttockY" ? intersection.z : intersection.y)),
+        );
+        return makeTheoreticalPoint(point.s, radius);
+      })
+      .filter((point): point is TheoreticalPoint => point !== undefined),
   );
 }
 
@@ -109,8 +119,7 @@ function makeSectionCurves(
   lines: readonly TheoreticalGridLine[],
   points: readonly ProfilePoint[],
   maxSourceAxis: number,
-  sourceAxis: "halfBreadthY" | "halfHeightZ",
-  targetAxis: "halfBreadthY" | "halfHeightZ",
+  intersectionAxis: "buttockY" | "waterlineZ",
 ): readonly TheoreticalCurve[] {
   const tolerance = Math.max(maxSourceAxis, 1) * 1e-9;
   return Object.freeze(
@@ -120,7 +129,7 @@ function makeSectionCurves(
         Object.freeze({
           value: line.value,
           label: line.label,
-          points: makeOffsetCurve(points, line.value, sourceAxis, targetAxis),
+          points: makeOffsetCurve(points, line.value, intersectionAxis),
         }),
       )
       .filter((curve) => curve.points.length >= 2),
@@ -139,16 +148,22 @@ export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDr
   const midshipS = totalLength / 2;
   const waterlines = makeSymmetricGrid(maxHalfHeightZ);
   const buttocks = makePositiveGrid(maxHalfBreadthY);
-  const sections = snapshot.stationPoints.map((point, index) =>
-    Object.freeze({
+  const maxSectionPoint = snapshot.smoothPoints.reduce<ProfilePoint | undefined>(
+    (best, point) => (!best || point.radius > best.radius ? point : best),
+    undefined,
+  );
+  const sections = snapshot.stationPoints.map((point, index) => {
+    const extents = sectionShapeExtents(point.shape);
+    return Object.freeze({
       index: index + 1,
       s: point.s,
-      radius: Math.max(0, point.halfHeightZ),
-      halfBreadthY: Math.max(0, point.halfBreadthY),
-      halfHeightZ: Math.max(0, point.halfHeightZ),
+      radius: extents.radius,
+      halfBreadthY: extents.halfBreadthY,
+      halfHeightZ: extents.halfHeightZ,
+      contourPoints: sampleSectionContour(point.shape, bodyPlanContourSamples),
       side: classifyBodyPlanSide(point.s, midshipS, totalLength),
-    }),
-  );
+    });
+  });
   const profilePoints = Object.freeze(snapshot.smoothPoints.map((point) => makeTheoreticalPoint(point.s, point.halfHeightZ)));
   const halfBreadthPoints = Object.freeze(snapshot.smoothPoints.map((point) => makeTheoreticalPoint(point.s, point.halfBreadthY)));
 
@@ -162,14 +177,14 @@ export function makeTheoreticalDrawing(snapshot: ProfileSnapshot): TheoreticalDr
     midshipS,
     profilePoints,
     halfBreadthPoints,
-    profileButtockCurves: makeSectionCurves(buttocks, snapshot.smoothPoints, maxHalfBreadthY, "halfBreadthY", "halfHeightZ"),
+    profileButtockCurves: makeSectionCurves(buttocks, snapshot.smoothPoints, maxHalfBreadthY, "buttockY"),
     halfBreadthWaterlineCurves: makeSectionCurves(
       waterlines.filter((line) => line.value >= 0),
       snapshot.smoothPoints,
       maxHalfHeightZ,
-      "halfHeightZ",
-      "halfBreadthY",
+      "waterlineZ",
     ),
+    maxSectionContourPoints: maxSectionPoint ? sampleSectionContour(maxSectionPoint.shape, bodyPlanContourSamples) : Object.freeze([]),
     sections: Object.freeze(sections),
     forwardSections: Object.freeze(sections.filter((section) => section.side === "forward")),
     aftSections: Object.freeze(sections.filter((section) => section.side === "aft")),

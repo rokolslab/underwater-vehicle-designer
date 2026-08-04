@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeProfileSnapshot } from "../geometry/profile";
 import type { ProfileSnapshot } from "../geometry/model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { makeTheoreticalDrawing } from "../geometry/theoretical-drawing";
 import { buildTheoreticalDrawingSvg } from "./theoretical-drawing-svg";
 
@@ -17,10 +18,16 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
   return Object.freeze({
     ...snapshot,
     smoothPoints: Object.freeze(
-      snapshot.smoothPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+      snapshot.smoothPoints.map((point) => {
+        const shape = makeEllipseSectionShape(point.halfBreadthY * 2, point.halfHeightZ);
+        return Object.freeze({ ...point, shape, ...sectionShapeExtents(shape) });
+      }),
     ),
     stationPoints: Object.freeze(
-      snapshot.stationPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+      snapshot.stationPoints.map((point) => {
+        const shape = makeEllipseSectionShape(point.halfBreadthY * 2, point.halfHeightZ);
+        return Object.freeze({ ...point, shape, ...sectionShapeExtents(shape) });
+      }),
     ),
     extents: Object.freeze({
       ...snapshot.extents,
@@ -58,15 +65,16 @@ describe("theoretical drawing SVG export", () => {
     expect(drawing.profilePoints.at(-1)).toEqual({ s: drawing.totalLength, radius: 0 });
   });
 
-  it("uses exact section axes in body-plan arcs", () => {
+  it("uses shape-derived section contours in body-plan paths", () => {
     const drawing = makeTheoreticalDrawing(makeEllipticalSnapshot());
     const svg = buildTheoreticalDrawingSvg(drawing);
     const sectionPath = svg.match(/<path d="([^"]+)" class="section-midship"/u)?.[1] ?? "";
-    const arcRadii = sectionPath.match(/A([0-9.]+) ([0-9.]+)/u);
+    const coordinates = [...sectionPath.matchAll(/[ML]([0-9.]+) ([0-9.]+)/gu)].map((match) => ({ x: Number(match[1]), y: Number(match[2]) }));
+    const xSpan = Math.max(...coordinates.map((point) => point.x)) - Math.min(...coordinates.map((point) => point.x));
+    const ySpan = Math.max(...coordinates.map((point) => point.y)) - Math.min(...coordinates.map((point) => point.y));
 
-    expect(arcRadii).not.toBeNull();
-    if (arcRadii) {
-      expect(Number(arcRadii[1])).toBeGreaterThan(Number(arcRadii[2]) * 1.5);
-    }
+    expect(sectionPath).not.toContain("A");
+    expect(coordinates.length).toBeGreaterThan(16);
+    expect(xSpan).toBeGreaterThan(ySpan * 1.5);
   });
 });

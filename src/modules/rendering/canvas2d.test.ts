@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EquipmentItem } from "../equipment/model";
 import type { ProfileSnapshot } from "../geometry/model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { equipmentXzProjection, renderCanvasProfile } from "./canvas2d";
+
+function profilePoint(s: number, halfBreadthY: number, halfHeightZ: number) {
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
+  return Object.freeze({ s, shape, ...sectionShapeExtents(shape) });
+}
 
 const snapshot: ProfileSnapshot = Object.freeze({
   state: Object.freeze({
@@ -15,12 +21,12 @@ const snapshot: ProfileSnapshot = Object.freeze({
     stations: 2,
   }),
   smoothPoints: Object.freeze([
-    Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
-    Object.freeze({ s: 1, radius: 0.5, halfBreadthY: 0.5, halfHeightZ: 0.5 }),
-    Object.freeze({ s: 2, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+    profilePoint(0, 0, 0),
+    profilePoint(1, 0.5, 0.5),
+    profilePoint(2, 0, 0),
   ]),
   stationPoints: Object.freeze([
-    Object.freeze({ s: 1, radius: 0.5, halfBreadthY: 0.5, halfHeightZ: 0.5, topRadius: 0.5, bottomRadius: -0.5 }),
+    Object.freeze({ ...profilePoint(1, 0.5, 0.5), topRadius: 0.5, bottomRadius: -0.5 }),
   ]),
   extents: Object.freeze({
     maxRadius: 0.5,

@@ -1,4 +1,5 @@
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalPoint, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { SectionPointYZ } from "../geometry/section-shape";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 import { bodyXFromProfileS } from "../../shared/body-coordinates";
@@ -299,25 +300,52 @@ function drawHalfBreadth(context: CanvasRenderingContext2D, rect: Rect, drawing:
   context.restore();
 }
 
-function drawBodySectionArc(
+function drawBodySectionContour(
   context: CanvasRenderingContext2D,
   section: TheoreticalSection,
   cx: number,
   cy: number,
   unit: number,
 ): void {
-  const radiusY = Math.max(0.6, section.halfBreadthY * unit);
-  const radiusZ = Math.max(0.6, section.halfHeightZ * unit);
+  drawBodyContour(context, section.contourPoints, section.side, cx, cy, unit);
+}
+
+function contourSortAngle(point: SectionPointYZ, side: TheoreticalSection["side"]): number {
+  const angle = Math.atan2(point.z, point.y);
+  if (side !== "aft") return angle;
+  return angle < Math.PI / 2 ? angle + Math.PI * 2 : angle;
+}
+
+function contourPointsForSide(points: readonly SectionPointYZ[], side: TheoreticalSection["side"]): readonly SectionPointYZ[] {
+  const tolerance = 1e-12;
+  if (side === "midship") return Object.freeze([...points, points[0]].filter((point): point is SectionPointYZ => point !== undefined));
+
+  return Object.freeze(
+    points
+      .filter((point) => (side === "forward" ? point.y >= -tolerance : point.y <= tolerance))
+      .sort((first, second) => contourSortAngle(first, side) - contourSortAngle(second, side)),
+  );
+}
+
+function drawBodyContour(
+  context: CanvasRenderingContext2D,
+  points: readonly SectionPointYZ[],
+  side: TheoreticalSection["side"],
+  cx: number,
+  cy: number,
+  unit: number,
+): void {
+  const contour = contourPointsForSide(points, side);
+  if (contour.length < 2) return;
+
   context.beginPath();
-  if (section.side === "aft") {
-    context.ellipse(cx, cy, radiusY, radiusZ, 0, Math.PI / 2, Math.PI * 1.5);
-  } else if (section.side === "forward") {
-    context.ellipse(cx, cy, radiusY, radiusZ, 0, -Math.PI / 2, Math.PI / 2);
-  } else {
-    context.ellipse(cx, cy, radiusY, radiusZ, 0, -Math.PI / 2, Math.PI / 2);
-    context.moveTo(cx, cy + radiusZ);
-    context.ellipse(cx, cy, radiusY, radiusZ, 0, Math.PI / 2, Math.PI * 1.5);
-  }
+  contour.forEach((point, index) => {
+    const projected = bodyPointToYzProjection({ x: 0, y: point.y, z: point.z });
+    const x = cx + projected.right * unit;
+    const y = cy + projected.down * unit;
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
   context.stroke();
 }
 
@@ -363,20 +391,14 @@ function drawBodyPlan(context: CanvasRenderingContext2D, rect: Rect, drawing: Th
   context.save();
   context.lineWidth = 1.2;
   context.strokeStyle = aftSection;
-  for (const section of drawing.aftSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
+  for (const section of drawing.aftSections) drawBodySectionContour(context, section, cx, cy, scale.unit);
   context.strokeStyle = forwardSection;
-  for (const section of drawing.forwardSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
+  for (const section of drawing.forwardSections) drawBodySectionContour(context, section, cx, cy, scale.unit);
   context.strokeStyle = hull;
   context.lineWidth = 2;
-  for (const section of drawing.midshipSections) drawBodySectionArc(context, section, cx, cy, scale.unit);
+  for (const section of drawing.midshipSections) drawBodySectionContour(context, section, cx, cy, scale.unit);
   if (drawing.midshipSections.length === 0) {
-    const maxHalfBreadthY = drawing.maxHalfBreadthY * scale.unit;
-    const maxHalfHeightZ = drawing.maxHalfHeightZ * scale.unit;
-    context.beginPath();
-    context.ellipse(cx, cy, maxHalfBreadthY, maxHalfHeightZ, 0, -Math.PI / 2, Math.PI / 2);
-    context.moveTo(cx, cy + maxHalfHeightZ);
-    context.ellipse(cx, cy, maxHalfBreadthY, maxHalfHeightZ, 0, Math.PI / 2, Math.PI * 1.5);
-    context.stroke();
+    drawBodyContour(context, drawing.maxSectionContourPoints, "midship", cx, cy, scale.unit);
   }
   context.restore();
 

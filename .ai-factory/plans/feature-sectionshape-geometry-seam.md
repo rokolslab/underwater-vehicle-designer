@@ -117,7 +117,7 @@ Source: `.ai-factory/RESEARCH.md` (Active Summary, Updated: 2026-08-03 20:45, SH
 
 ### Фаза 2: Drawing/rendering consumers
 
-- [ ] **Задача 4: Перевести pure theoretical drawing data на shape operations**
+- [x] **Задача 4: Перевести pure theoretical drawing data на shape operations**
   - Обновить `src/modules/geometry/theoretical-drawing.ts`, чтобы buttock/waterline curves и body-plan section data строились через `SectionShape` operations, а не через локальные ellipse `sqrt(1 - ratio^2)` branches.
   - Сохранить layout-neutral drawing contract и compatibility fields `halfBreadthY`/`halfHeightZ` для масштаба, но добавить shape-derived contour/intersection data там, где это нужно Canvas/SVG adapters.
   - Обновить `theoretical-drawing.test.ts`: current ellipse expected curves остаются прежними, а tests проверяют, что source не дублирует ellipse equations вне shape helper.
@@ -125,7 +125,7 @@ Source: `.ai-factory/RESEARCH.md` (Active Summary, Updated: 2026-08-03 20:45, SH
   - **Проверка:** targeted Vitest для geometry theoretical drawing и section-shape tests.
   - **Зависимости:** задачи 1-2.
 
-- [ ] **Задача 5: Перевести 3D mesh и theoretical drawing adapters на shape-derived contours**
+- [x] **Задача 5: Перевести 3D mesh и theoretical drawing adapters на shape-derived contours**
   - Обновить `src/modules/rendering/mesh.ts`, чтобы ring vertices использовали `sampleSectionContour()` или equivalent shape operation; сохранить exact elliptical ring для текущих modes и обновить normals только в минимально необходимом объёме.
   - Обновить `src/modules/rendering/theoretical-drawing.ts` и `src/modules/persistence/theoretical-drawing-svg.ts`, чтобы body-plan drawing не строил section contours через локальные ellipse-only assumptions, если shape data уже доступна в `TheoreticalDrawing`.
   - Сохранить `scene3d.ts`, view settings и camera bounds на extents-based behavior; не переносить Three.js-specific logic в geometry.
@@ -134,7 +134,7 @@ Source: `.ai-factory/RESEARCH.md` (Active Summary, Updated: 2026-08-03 20:45, SH
   - **Проверка:** targeted Vitest для mesh/rendering/theoretical SVG plus geometry shape tests.
   - **Зависимости:** задача 4.
 
-- [ ] **Задача 6: Закрепить extent-only consumers, exports и dependency contracts**
+- [x] **Задача 6: Закрепить extent-only consumers, exports и dependency contracts**
   - Проверить `src/modules/persistence/svg.ts`, `csv.ts`, `src/modules/ui/table.ts`, `metrics.ts`, `src/modules/rendering/canvas2d.ts`, `scene3dControls.ts` и `src/app/main.ts`: extent-only consumers должны явно использовать compatibility extents, а не shape formulas.
   - Обновить или добавить tests для CSV/SVG/table/metrics/canvas contracts только там, где shape field влияет snapshots или source contract.
   - Расширить `src/application/project/dependency-contract.test.ts` или добавить geometry-focused dependency assertion, чтобы `section-shape.ts`, profile/theoretical drawing core и constraints не импортировали DOM, Canvas, Three.js, persistence, UI или logger.

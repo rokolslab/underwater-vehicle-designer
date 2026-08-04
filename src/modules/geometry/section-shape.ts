@@ -15,6 +15,11 @@ export interface SectionPointYZ {
   readonly z: number;
 }
 
+export interface SectionNormalYZ {
+  readonly y: number;
+  readonly z: number;
+}
+
 export interface SectionShapeBounds {
   readonly minY: number;
   readonly maxY: number;
@@ -117,6 +122,15 @@ export function sampleSectionContour(shape: SectionShape, count: number): readon
       });
     }),
   );
+}
+
+export function sectionNormalAtPoint(shape: SectionShape, point: SectionPointYZ): SectionNormalYZ {
+  const normalY = shape.halfBreadthY > 0 ? point.y / (shape.halfBreadthY * shape.halfBreadthY) : point.y;
+  const normalZ = shape.halfHeightZ > 0 ? point.z / (shape.halfHeightZ * shape.halfHeightZ) : point.z;
+  const normalLength = Math.hypot(normalY, normalZ);
+
+  if (normalLength === 0) return Object.freeze({ y: 0, z: 0 });
+  return Object.freeze({ y: normalY / normalLength, z: normalZ / normalLength });
 }
 
 export function intersectSectionWithButtockY(

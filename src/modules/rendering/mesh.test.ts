@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileSnapshot } from "../geometry/model";
 import { makeProfileSnapshot } from "../geometry/profile";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { buildHullMeshData, hullMeshSignature, isSameHullMeshSignature, readVertexRadius } from "./mesh";
 
 function makeSnapshot(cylindricalInsertLength = 0) {
@@ -16,6 +17,8 @@ function makeSnapshot(cylindricalInsertLength = 0) {
 }
 
 function makeEllipticalSnapshot(): ProfileSnapshot {
+  const zeroShape = makeEllipseSectionShape(0, 0);
+  const midshipShape = makeEllipseSectionShape(2, 1);
   return Object.freeze({
     state: Object.freeze({
       geometryMode: "legacy-dsnp-pa" as const,
@@ -28,9 +31,9 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
       stations: 8,
     }),
     smoothPoints: Object.freeze([
-      Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
-      Object.freeze({ s: 2, radius: 1, halfBreadthY: 2, halfHeightZ: 1 }),
-      Object.freeze({ s: 4, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+      Object.freeze({ s: 0, shape: zeroShape, ...sectionShapeExtents(zeroShape) }),
+      Object.freeze({ s: 2, shape: midshipShape, ...sectionShapeExtents(midshipShape) }),
+      Object.freeze({ s: 4, shape: zeroShape, ...sectionShapeExtents(zeroShape) }),
     ]),
     stationPoints: Object.freeze([]),
     extents: Object.freeze({
@@ -122,11 +125,12 @@ describe("hull mesh data", () => {
   it("changes hull mesh signature when geometry mode or section extents change", () => {
     const circular = makeSnapshot();
     const elliptical = makeEllipticalSnapshot();
+    const changedShape = makeEllipseSectionShape(1.5, 1);
     const changedExtents = Object.freeze({
       ...elliptical,
       smoothPoints: Object.freeze([
         elliptical.smoothPoints[0],
-        Object.freeze({ ...elliptical.smoothPoints[1], halfBreadthY: 1.5 }),
+        Object.freeze({ ...elliptical.smoothPoints[1], shape: changedShape, ...sectionShapeExtents(changedShape) }),
         elliptical.smoothPoints[2],
       ]),
     });

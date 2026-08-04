@@ -6,6 +6,7 @@ import {
   makeEllipseSectionShape,
   sampleSectionContour,
   sectionArea,
+  sectionNormalAtPoint,
   sectionShapeBounds,
   sectionShapeExtents,
 } from "./section-shape";
@@ -49,6 +50,17 @@ describe("section shape geometry", () => {
     expect(contour[2].z).toBeCloseTo(0, 12);
     expect(contour[3].y).toBeCloseTo(0, 12);
     expect(contour[3].z).toBeCloseTo(-1, 12);
+  });
+
+  it("calculates shape-owned YZ normals for ellipse contour points", () => {
+    const shape = makeEllipseSectionShape(2, 1);
+
+    expect(sectionNormalAtPoint(shape, { y: 2, z: 0 })).toEqual({ y: 1, z: 0 });
+    expect(sectionNormalAtPoint(shape, { y: 0, z: 1 })).toEqual({ y: 0, z: 1 });
+    const diagonal = sectionNormalAtPoint(shape, { y: Math.SQRT2, z: Math.SQRT1_2 });
+
+    expect(Math.hypot(diagonal.y, diagonal.z)).toBeCloseTo(1, 12);
+    expect(diagonal.z).toBeGreaterThan(diagonal.y);
   });
 
   it("handles zero sections without NaN containment or intersection results", () => {
@@ -96,6 +108,7 @@ describe("section shape geometry", () => {
       sectionArea(shape);
       containsSectionPoint(shape, { y: 1, z: 0.25 });
       sampleSectionContour(shape, 8);
+      sectionNormalAtPoint(shape, { y: 1, z: 0 });
       intersectSectionWithWaterlineZ(shape, 0.5);
       intersectSectionWithButtockY(shape, 0.5);
     } finally {
