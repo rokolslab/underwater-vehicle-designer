@@ -1,3 +1,7 @@
+---
+archived: 2026-08-05
+---
+
 # План реализации: SectionShape geometry seam
 
 Ветка: `feature/sectionshape-geometry-seam`
