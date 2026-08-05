@@ -67,6 +67,15 @@ describe("app DOM contract", () => {
     expect(main).toContain('requiredElement("#geometry-formula"');
   });
 
+  it("uses product terminology for geometry mode labels in the UI", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain('value="current-formula">Базовая формула</option>');
+    expect(html).toContain('value="legacy-dsnp-pa">Классическая методика</option>');
+    expect(html).not.toContain('value="current-formula">Текущая</option>');
+    expect(html).not.toContain('value="legacy-dsnp-pa">ДСНП_ПА</option>');
+  });
+
   it("keeps the 3D scene touch contract scroll-friendly", () => {
     const styles = readFileSync("src/app/styles.css", "utf8");
     const scene3d = readFileSync("src/modules/rendering/scene3d.ts", "utf8");

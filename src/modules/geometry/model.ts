@@ -11,12 +11,12 @@ export interface GeometryModePresentation {
 
 export const geometryModePresentations: Readonly<Record<GeometryMode, GeometryModePresentation>> = Object.freeze({
   "current-formula": Object.freeze({
-    label: "Текущая",
-    formulaText: "f(t)=t(1-t)(1-0.5t); полуоси: Y=B/2*sqrt(f/fmax), Z=H/2*sqrt(f/fmax)",
+    label: "Базовая формула",
+    formulaText: "Базовая формула: f(t)=t(1-t)(1-0.5t); полуоси Y=B/2*sqrt(f/fmax), Z=H/2*sqrt(f/fmax)",
   }),
   "legacy-dsnp-pa": Object.freeze({
-    label: "ДСНП_ПА",
-    formulaText: "Traceability DSNP_PA: MaxWl(B) задает полуось Y, MaxBt(H) задает полуось Z",
+    label: "Классическая методика",
+    formulaText: "Классическая методика: MaxWl(B) задает полуось Y, MaxBt(H) задает полуось Z",
   }),
 });
 

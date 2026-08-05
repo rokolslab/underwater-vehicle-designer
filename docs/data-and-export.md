@@ -63,8 +63,8 @@ Root document:
 
 | Value | Meaning |
 | --- | --- |
-| `current-formula` | Текущая формула проекта, default. |
-| `legacy-dsnp-pa` | DSNP_PA regression/traceability mode с эллиптическими сечениями первого slice. |
+| `current-formula` | `Базовая формула`, режим по умолчанию. |
+| `legacy-dsnp-pa` | `Классическая методика`, traceability-режим с эллиптическими сечениями первого slice. |
 
 Контракт совместимости:
 
