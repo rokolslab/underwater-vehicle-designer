@@ -32,7 +32,7 @@ const importedProject = {
       },
     ],
     scene3dSettings: {
-      mode: "cutaway",
+      mode: "x-ray",
       hullOpacity: 0.3,
       section: { type: "longitudinalPlane", plane: "xy", offset: -0.25 },
     },

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { bodyAxisToThree, bodyPointToThree, bodyVectorToThree } from "./coordinate-adapter";
 import {
   bodyClippingPlaneForSection,
+  clippingPlanesForSettings,
   clippingPlanesForSection,
   retainedHalfSpaceForSection,
   transformClippingPlanesToWorld,
@@ -35,6 +36,14 @@ describe("3d scene clipping planes", () => {
     const [xzSection] = clippingPlanesForSection({ type: "longitudinalPlane", plane: "xz", offset: -0.4 });
     expectVectorClose(xzSection.normal, new THREE.Vector3(0, 0, -1));
     expect(xzSection.constant).toBeCloseTo(-0.4, 12);
+  });
+
+  it("keeps section clipping independent from solid and x-ray display modes", () => {
+    const section = { type: "crossSectionX", x: 1 } as const;
+
+    expect(clippingPlanesForSettings({ mode: "solid", hullOpacity: 0.28, section })).toHaveLength(1);
+    expect(clippingPlanesForSettings({ mode: "x-ray", hullOpacity: 0.28, section })).toHaveLength(1);
+    expect(clippingPlanesForSettings({ mode: "solid", hullOpacity: 0.28, section: { type: "disabled" } })).toHaveLength(0);
   });
 
   it.each([

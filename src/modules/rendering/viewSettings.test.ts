@@ -25,15 +25,22 @@ describe("3d view settings", () => {
   });
 
   it("clamps opacity to the lower x-ray bound", () => {
-    const settings = normalizeScene3dSettings({ mode: "cutaway", hullOpacity: 0.01 }, bounds);
+    const settings = normalizeScene3dSettings({ mode: "x-ray", hullOpacity: 0.01 }, bounds);
 
     expect(settings.hullOpacity).toBe(minHullOpacity);
+  });
+
+  it("normalizes the removed cutaway mode to x-ray for persisted projects", () => {
+    const settings = normalizeScene3dSettings({ mode: "cutaway", hullOpacity: 0.31 }, bounds);
+
+    expect(settings.mode).toBe("x-ray");
+    expect(settings.hullOpacity).toBe(0.31);
   });
 
   it("clamps cross section position to signed Body X bounds", () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
     const settings = normalizeScene3dSettings(
-      { mode: "cutaway", section: { type: "crossSectionX", x: 99 } },
+      { mode: "solid", section: { type: "crossSectionX", x: 99 } },
       bounds,
     );
 
@@ -46,7 +53,7 @@ describe("3d view settings", () => {
     }));
 
     expect(normalizeScene3dSettings(
-      { mode: "cutaway", section: { type: "crossSectionX", x: -99 } },
+      { mode: "solid", section: { type: "crossSectionX", x: -99 } },
       bounds,
     ).section).toEqual({ type: "crossSectionX", x: -3 });
   });
@@ -54,7 +61,7 @@ describe("3d view settings", () => {
   it("normalizes longitudinal xy section offset by height", () => {
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
     const settings = normalizeScene3dSettings(
-      { mode: "cutaway", section: { type: "longitudinalPlane", plane: "bad", offset: -4 } },
+      { mode: "x-ray", section: { type: "longitudinalPlane", plane: "bad", offset: -4 } },
       bounds,
     );
 
@@ -68,7 +75,7 @@ describe("3d view settings", () => {
 
   it("clamps longitudinal xz section offset by breadth", () => {
     const settings = normalizeScene3dSettings(
-      { mode: "cutaway", section: { type: "longitudinalPlane", plane: "xz", offset: 4 } },
+      { mode: "x-ray", section: { type: "longitudinalPlane", plane: "xz", offset: 4 } },
       bounds,
     );
 

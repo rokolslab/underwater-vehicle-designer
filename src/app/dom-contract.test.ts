@@ -49,7 +49,8 @@ describe("app DOM contract", () => {
     const main = readFileSync("src/app/main.ts", "utf8");
 
     expect(html).toContain("X — нос; Y — правый борт; Z — вниз");
-    expect(html).toContain("Body-сечение");
+    expect(html).toContain("Сечение");
+    expect(html).toContain("Сечения задаются в Body/SNAME-NED");
     expect(html).toContain("theoretical-drawing-scroll");
     expect(main).toContain("result.migratedFromVersion");
     expect(main).toContain("правом или левом");

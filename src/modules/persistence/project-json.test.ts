@@ -230,6 +230,7 @@ describe("project json persistence", () => {
       position: { x: 1, y: 0.75, z: 0.25 },
       dimensions: { lengthX: 1.2, breadthY: 3.4, heightZ: 2.3 },
     });
+    expect(result.project.scene3dSettings.mode).toBe("x-ray");
     expect(result.project.scene3dSettings.section).toEqual({ type: "crossSectionX", x: 3 });
   });
 

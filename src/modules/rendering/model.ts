@@ -3,7 +3,7 @@ export interface RenderOptions {
   readonly showPoints: boolean;
 }
 
-export type Scene3dViewMode = "solid" | "x-ray" | "cutaway";
+export type Scene3dViewMode = "solid" | "x-ray";
 export type LongitudinalSectionPlane = "xy" | "xz";
 export type SectionRetainedHalfSpace = "x<=offset" | "y<=offset" | "z<=offset";
 

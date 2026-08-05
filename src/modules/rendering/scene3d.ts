@@ -205,6 +205,10 @@ export function transformClippingPlanesToWorld(
   return localPlanes.map((plane) => plane.clone().applyMatrix4(matrixWorld));
 }
 
+export function clippingPlanesForSettings(settings: Scene3dSettings): THREE.Plane[] {
+  return clippingPlanesForSection(settings.section);
+}
+
 function applyViewSettings(
   bodyMaterial: THREE.MeshStandardMaterial,
   wireMaterial: THREE.LineBasicMaterial,
@@ -343,7 +347,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
   }
 
   function updateClippingPlanes(settings: Scene3dSettings): void {
-    localClippingPlanes = settings.mode === "solid" ? [] : clippingPlanesForSection(settings.section);
+    localClippingPlanes = clippingPlanesForSettings(settings);
     worldClippingPlanes = localClippingPlanes.map((plane) => plane.clone());
     if (renderer) renderer.localClippingEnabled = worldClippingPlanes.length > 0;
     bodyMaterial.clippingPlanes = worldClippingPlanes;

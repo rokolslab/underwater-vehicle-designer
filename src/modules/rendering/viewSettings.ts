@@ -29,7 +29,8 @@ export interface Scene3dNormalizationBounds {
 }
 
 function normalizeMode(mode: string | undefined): Scene3dViewMode {
-  if (mode === "x-ray" || mode === "cutaway" || mode === "solid") return mode;
+  if (mode === "x-ray" || mode === "solid") return mode;
+  if (mode === "cutaway") return "x-ray";
   if (mode !== undefined) logger.warn("3d view mode normalized", { requested: mode, normalized: "solid" });
   return "solid";
 }

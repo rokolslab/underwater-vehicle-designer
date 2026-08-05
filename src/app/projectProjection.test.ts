@@ -8,7 +8,7 @@ const view: ProjectViewState = Object.freeze({
   showGrid: false,
   showPoints: true,
   scene3dSettings: Object.freeze({
-    mode: "cutaway",
+    mode: "x-ray",
     hullOpacity: 0.33,
     section: Object.freeze({ type: "crossSectionX", x: 1.25 }),
   }),
