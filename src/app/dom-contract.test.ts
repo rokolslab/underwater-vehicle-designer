@@ -39,9 +39,28 @@ describe("app DOM contract", () => {
     const html = readFileSync("index.html", "utf8");
 
     expect(html).toContain("Underwater Vehicle Designer");
-    expect(html).toContain('class="hull-blueprint"');
+    expect(html).toContain('/images/hero-hull-render.png');
+    expect(html).toContain("Скриншот рабочей Three.js-сцены");
     expect(html).toContain('id="visualization"');
     expect(html).toContain('name="theme-color" content="#07191f"');
+  });
+
+  it("keeps balance visibly experimental and collapsed by default", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain('<details class="balance-band panel-details">');
+    expect(html).toContain("Баланс оборудования");
+    expect(html).toContain("Experimental");
+    expect(html).toContain("не полный расчет гидростатики");
+  });
+
+  it("keeps static numeric controls mobile-keyboard friendly", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain('id="length" type="number" inputmode="decimal"');
+    expect(html).toContain('id="stations" type="number" inputmode="numeric"');
+    expect(html).toContain('id="water-density" type="number" inputmode="numeric"');
+    expect(html).toContain('id="scene3d-section-x" type="number" inputmode="decimal"');
   });
 
   it("keeps the Body axis memo and migration guidance in the app contract", () => {

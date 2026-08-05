@@ -303,6 +303,50 @@ h1 span {
   backdrop-filter: blur(8px);
 }
 
+.hero-render-frame {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(117, 217, 208, 0.16);
+  border-radius: 5px;
+  background:
+    linear-gradient(rgba(117, 217, 208, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 217, 208, 0.07) 1px, transparent 1px),
+    #041419;
+  background-size: 34px 34px;
+}
+
+.hero-render-frame::after {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 48%, transparent 0 48%, rgba(4, 20, 25, 0.55) 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.hero-render {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.18;
+  object-fit: cover;
+}
+
+.hero-render-frame figcaption {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  border: 1px solid rgba(117, 217, 208, 0.22);
+  border-radius: 3px;
+  padding: 5px 7px;
+  color: rgba(221, 243, 239, 0.72);
+  background: rgba(4, 20, 25, 0.72);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .blueprint-head {
   display: flex;
   align-items: center;
@@ -644,6 +688,12 @@ h2 {
   transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
 
+.control-grid input[type="number"],
+.scene3d-controls input[type="number"],
+.equipment-row input[type="number"] {
+  min-height: 42px;
+}
+
 .control-grid input[type="number"]:hover,
 .control-grid select:hover,
 .scene3d-controls select:hover,
@@ -978,6 +1028,34 @@ h2 {
 }
 
 /* Balance and data */
+.experimental-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(199, 124, 33, 0.36);
+  border-radius: 4px;
+  padding: 0 9px;
+  color: #8a5206;
+  background: #fff4db;
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.balance-disclaimer {
+  margin: 12px 12px 0;
+  border: 1px solid rgba(199, 124, 33, 0.38);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #744405;
+  background: #fff7e6;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .balance-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

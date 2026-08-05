@@ -36,46 +36,15 @@
           </div>
         </div>
 
-        <div class="hero-visual" aria-label="Схема корпуса и возможности демо">
+        <div class="hero-visual" aria-label="Статический рендер реальной 3D-модели и возможности демо">
           <div class="blueprint-head">
-            <span>LIVE HULL PREVIEW</span>
-            <span class="blueprint-scale">SCALE 1:20</span>
+            <span>REAL 3D MODEL RENDER</span>
+            <span class="blueprint-scale">STATIC HERO SNAPSHOT</span>
           </div>
-          <svg class="hull-blueprint" viewBox="0 0 640 300" role="img" aria-label="Технический эскиз корпуса подводного аппарата">
-            <defs>
-              <linearGradient id="hull-glow" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stop-color="#75d9d0" stop-opacity="0.08" />
-                <stop offset="0.5" stop-color="#b8e24a" stop-opacity="0.26" />
-                <stop offset="1" stop-color="#75d9d0" stop-opacity="0.08" />
-              </linearGradient>
-            </defs>
-            <g class="blueprint-grid-lines">
-              <path d="M40 60H600M40 110H600M40 160H600M40 210H600M40 260H600" />
-              <path d="M80 35V270M160 35V270M240 35V270M320 35V270M400 35V270M480 35V270M560 35V270" />
-            </g>
-            <path class="hull-fill" d="M62 160C128 88 219 78 320 78C421 78 512 88 578 160C512 232 421 242 320 242C219 242 128 232 62 160Z" />
-            <path class="hull-outline" d="M62 160C128 88 219 78 320 78C421 78 512 88 578 160C512 232 421 242 320 242C219 242 128 232 62 160Z" />
-            <path class="hull-axis" d="M42 160H598" />
-            <g class="hull-sections">
-              <ellipse cx="160" cy="160" rx="18" ry="56" />
-              <ellipse cx="240" cy="160" rx="12" ry="76" />
-              <ellipse cx="320" cy="160" rx="8" ry="82" />
-              <ellipse cx="400" cy="160" rx="12" ry="76" />
-              <ellipse cx="480" cy="160" rx="18" ry="56" />
-            </g>
-            <g class="blueprint-points">
-              <circle cx="62" cy="160" r="4" />
-              <circle cx="320" cy="78" r="4" />
-              <circle cx="578" cy="160" r="4" />
-              <circle cx="320" cy="242" r="4" />
-            </g>
-            <g class="blueprint-labels">
-              <text x="52" y="148">AFT</text>
-              <text x="548" y="148">BOW +X</text>
-              <text x="334" y="70">H / Z</text>
-              <text x="272" y="180">BODY / SNAME-NED</text>
-            </g>
-          </svg>
+          <figure class="hero-render-frame">
+            <img class="hero-render" src="/images/hero-hull-render.png" alt="Статический скриншот настоящей 3D-модели корпуса из приложения" />
+            <figcaption>Скриншот рабочей Three.js-сцены, а не декоративный макет</figcaption>
+          </figure>
           <div class="blueprint-metrics">
             <div><span>GEOMETRY</span><strong>2 MODES</strong></div>
             <div><span>VIEW</span><strong>2D + 3D</strong></div>
@@ -87,7 +56,7 @@
               <div class="hero-tags" aria-label="Возможности демо">
                 <span>ЦВК и сечения</span>
                 <span>Оборудование</span>
-                <span>Баланс</span>
+                <span>Экспорт</span>
               </div>
             </div>
             <div class="formula-line">Y = ± B/2 sqrt(f/fmax)<br />Z = ± H/2 sqrt(f/fmax)</div>
@@ -111,27 +80,27 @@
           <form id="controls" class="control-grid">
             <label>
               <span>Длина L</span>
-              <input id="length" type="number" min="0.1" step="0.1" value="6" />
+              <input id="length" type="number" inputmode="decimal" min="0.1" step="0.1" value="6" />
             </label>
             <label>
               <span>Удлинение λ = L / H</span>
-              <input id="slenderness" type="number" min="0.1" step="0.1" value="3" />
+              <input id="slenderness" type="number" inputmode="decimal" min="0.1" step="0.1" value="3" />
             </label>
             <label>
               <span>Ширина B</span>
-              <input id="breadth" type="number" min="0.01" step="0.01" value="2" />
+              <input id="breadth" type="number" inputmode="decimal" min="0.01" step="0.01" value="2" />
             </label>
             <label>
               <span>Высота H</span>
-              <input id="height" type="number" min="0.01" step="0.01" value="2" />
+              <input id="height" type="number" inputmode="decimal" min="0.01" step="0.01" value="2" />
             </label>
             <label>
               <span>Точек обвода</span>
-              <input id="stations" type="number" min="8" max="80" step="1" value="20" />
+              <input id="stations" type="number" inputmode="numeric" min="8" max="80" step="1" value="20" />
             </label>
             <label>
               <span>ЦВК, м</span>
-              <input id="cylindrical-insert-length" type="number" min="0" max="3" step="0.1" value="0" />
+              <input id="cylindrical-insert-length" type="number" inputmode="decimal" min="0" max="3" step="0.1" value="0" />
             </label>
             <label>
               <span>Режим геометрии корпуса</span>
@@ -143,7 +112,7 @@
             <div id="geometry-formula" class="control-note geometry-formula" aria-live="polite"></div>
             <label>
               <span>Плотность воды, кг/м3</span>
-              <input id="water-density" type="number" min="1" step="1" value="1025" />
+              <input id="water-density" type="number" inputmode="numeric" min="1" step="1" value="1025" />
             </label>
 
           </form>
@@ -204,7 +173,7 @@
                 </label>
                 <label>
                   <span title="Body X: + к носу, − к корме">Body X, м</span>
-                  <input id="scene3d-section-x" type="number" step="0.1" value="0" />
+                  <input id="scene3d-section-x" type="number" inputmode="decimal" step="0.1" value="0" />
                 </label>
                 <label>
                   <span title="XY: горизонтальная; XZ: диаметральная">Body-плоскость</span>
@@ -215,7 +184,7 @@
                 </label>
                 <label>
                   <span title="XY смещается по Z (+ вниз); XZ смещается по Y (+ правый борт)">Смещение, м</span>
-                  <input id="scene3d-section-offset" type="number" step="0.1" value="0" />
+                  <input id="scene3d-section-offset" type="number" inputmode="decimal" step="0.1" value="0" />
                 </label>
               </div>
             </div>
@@ -237,11 +206,17 @@
           <div id="equipment-list" class="equipment-list"></div>
         </details>
 
-        <details class="balance-band panel-details" open>
+        <details class="balance-band panel-details">
           <summary class="data-header">
-            <h2>Баланс</h2>
-            <span class="details-action" aria-hidden="true"></span>
+            <h2>Баланс оборудования</h2>
+            <span class="panel-actions">
+              <span class="experimental-pill">Experimental</span>
+              <span class="details-action" aria-hidden="true"></span>
+            </span>
           </summary>
+          <p class="balance-disclaimer">
+            Оценка ниже использует только массу и вытесненный объем оборудования. Это не полный расчет гидростатики герметичного корпуса и не финальная проверка плавучести.
+          </p>
           <dl class="balance-grid">
             <div>
               <dt>Масса, кг</dt>

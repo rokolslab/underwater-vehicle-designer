@@ -128,4 +128,15 @@ describe("equipment ui", () => {
     expect(container.innerHTML).toContain("Z, м → вниз");
     expect(container.innerHTML).toContain("X — нос");
   });
+
+  it("renders number inputs with decimal input mode for mobile keyboards", () => {
+    const item = createDefaultEquipmentItem({ idFactory: () => "item-1" });
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item]);
+
+    expect(container.innerHTML).toContain('data-field="massKg" type="number" inputmode="decimal"');
+    expect(container.innerHTML).toContain('data-field="x" type="number" inputmode="decimal"');
+    expect(container.innerHTML).toContain('data-field="radius" type="number" inputmode="decimal"');
+  });
 });

@@ -26,24 +26,24 @@ function statusClass(status: EquipmentConstraintStatus): string {
 function dimensionFields(item: EquipmentItem): string {
   if (item.shape === "sphere") {
     return `
-      <label title="Радиус сферы, м"><span>R, м</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
-      <label class="is-hidden"><span>Дл.</span><input data-field="length" type="number" min="0.001" step="0.01" value="" /></label>
-      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
+      <label title="Радиус сферы, м"><span>R, м</span><input data-field="radius" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
+      <label class="is-hidden"><span>Дл.</span><input data-field="length" type="number" inputmode="decimal" min="0.001" step="0.01" value="" /></label>
+      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" inputmode="decimal" min="0.001" step="0.01" value="" /></label>
     `;
   }
 
   if (item.shape === "cylinder") {
     return `
-      <label title="Радиус цилиндра, м"><span>R, м</span><input data-field="radius" type="number" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
-      <label title="Длина цилиндра вдоль выбранной оси, м"><span>Длина, м</span><input data-field="length" type="number" min="0.001" step="0.01" value="${item.dimensions.length}" /></label>
-      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" min="0.001" step="0.01" value="" /></label>
+      <label title="Радиус цилиндра, м"><span>R, м</span><input data-field="radius" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.radius}" /></label>
+      <label title="Длина цилиндра вдоль выбранной оси, м"><span>Длина, м</span><input data-field="length" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.length}" /></label>
+      <label class="is-hidden"><span>Ш</span><input data-field="width" type="number" inputmode="decimal" min="0.001" step="0.01" value="" /></label>
     `;
   }
 
   return `
-    <label title="Длина блока по оси X, м"><span>Lx, м</span><input data-field="lengthX" type="number" min="0.001" step="0.01" value="${item.dimensions.lengthX}" /></label>
-    <label title="Ширина блока по оси Y, м"><span>By, м</span><input data-field="breadthY" type="number" min="0.001" step="0.01" value="${item.dimensions.breadthY}" /></label>
-    <label title="Высота блока по оси Z, м"><span>Hz, м</span><input data-field="heightZ" type="number" min="0.001" step="0.01" value="${item.dimensions.heightZ}" /></label>
+    <label title="Длина блока по оси X, м"><span>Lx, м</span><input data-field="lengthX" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.lengthX}" /></label>
+    <label title="Ширина блока по оси Y, м"><span>By, м</span><input data-field="breadthY" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.breadthY}" /></label>
+    <label title="Высота блока по оси Z, м"><span>Hz, м</span><input data-field="heightZ" type="number" inputmode="decimal" min="0.001" step="0.01" value="${item.dimensions.heightZ}" /></label>
   `;
 }
 
@@ -74,10 +74,10 @@ function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | und
           ${option("box", "Блок", item.shape === "box")}
         </select>
       </label>
-      <label><span>Масса, кг</span><input data-field="massKg" type="number" min="0.001" step="0.1" value="${item.massKg}" /></label>
-      <label title="Body X, положительное направление — к носу"><span>X, м → нос</span><input data-field="x" type="number" step="0.1" value="${item.position.x}" /></label>
-      <label title="Body Y, положительное направление — на правый борт"><span>Y, м → правый борт</span><input data-field="y" type="number" step="0.1" value="${item.position.y}" /></label>
-      <label title="Body Z, положительное направление — вниз"><span>Z, м → вниз</span><input data-field="z" type="number" step="0.1" value="${item.position.z}" /></label>
+      <label><span>Масса, кг</span><input data-field="massKg" type="number" inputmode="decimal" min="0.001" step="0.1" value="${item.massKg}" /></label>
+      <label title="Body X, положительное направление — к носу"><span>X, м → нос</span><input data-field="x" type="number" inputmode="decimal" step="0.1" value="${item.position.x}" /></label>
+      <label title="Body Y, положительное направление — на правый борт"><span>Y, м → правый борт</span><input data-field="y" type="number" inputmode="decimal" step="0.1" value="${item.position.y}" /></label>
+      <label title="Body Z, положительное направление — вниз"><span>Z, м → вниз</span><input data-field="z" type="number" inputmode="decimal" step="0.1" value="${item.position.z}" /></label>
       <label>
         <span title="Продольная ось цилиндра в Body/SNAME-NED">Ось цилиндра</span>
         <select data-field="orientation">
