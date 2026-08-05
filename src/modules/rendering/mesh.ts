@@ -1,5 +1,5 @@
 import { normalizeGeometryMode, type GeometryMode, type ProfileSnapshot } from "../geometry/model";
-import { sampleSectionContour, sectionNormalAtPoint } from "../geometry/section-shape";
+import { sampleSectionContour, sectionNormalAtPoint, type SectionNormalYZ } from "../geometry/section-shape";
 import { logger } from "../../shared/logger";
 import { profilePointToThree } from "./coordinate-adapter";
 
@@ -39,6 +39,17 @@ function normalizeSegments(radialSegments: number | undefined): number {
 
 function radiusFromPosition(threeY: number, threeZ: number): number {
   return Math.hypot(threeY, threeZ);
+}
+
+function contourNormalOrRadialFallback(
+  normal: SectionNormalYZ,
+  radialIndex: number,
+  radialSegments: number,
+): SectionNormalYZ {
+  if (Math.hypot(normal.y, normal.z) > 0) return normal;
+
+  const angle = (radialIndex / radialSegments) * Math.PI * 2;
+  return Object.freeze({ y: Math.cos(angle), z: Math.sin(angle) });
 }
 
 export function hullSectionExtentsSignature(snapshot: ProfileSnapshot): string {
@@ -107,7 +118,11 @@ export function buildHullMeshData(snapshot: ProfileSnapshot, options: HullMeshOp
 
     for (let radialIndex = 0; radialIndex <= radialSegments; radialIndex += 1) {
       const contourPoint = contour[radialIndex % radialSegments] ?? { y: 0, z: 0 };
-      const contourNormal = sectionNormalAtPoint(point.shape, contourPoint);
+      const contourNormal = contourNormalOrRadialFallback(
+        sectionNormalAtPoint(point.shape, contourPoint),
+        radialIndex,
+        radialSegments,
+      );
       const vertexIndex = ringIndex * verticesPerRing + radialIndex;
       const positionOffset = vertexIndex * 3;
       const uvOffset = vertexIndex * 2;

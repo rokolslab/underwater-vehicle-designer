@@ -47,6 +47,11 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
   });
 }
 
+function normalLength(mesh: ReturnType<typeof buildHullMeshData>, vertexIndex: number): number {
+  const offset = vertexIndex * 3;
+  return Math.hypot(mesh.normals[offset], mesh.normals[offset + 1], mesh.normals[offset + 2]);
+}
+
 describe("hull mesh data", () => {
   it("builds a revolved mesh from profile snapshot rings", () => {
     const snapshot = makeSnapshot();
@@ -74,6 +79,18 @@ describe("hull mesh data", () => {
     expect(mesh.positions[lastRingFirstVertex * 3]).toBeCloseTo(-snapshot.extents.totalLength / 2, 12);
     expect(readVertexRadius(mesh, 0)).toBe(0);
     expect(readVertexRadius(mesh, lastRingFirstVertex)).toBeCloseTo(0, 6);
+  });
+
+  it("keeps unit normals on degenerate nose and stern rings", () => {
+    const snapshot = makeEllipticalSnapshot();
+    const mesh = buildHullMeshData(snapshot, { radialSegments: 8 });
+    const verticesPerRing = mesh.radialSegments + 1;
+    const sternFirstVertex = (snapshot.smoothPoints.length - 1) * verticesPerRing;
+
+    expect(readVertexRadius(mesh, 0)).toBe(0);
+    expect(readVertexRadius(mesh, sternFirstVertex)).toBe(0);
+    expect(normalLength(mesh, 0)).toBeCloseTo(1, 12);
+    expect(normalLength(mesh, sternFirstVertex)).toBeCloseTo(1, 12);
   });
 
   it("uses the snapshot total length for uv coordinates", () => {
