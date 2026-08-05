@@ -131,6 +131,9 @@ describe("profile geometry", () => {
     expect(snapshot.extents.maxRadius).toBeCloseTo(1, 12);
     expect(maxPoint?.halfBreadthY).toBeCloseTo(2, 12);
     expect(maxPoint?.halfHeightZ).toBeCloseTo(1, 12);
+    expect(maxPoint?.shape.kind).toBe("ellipse");
+    expect(maxPoint?.shape.halfBreadthY).toBeCloseTo(maxPoint?.halfBreadthY ?? 0, 12);
+    expect(maxPoint?.shape.halfHeightZ).toBeCloseTo(maxPoint?.halfHeightZ ?? 0, 12);
   });
 
   // Legacy regressions trace to docs/legacy/dsnp-pa-calculation-catalog.md and do not validate DSNP_PA coefficients.
@@ -178,6 +181,9 @@ describe("profile geometry", () => {
     expect(section.halfBreadthY).toBeCloseTo(2, 12);
     expect(section.halfHeightZ).toBeCloseTo(1, 12);
     expect(section.radius).toBeCloseTo(section.halfHeightZ, 12);
+    expect(section.shape.kind).toBe("ellipse");
+    expect(section.shape.halfBreadthY).toBeCloseTo(section.halfBreadthY, 12);
+    expect(section.shape.halfHeightZ).toBeCloseTo(section.halfHeightZ, 12);
   });
 
   it("keeps legacy cylindrical insert plateau and extents as regression traceability, not engineering validation", () => {

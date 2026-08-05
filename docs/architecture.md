@@ -27,7 +27,7 @@ index.html
 | --- | --- | --- |
 | `src/app/` | Bootstrap, DOM events → commands, explicit runtime commit и adapter orchestration | Дублировать расчётные формулы |
 | `src/application/project/` | Commands, reducer, store, normalization и `deriveProject()` | Импортировать DOM, rendering, persistence или logger в reducer/store |
-| `geometry/` | Профиль, стратегии геометрии, станции, theoretical drawing data | Читать DOM, Canvas или Three.js |
+| `geometry/` | Профиль, `SectionShape`, стратегии геометрии, станции, theoretical drawing data | Читать DOM, Canvas, Three.js или logger |
 | `equipment/` | Оборудование, placement, containment и intersections | Рендерить UI |
 | `balance/` | Equipment-only CG/CB, силы и stability diagnostics | Считать геометрию корпуса заново |
 | `rendering/` | Canvas 2D, Three.js, mesh и coordinate adapters | Владеть каноническим project state |
@@ -160,15 +160,13 @@ three.z = body.y
 
 Текущие режимы используют эллиптические сечения `halfBreadthY`/`halfHeightZ`. Для будущих `Priam`/`Kr` этого контракта недостаточно.
 
-До расширения legacy geometry вводится общий `SectionShape`:
+До расширения legacy geometry введён общий `SectionShape` seam. Текущая production-реализация intentionally ellipse-only:
 
 ```ts
-type SectionShape =
-  | { kind: "ellipse"; halfBreadthY: number; halfHeightZ: number }
-  | { kind: "rounded-rectangle"; halfBreadthY: number; halfHeightZ: number; cornerRadius: number };
+type SectionShape = { kind: "ellipse"; halfBreadthY: number; halfHeightZ: number };
 ```
 
-Общие pure operations рассчитывают площадь, containment и sampled contour. Mesh, constraints, theoretical drawing и volume integration используют их и не ветвятся по формулам `geometryMode`.
+Общие pure operations рассчитывают площадь, containment, normals, waterline/buttock intersections и sampled contour. `ProfileSnapshot` хранит shape-bearing section extents: `shape` плюс compatibility fields `radius`, `halfBreadthY`, `halfHeightZ`, `topRadius` и `bottomRadius`. Mesh, constraints, theoretical drawing Canvas/SVG и future integration используют shape operations или shape-derived data, а не локальные ellipse equations и не ветвятся по формулам `geometryMode`.
 
 ## Physical Hull Models
 
@@ -190,7 +188,7 @@ Equipment-only displacement и watertight-envelope buoyancy не складыв�
 | `canvas2d.ts` | Geometry snapshot, equipment, constraints | Боковой вид |
 | `rendering/theoretical-drawing.ts` | `TheoreticalDrawing` | Судостроительный лист на Canvas |
 | `scene3d.ts` | Geometry snapshot, equipment, view settings | Three.js scene |
-| `mesh.ts` | Sampled section geometry | Hull mesh data |
+| `mesh.ts` | `sampleSectionContour()` из shape-bearing `ProfileSnapshot` | Hull mesh data |
 | CSV/SVG builders | Snapshot или presentation-neutral drawing data | Downloadable text/vector files |
 
 Rendering и engineering export не пересчитывают geometry или balance. Canvas, tables, metrics, Three.js, profile SVG/CSV и theoretical SVG читают текущую publication. JSON export намеренно строится из свежих `ProjectInputs + ProjectViewState` и не сериализует `ProjectEvaluation`.

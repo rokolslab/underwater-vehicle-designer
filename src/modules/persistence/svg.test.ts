@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileSnapshot } from "../geometry/model";
 import { makeProfileSnapshot } from "../geometry/profile";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { buildSvg } from "./svg";
+
+function profilePoint(s: number, halfBreadthY: number, halfHeightZ: number) {
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
+  return Object.freeze({ s, shape, ...sectionShapeExtents(shape) });
+}
 
 const snapshotFromProfilePoints: ProfileSnapshot = Object.freeze({
   state: Object.freeze({
@@ -15,12 +21,12 @@ const snapshotFromProfilePoints: ProfileSnapshot = Object.freeze({
     stations: 3,
   }),
   smoothPoints: Object.freeze([
-    Object.freeze({ s: 0, radius: 0.2, halfBreadthY: 0.8, halfHeightZ: 0.2 }),
-    Object.freeze({ s: 1, radius: 0.4, halfBreadthY: 1.2, halfHeightZ: 0.4 }),
-    Object.freeze({ s: 2, radius: 0.1, halfBreadthY: 0.6, halfHeightZ: 0.1 }),
+    profilePoint(0, 0.8, 0.2),
+    profilePoint(1, 1.2, 0.4),
+    profilePoint(2, 0.6, 0.1),
   ]),
   stationPoints: Object.freeze([
-    Object.freeze({ s: 1, radius: 0.4, halfBreadthY: 1.2, halfHeightZ: 0.4, topRadius: 0.3, bottomRadius: -0.7 }),
+    Object.freeze({ ...profilePoint(1, 1.2, 0.4), topRadius: 0.3, bottomRadius: -0.7 }),
   ]),
   extents: Object.freeze({
     maxRadius: 0.4,

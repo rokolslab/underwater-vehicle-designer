@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileSnapshot } from "../geometry/model";
 import { makeProfileSnapshot } from "../geometry/profile";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { buildHullMeshData, hullMeshSignature, isSameHullMeshSignature, readVertexRadius } from "./mesh";
 
 function makeSnapshot(cylindricalInsertLength = 0) {
@@ -16,6 +17,8 @@ function makeSnapshot(cylindricalInsertLength = 0) {
 }
 
 function makeEllipticalSnapshot(): ProfileSnapshot {
+  const zeroShape = makeEllipseSectionShape(0, 0);
+  const midshipShape = makeEllipseSectionShape(2, 1);
   return Object.freeze({
     state: Object.freeze({
       geometryMode: "legacy-dsnp-pa" as const,
@@ -28,9 +31,9 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
       stations: 8,
     }),
     smoothPoints: Object.freeze([
-      Object.freeze({ s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
-      Object.freeze({ s: 2, radius: 1, halfBreadthY: 2, halfHeightZ: 1 }),
-      Object.freeze({ s: 4, radius: 0, halfBreadthY: 0, halfHeightZ: 0 }),
+      Object.freeze({ s: 0, shape: zeroShape, ...sectionShapeExtents(zeroShape) }),
+      Object.freeze({ s: 2, shape: midshipShape, ...sectionShapeExtents(midshipShape) }),
+      Object.freeze({ s: 4, shape: zeroShape, ...sectionShapeExtents(zeroShape) }),
     ]),
     stationPoints: Object.freeze([]),
     extents: Object.freeze({
@@ -42,6 +45,11 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
       totalLength: 4,
     }),
   });
+}
+
+function normalLength(mesh: ReturnType<typeof buildHullMeshData>, vertexIndex: number): number {
+  const offset = vertexIndex * 3;
+  return Math.hypot(mesh.normals[offset], mesh.normals[offset + 1], mesh.normals[offset + 2]);
 }
 
 describe("hull mesh data", () => {
@@ -71,6 +79,18 @@ describe("hull mesh data", () => {
     expect(mesh.positions[lastRingFirstVertex * 3]).toBeCloseTo(-snapshot.extents.totalLength / 2, 12);
     expect(readVertexRadius(mesh, 0)).toBe(0);
     expect(readVertexRadius(mesh, lastRingFirstVertex)).toBeCloseTo(0, 6);
+  });
+
+  it("keeps unit normals on degenerate nose and stern rings", () => {
+    const snapshot = makeEllipticalSnapshot();
+    const mesh = buildHullMeshData(snapshot, { radialSegments: 8 });
+    const verticesPerRing = mesh.radialSegments + 1;
+    const sternFirstVertex = (snapshot.smoothPoints.length - 1) * verticesPerRing;
+
+    expect(readVertexRadius(mesh, 0)).toBe(0);
+    expect(readVertexRadius(mesh, sternFirstVertex)).toBe(0);
+    expect(normalLength(mesh, 0)).toBeCloseTo(1, 12);
+    expect(normalLength(mesh, sternFirstVertex)).toBeCloseTo(1, 12);
   });
 
   it("uses the snapshot total length for uv coordinates", () => {
@@ -122,11 +142,12 @@ describe("hull mesh data", () => {
   it("changes hull mesh signature when geometry mode or section extents change", () => {
     const circular = makeSnapshot();
     const elliptical = makeEllipticalSnapshot();
+    const changedShape = makeEllipseSectionShape(1.5, 1);
     const changedExtents = Object.freeze({
       ...elliptical,
       smoothPoints: Object.freeze([
         elliptical.smoothPoints[0],
-        Object.freeze({ ...elliptical.smoothPoints[1], halfBreadthY: 1.5 }),
+        Object.freeze({ ...elliptical.smoothPoints[1], shape: changedShape, ...sectionShapeExtents(changedShape) }),
         elliptical.smoothPoints[2],
       ]),
     });

@@ -1,3 +1,5 @@
+import type { SectionShape } from "./section-shape";
+
 export type GeometryMode = "current-formula" | "legacy-dsnp-pa";
 
 export const defaultGeometryMode: GeometryMode = "current-formula";
@@ -46,6 +48,7 @@ export interface ProfileState extends GeometryProfileState {
 }
 
 export interface SectionExtents {
+  readonly shape: SectionShape;
   /** Compatibility/display scalar by vertical half-axis `halfHeightZ`. */
   readonly radius: number;
   /** Exact section semi-axis along Body +Y/-Y, in meters. */

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { makeProfileSnapshot } from "./profile";
 import type { GeometryProfileState, ProfileSnapshot } from "./model";
+import { intersectSectionWithButtockY, makeEllipseSectionShape, sectionShapeExtents } from "./section-shape";
 import { makeTheoreticalDrawing } from "./theoretical-drawing";
 
 const baseState: GeometryProfileState = Object.freeze({
@@ -18,10 +21,16 @@ function makeEllipticalSnapshot(): ProfileSnapshot {
   return Object.freeze({
     ...snapshot,
     smoothPoints: Object.freeze(
-      snapshot.smoothPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+      snapshot.smoothPoints.map((point) => {
+        const shape = makeEllipseSectionShape(point.halfBreadthY * 2, point.halfHeightZ);
+        return Object.freeze({ ...point, shape, ...sectionShapeExtents(shape) });
+      }),
     ),
     stationPoints: Object.freeze(
-      snapshot.stationPoints.map((point) => Object.freeze({ ...point, halfBreadthY: point.halfBreadthY * 2 })),
+      snapshot.stationPoints.map((point) => {
+        const shape = makeEllipseSectionShape(point.halfBreadthY * 2, point.halfHeightZ);
+        return Object.freeze({ ...point, shape, ...sectionShapeExtents(shape) });
+      }),
     ),
     extents: Object.freeze({
       ...snapshot.extents,
@@ -41,6 +50,7 @@ describe("theoretical drawing geometry", () => {
     expect(drawing.midshipS).toBe(snapshot.extents.totalLength / 2);
     expect(drawing.profilePoints).toHaveLength(snapshot.smoothPoints.length);
     expect(drawing.halfBreadthPoints).toHaveLength(snapshot.smoothPoints.length);
+    expect(drawing.maxSectionContourPoints).toHaveLength(64);
   });
 
   it("creates station sections from snapshot station points", () => {
@@ -55,6 +65,7 @@ describe("theoretical drawing geometry", () => {
       expect(section.radius).toBeCloseTo(station.topRadius, 12);
       expect(section.halfBreadthY).toBeCloseTo(station.halfBreadthY, 12);
       expect(section.halfHeightZ).toBeCloseTo(station.halfHeightZ, 12);
+      expect(section.contourPoints).toHaveLength(64);
     });
   });
 
@@ -77,8 +88,7 @@ describe("theoretical drawing geometry", () => {
     const sourcePoint = snapshot.smoothPoints.find((source) => source.s === point.s);
     expect(sourcePoint).toBeDefined();
     if (sourcePoint) {
-      const ratio = curve.value / sourcePoint.halfBreadthY;
-      const expected = sourcePoint.halfHeightZ * Math.sqrt(1 - ratio * ratio);
+      const expected = Math.max(...intersectSectionWithButtockY(sourcePoint.shape, curve.value).map((intersection) => Math.abs(intersection.z)));
       expect(point.radius).toBeCloseTo(expected, 12);
     }
   });
@@ -109,11 +119,16 @@ describe("theoretical drawing geometry", () => {
 
       const sourcePoint = snapshot.smoothPoints.find((point) => point.s === curve.points[Math.floor(curve.points.length / 2)].s);
       expect(sourcePoint).toBeDefined();
-      if (sourcePoint) {
-        const expected = Math.sqrt(Math.max(0, sourcePoint.radius * sourcePoint.radius - curve.value * curve.value));
-        expect(curve.points[Math.floor(curve.points.length / 2)].radius).toBeCloseTo(expected, 12);
-      }
     }
+  });
+
+  it("keeps section curves delegated to SectionShape helpers", () => {
+    const source = readFileSync(join(process.cwd(), "src/modules/geometry/theoretical-drawing.ts"), "utf8");
+
+    expect(source).toContain("intersectSectionWithButtockY");
+    expect(source).toContain("intersectSectionWithWaterlineZ");
+    expect(source).not.toContain("1 - ratio * ratio");
+    expect(source).not.toMatch(/Math\.sqrt/u);
   });
 
   it("creates symmetric waterlines and positive buttocks", () => {

@@ -32,7 +32,7 @@ Underwater Vehicle Designer — браузерный инженерный инс
 ## Следующие целевые расширения
 
 - **Архитектура:** развитие command/reducer layer, сокращение `main.ts` до wiring и subscriptions без big-bang переноса каталогов
-- **Геометрия:** общий `SectionShape`, дальнейшее развитие legacy DSNP_PA beyond elliptical first slice и параметры `Priam`/`Kr`
+- **Геометрия:** расширение существующего ellipse-only `SectionShape` seam до legacy DSNP_PA beyond elliptical first slice и параметров `Priam`/`Kr`
 - **Компоновка:** более точные CAD-подобные проверки оборудования внутри placement envelope
 - **Mass properties:** группы масс и полный тензор инерции
 - **Hydrostatics:** отдельный watertight envelope и полный ЦВ без смешивания с equipment-only displacement
@@ -96,11 +96,12 @@ Underwater Vehicle Designer — браузерный инженерный инс
 | `src/application/project/reducer.ts` | Pure logger-free `reduceProject()` для immutable ProjectInputs transitions |
 | `src/application/project/ownership.ts` | Общий clone/freeze ownership helper для reducer/store snapshots |
 | `src/application/project/store.ts` | `ProjectStore.dispatch()` и notification contract без production render subscription |
-| `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, section extents и `ProfileSnapshot` contract |
+| `src/modules/geometry/model.ts` | `GeometryMode`, `ProfileState`, shape-bearing section extents и `ProfileSnapshot` contract |
+| `src/modules/geometry/section-shape.ts` | Pure `SectionShape` contract и operations: area, containment, contour sampling, waterline/buttock intersections |
 | `src/modules/geometry/profile.ts` | Выбор geometry mode, станции, smooth points, extents, `ProfileSnapshot` |
 | `src/modules/geometry/current-formula.ts` | Текущая формула радиуса и ЦВК |
 | `src/modules/geometry/legacy-dsnp-pa.ts` | DSNP_PA regression/traceability evaluator: `MaxWl`/`MaxBt`, elliptical first slice |
-| `src/modules/geometry/theoretical-drawing.ts` | Чистые данные теоретического чертежа: профиль, полуширота, сечения, ватерлинии и батоксы |
+| `src/modules/geometry/theoretical-drawing.ts` | Чистые shape-derived данные теоретического чертежа: профиль, полуширота, сечения, ватерлинии и батоксы |
 | `src/modules/balance/center-of-buoyancy.ts` | Устаревший расчет объема и ЦВ геометрического корпуса; не является реализацией ЦВК |
 | `src/modules/balance/equipment-balance.ts` | Pure equipment balance calculation: CG, CB, mass, buoyancy, weight, moment arms and warning codes |
 | `src/modules/equipment/model.ts` | Типы оборудования, объем, центр и displaced-volume helpers |
@@ -175,6 +176,6 @@ Docker является предпочтительным окружением д
 - Расчетная геометрия должна оставаться в чистых TypeScript-модулях без DOM/canvas/browser side effects.
 - UI/appState отвечает за пользовательский ввод, clamp/round, `lastEdited` и форматирование; geometry получает уже нормализованное состояние.
 - Canvas, SVG, CSV, table и metrics должны использовать общий `ProfileSnapshot`, а не пересчитывать геометрию самостоятельно.
-- Пока оба geometry modes эллиптические, 3D hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot и строить exact elliptical rings, а не тело вращения по compatibility `radius`; будущий `SectionShape` должен заменить эту временную инварианту для `Priam`/`Kr`.
+- Пока оба geometry modes эллиптические, `ProfileSnapshot` несёт `SectionShape.kind = "ellipse"` рядом с compatibility `radius`/`halfBreadthY`/`halfHeightZ`; mesh, constraints и theoretical drawing должны использовать `section-shape.ts` operations/contours, а не локальные формулы или ветвления по `geometryMode`.
 - Производные инженерные расчеты вроде ЦВ держите в `balance`, а не в `geometry` или UI.
 - При изменении формулы или координатной системы обновляйте Vitest-регрессии и fixture по `formula.xlsx`.

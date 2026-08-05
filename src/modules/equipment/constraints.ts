@@ -1,5 +1,6 @@
 import { sectionExtentsAt } from "../geometry/profile";
 import { normalizeGeometryMode, type ProfileSnapshot, type SectionExtents } from "../geometry/model";
+import { containsSectionPoint, makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { profileSFromBodyX } from "../../shared/body-coordinates";
 import type { BodyPoint3 } from "../../shared/body-coordinates";
 import type { EquipmentItem } from "./model";
@@ -193,10 +194,13 @@ function makeProfileSectionEvaluator(snapshot: ProfileSnapshot): ProfileSectionE
 }
 
 function interpolateSectionExtents(first: SectionExtents, second: SectionExtents, ratio: number): SectionExtents {
+  const halfBreadthY = first.halfBreadthY + (second.halfBreadthY - first.halfBreadthY) * ratio;
+  const halfHeightZ = first.halfHeightZ + (second.halfHeightZ - first.halfHeightZ) * ratio;
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
+
   return Object.freeze({
-    radius: first.radius + (second.radius - first.radius) * ratio,
-    halfBreadthY: first.halfBreadthY + (second.halfBreadthY - first.halfBreadthY) * ratio,
-    halfHeightZ: first.halfHeightZ + (second.halfHeightZ - first.halfHeightZ) * ratio,
+    shape,
+    ...sectionShapeExtents(shape),
   });
 }
 
@@ -216,14 +220,6 @@ function sectionExtentsFromSnapshot(snapshot: ProfileSnapshot, s: number): Secti
   }
 
   return snapshot.smoothPoints[snapshot.smoothPoints.length - 1];
-}
-
-function ellipseValue(y: number, z: number, sectionExtents: SectionExtents): number {
-  if (sectionExtents.halfBreadthY <= 0 || sectionExtents.halfHeightZ <= 0) {
-    return y === 0 && z === 0 ? 0 : Number.POSITIVE_INFINITY;
-  }
-
-  return (y / sectionExtents.halfBreadthY) ** 2 + (z / sectionExtents.halfHeightZ) ** 2;
 }
 
 function circleControlOffsets(radius: number): readonly { readonly y: number; readonly z: number }[] {
@@ -309,24 +305,24 @@ function containmentPointSamples(
   return boxSectionPointSamples(item, extents, bodyX, length);
 }
 
-function evaluateEllipticalContainmentSample(
+function evaluateShapeContainmentSample(
   evaluator: ProfileSectionEvaluator,
   item: EquipmentItem,
   sample: ContainmentPointSample,
   bodyMinX: number,
   bodyMaxX: number,
 ): EquipmentConstraintIssue | null {
+  const zeroShape = makeEllipseSectionShape(0, 0);
   const sectionExtents = sample.bodyX < bodyMinX || sample.bodyX > bodyMaxX
-    ? { radius: 0, halfBreadthY: 0, halfHeightZ: 0 }
+    ? { shape: zeroShape, ...sectionShapeExtents(zeroShape) }
     : evaluator.sectionExtentsAtS(sample.stationS);
-  const value = ellipseValue(sample.y, sample.z, sectionExtents);
 
-  if (value <= 1 + 1e-12) return null;
+  if (containsSectionPoint(sectionExtents.shape, { y: sample.y, z: sample.z })) return null;
 
   return makeIssue(
     item.id,
     "outsideHull",
-    `Оборудование выходит за эллиптическое сечение корпуса при body.x=${sample.bodyX.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
+    `Оборудование выходит за сечение корпуса при body.x=${sample.bodyX.toFixed(2)} м (s=${sample.stationS.toFixed(2)} м).`,
   );
 }
 
@@ -357,7 +353,7 @@ function evaluateContainment(
 
   for (const x of controlXs(item, extents)) {
     for (const sample of containmentPointSamples(item, extents, x, snapshot.state.length)) {
-      const issue = evaluateEllipticalContainmentSample(evaluator, item, sample, bodyMinX, bodyMaxX);
+      const issue = evaluateShapeContainmentSample(evaluator, item, sample, bodyMinX, bodyMaxX);
       if (issue) {
         issues.push(issue);
         return freezeIssues(issues);

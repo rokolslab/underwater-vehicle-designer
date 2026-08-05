@@ -166,24 +166,17 @@ File
 
 ## Геометрический контракт
 
-`SectionExtents` с двумя полуосями достаточен только для текущих эллиптических режимов. До реализации `Priam`/`Kr` вводится общий discriminated `SectionShape`:
+`SectionExtents` с двумя полуосями достаточен только для текущих эллиптических режимов. Введён общий discriminated `SectionShape` seam; текущая production-реализация создаёт только `kind: "ellipse"`, а rounded-rectangle остаётся future variant для `Priam`/`Kr`:
 
 ```ts
-export type SectionShape =
-  | {
-      readonly kind: "ellipse";
-      readonly halfBreadthY: number;
-      readonly halfHeightZ: number;
-    }
-  | {
-      readonly kind: "rounded-rectangle";
-      readonly halfBreadthY: number;
-      readonly halfHeightZ: number;
-      readonly cornerRadius: number;
-    };
+export type SectionShape = {
+  readonly kind: "ellipse";
+  readonly halfBreadthY: number;
+  readonly halfHeightZ: number;
+};
 ```
 
-Общие pure operations владеют площадью, containment и sampling контура. Mesh, constraints, theoretical drawing и numerical integration используют эти operations и не ветвятся по `geometryMode`.
+Общие pure operations в `src/modules/geometry/section-shape.ts` владеют площадью, containment, normals, waterline/buttock intersections и sampling контура. `SectionExtents` сохраняет compatibility поля `radius`, `halfBreadthY`, `halfHeightZ`, но также несёт `shape`. Mesh, constraints и theoretical drawing используют shape operations или shape-derived contour/intersection data и не ветвятся по `geometryMode`.
 
 ```ts
 export interface HullGeometry {

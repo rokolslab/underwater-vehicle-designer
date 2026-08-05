@@ -1,4 +1,5 @@
 import type { TheoreticalCurve, TheoreticalDrawing, TheoreticalPoint, TheoreticalSection } from "../geometry/theoretical-drawing";
+import type { SectionPointYZ } from "../geometry/section-shape";
 import { bodyXFromProfileS } from "../../shared/body-coordinates";
 import { logger } from "../../shared/logger";
 import { bodyPointToXyProjection, bodyPointToXzProjection, bodyPointToYzProjection } from "../rendering/coordinate-adapter";
@@ -144,30 +145,32 @@ function renderHalfBreadth(drawing: TheoreticalDrawing, scale: ProjectionScale):
   </g>`;
 }
 
-function sectionArcPath(section: TheoreticalSection, cx: number, cy: number, unit: number): string {
-  const radiusY = Math.max(0.6, section.halfBreadthY * unit);
-  const radiusZ = Math.max(0.6, section.halfHeightZ * unit);
-  const topY = cy - radiusZ;
-  const bottomY = cy + radiusZ;
-  if (section.side === "aft") {
-    return `M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
-  }
-  if (section.side === "forward") {
-    return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)}`;
-  }
-  return `M${cx.toFixed(2)} ${topY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${bottomY.toFixed(2)} M${cx.toFixed(2)} ${bottomY.toFixed(2)} A${radiusY.toFixed(2)} ${radiusZ.toFixed(2)} 0 0 1 ${cx.toFixed(2)} ${topY.toFixed(2)}`;
+function contourSortAngle(point: SectionPointYZ, side: TheoreticalSection["side"]): number {
+  const angle = Math.atan2(point.z, point.y);
+  if (side !== "aft") return angle;
+  return angle < Math.PI / 2 ? angle + Math.PI * 2 : angle;
 }
 
-function maxBodyArcPath(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
-  const section = Object.freeze({
-    index: 0,
-    s: drawing.midshipS,
-    radius: drawing.maxHalfHeightZ,
-    halfBreadthY: drawing.maxHalfBreadthY,
-    halfHeightZ: drawing.maxHalfHeightZ,
-    side: "midship" as const,
-  });
-  return sectionArcPath(section, scale.bodyCenterX, scale.bodyCenterY, scale.unit);
+function contourPointsForSide(points: readonly SectionPointYZ[], side: TheoreticalSection["side"]): readonly SectionPointYZ[] {
+  const tolerance = 1e-12;
+  if (side === "midship") return Object.freeze([...points, points[0]].filter((point): point is SectionPointYZ => point !== undefined));
+
+  return Object.freeze(
+    points
+      .filter((point) => (side === "forward" ? point.y >= -tolerance : point.y <= tolerance))
+      .sort((first, second) => contourSortAngle(first, side) - contourSortAngle(second, side)),
+  );
+}
+
+function sectionContourPath(points: readonly SectionPointYZ[], side: TheoreticalSection["side"], cx: number, cy: number, unit: number): string {
+  return contourPointsForSide(points, side)
+    .map((point, index) => {
+      const projected = bodyPointToYzProjection({ x: 0, y: point.y, z: point.z });
+      const x = cx + projected.right * unit;
+      const y = cy + projected.down * unit;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
 }
 
 function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): string {
@@ -184,15 +187,17 @@ function renderBodyPlan(drawing: TheoreticalDrawing, scale: ProjectionScale): st
     .map((x) => `<line x1="${x.toFixed(2)}" y1="${bodyPlanRect.y + 8}" x2="${x.toFixed(2)}" y2="${bodyPlanRect.y + bodyPlanRect.height - 8}" class="grid" />`)
     .join("\n    ");
   const aftSections = drawing.aftSections
-    .map((section) => `<path d="${sectionArcPath(section, cx, cy, scale.unit)}" class="section-aft" />`)
+    .map((section) => `<path d="${sectionContourPath(section.contourPoints, section.side, cx, cy, scale.unit)}" class="section-aft" />`)
     .join("\n    ");
   const forwardSections = drawing.forwardSections
-    .map((section) => `<path d="${sectionArcPath(section, cx, cy, scale.unit)}" class="section-forward" />`)
+    .map((section) => `<path d="${sectionContourPath(section.contourPoints, section.side, cx, cy, scale.unit)}" class="section-forward" />`)
     .join("\n    ");
   const midshipSections = drawing.midshipSections
-    .map((section) => `<path d="${sectionArcPath(section, cx, cy, scale.unit)}" class="section-midship" />`)
+    .map((section) => `<path d="${sectionContourPath(section.contourPoints, section.side, cx, cy, scale.unit)}" class="section-midship" />`)
     .join("\n    ");
-  const maxOutline = drawing.midshipSections.length === 0 ? `<path d="${maxBodyArcPath(drawing, scale)}" class="section-midship" />` : "";
+  const maxOutline = drawing.midshipSections.length === 0
+    ? `<path d="${sectionContourPath(drawing.maxSectionContourPoints, "midship", cx, cy, scale.unit)}" class="section-midship" />`
+    : "";
 
   return `<g>
     <text x="${bodyPlanRect.x}" y="${bodyPlanRect.y - 16}" class="panel-title">Корпус</text>

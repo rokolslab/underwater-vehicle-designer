@@ -1,5 +1,6 @@
 import { uniqueSorted } from "../../shared/math";
 import type { ProfileExtents, ProfilePoint, SectionExtents, StationPoint } from "./model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "./section-shape";
 
 const smoothSamples = 320;
 const maxRadiusPositionRatio = 1 - Math.sqrt(3) / 3;
@@ -65,7 +66,8 @@ export function profileSectionExtentsAt(
   const factor = profileShapeFactorAt(s, length, cylindricalInsertLength);
   const halfBreadthY = (breadth / 2) * factor;
   const halfHeightZ = (height / 2) * factor;
-  return { radius: halfHeightZ, halfBreadthY, halfHeightZ };
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
+  return { shape, ...sectionShapeExtents(shape) };
 }
 
 export function makeStationPointsForSectionDimensions(
@@ -123,7 +125,7 @@ export function makeProfilePoints(length: number, diameter: number, cylindricalI
 export function getExtents(points: readonly ProfilePoint[]): ProfileExtents {
   const maxPoint = points.reduce<ProfilePoint>(
     (best, point) => (point.radius > best.radius ? point : best),
-    { s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 },
+    { s: 0, shape: makeEllipseSectionShape(0, 0), radius: 0, halfBreadthY: 0, halfHeightZ: 0 },
   );
   const maxHalfBreadthY = Math.max(0, ...points.map((point) => point.halfBreadthY));
   const maxHalfHeightZ = Math.max(0, ...points.map((point) => point.halfHeightZ));

@@ -35,7 +35,7 @@ Underwater Vehicle Designer — клиентский веб-инструмент
 - Body/SNAME-NED — инженерное пространство с началом в центре корпуса: `+X` к носу, `+Y` на правый борт, `+Z` вниз.
 - Profile хранит `s ∈ [0,L]` от носа к корме; `body.x = L/2 - s`.
 - Three.js и Canvas/SVG доступны только через adapters; JSON v2 маркируется `SNAME_NED_BODY_CENTER_V1`.
-- `ProfileSnapshot` хранит compatibility/display `radius` по вертикальной полуоси и точные полуоси сечения `halfBreadthY`/`halfHeightZ`; 3D mesh строится как exact elliptical ring mesh.
+- `ProfileSnapshot` хранит `SectionShape.kind = "ellipse"` рядом с compatibility/display `radius` по вертикальной полуоси и точными полуосями `halfBreadthY`/`halfHeightZ`; mesh, constraints и theoretical drawing используют shape operations/contours.
 - JSON v1 мигрирует с явным предупреждением о допущении `old.z=starboard`.
 - Box использует `lengthX/breadthY/heightZ`; 3D-сечения и баланс используют Body coordinates.
 - Текущий ЦВ рассчитывается только по вытесненным объемам оборудования и не является ЦВ внешнего герметичного корпуса.
@@ -49,8 +49,8 @@ Underwater Vehicle Designer — клиентский веб-инструмент
 - Генерация станций, таблицы координат и метрик максимального радиуса.
 - Устаревший аналитический расчет вытесненного объема и ЦВ геометрического корпуса как тела вращения; он не является реализацией ЦВК и должен быть отделен от текущего 2D-конструктора.
 - Экспорт текущего профиля в SVG, координат в CSV, листа теоретического чертежа в SVG и импорт/экспорт проекта в JSON.
-- Теоретический чертеж строится из `ProfileSnapshot` через `src/modules/geometry/theoretical-drawing.ts` и отображает согласованные проекции `Бок`, `Полуширота` и `Корпус` в общем масштабе; `Корпус` располагается в верхнем ряду на уровне `Бок`, на `Бок` выводятся батоксы, на `Полуширота` — ватерлинии, а носовые и кормовые шпангоуты на `Корпус` разнесены по разные стороны ДП относительно миделя.
-- 3D-корпус как набор эллиптических колец `halfBreadthY`/`halfHeightZ` на Three.js с режимами `solid`, `x-ray`, `cutaway`, регулируемой прозрачностью и clipping-сечениями.
+- Теоретический чертеж строится из `ProfileSnapshot` через `src/modules/geometry/theoretical-drawing.ts` и отображает согласованные проекции `Бок`, `Полуширота` и `Корпус` в общем масштабе; `Корпус` располагается в верхнем ряду на уровне `Бок`, на `Бок` выводятся батоксы, на `Полуширота` — ватерлинии, а носовые и кормовые шпангоуты на `Корпус` разнесены по разные стороны ДП относительно миделя. Кривые и body-plan contours являются shape-derived.
+- 3D-корпус как набор sampled `SectionShape` колец на Three.js с режимами `solid`, `x-ray`, `cutaway`, регулируемой прозрачностью и clipping-сечениями; текущий `SectionShape` реализует exact ellipse.
 - Базовая модель оборудования: шар, цилиндр и box с массой, координатами, размерами, ориентацией по главным осям, расчетом геометрического объема и центра.
 - Проверки компоновки оборудования: status report `ok`/`outsideHull`/`intersects`/`invalidEquipment`, предупреждения в редакторе, 2D overlay и 3D-подсветка проблемных meshes. Планируемая функция: расширенный расчет баланса.
 - Equipment balance calculation: CG, CB, total mass, displaced volume, weight, buoyancy, net buoyancy and moment arm.

@@ -1,4 +1,5 @@
 import type { SectionExtents } from "./model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "./section-shape";
 
 export interface LegacyDsnpPaSectionInput {
   readonly s: number;
@@ -52,6 +53,7 @@ export function legacyDsnpPaSectionExtentsAt(input: LegacyDsnpPaSectionInput): S
   );
   const halfBreadthY = legacyDsnpPaMaxHalfBreadth(normalizedX, normalizedCylindricalInsertLength, input.maxBreadth);
   const halfHeightZ = legacyDsnpPaMaxHalfHeight(normalizedX, normalizedCylindricalInsertLength, input.maxHeight);
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
 
-  return { radius: halfHeightZ, halfBreadthY, halfHeightZ };
+  return { shape, ...sectionShapeExtents(shape) };
 }

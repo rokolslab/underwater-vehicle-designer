@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileSnapshot } from "../geometry/model";
+import { makeEllipseSectionShape, sectionShapeExtents } from "../geometry/section-shape";
 import { renderTable } from "./table";
+
+function stationPoint(s: number, halfBreadthY: number, halfHeightZ: number, topRadius: number, bottomRadius: number) {
+  const shape = makeEllipseSectionShape(halfBreadthY, halfHeightZ);
+  return Object.freeze({ s, shape, ...sectionShapeExtents(shape), topRadius, bottomRadius });
+}
 
 const snapshotFromRows: ProfileSnapshot = Object.freeze({
   state: Object.freeze({
@@ -15,8 +21,8 @@ const snapshotFromRows: ProfileSnapshot = Object.freeze({
   }),
   smoothPoints: Object.freeze([]),
   stationPoints: Object.freeze([
-    Object.freeze({ s: 0, radius: 0.1, halfBreadthY: 0.8, halfHeightZ: 0.1, topRadius: 0.25, bottomRadius: -0.35 }),
-    Object.freeze({ s: 1.5, radius: 0.2, halfBreadthY: 0.9, halfHeightZ: 0.2, topRadius: 0.45, bottomRadius: -0.55 }),
+    stationPoint(0, 0.8, 0.1, 0.25, -0.35),
+    stationPoint(1.5, 0.9, 0.2, 0.45, -0.55),
   ]),
   extents: Object.freeze({
     maxRadius: 0.2,

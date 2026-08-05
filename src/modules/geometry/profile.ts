@@ -16,6 +16,7 @@ import {
   type SectionExtents,
   type StationPoint,
 } from "./model";
+import { makeEllipseSectionShape } from "./section-shape";
 
 export {
   PROFILE_RADIUS_NORMALIZATION,
@@ -97,7 +98,7 @@ function makeLegacyDsnpPaStationPoints(state: GeometryProfileState): StationPoin
 function getLegacyDsnpPaExtents(points: readonly ProfilePoint[]): ProfileExtents {
   const maxPoint = points.reduce<ProfilePoint>(
     (best, point) => (point.radius > best.radius ? point : best),
-    { s: 0, radius: 0, halfBreadthY: 0, halfHeightZ: 0 },
+    { s: 0, shape: makeEllipseSectionShape(0, 0), radius: 0, halfBreadthY: 0, halfHeightZ: 0 },
   );
   const maxHalfBreadthY = Math.max(0, ...points.map((point) => point.halfBreadthY));
   const maxHalfHeightZ = Math.max(0, ...points.map((point) => point.halfHeightZ));

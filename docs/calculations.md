@@ -76,7 +76,7 @@ Canonical profile inputs хранятся как `ProjectProfileInputs`; рас�
 | `current-formula` | Текущая формула проекта, режим по умолчанию. Один нормированный shape factor масштабирует `B/2` и `H/2`, поэтому при `B != H` сечения эллиптические. |
 | `legacy-dsnp-pa` | DSNP_PA regression/traceability mode по материалам `APPAUNIT.PAS`: `B -> MaxWl`, `H -> MaxBt`. Это не доказательство инженерной валидности исторических коэффициентов. |
 
-Оба режима используют пользовательские параметры `L`, `B`, `H` и длину ЦВК. `diameter` сохраняется только как совместимое поле состояния и равен `height`.
+Оба режима используют пользовательские параметры `L`, `B`, `H` и длину ЦВК. `diameter` сохраняется только как совместимое поле состояния и равен `height`. Оба режима сейчас производят `SectionShape.kind = "ellipse"`.
 
 Скругленно-прямоугольные сечения `Priam`/`Kr` из исторической системы не входят в текущий slice и оставлены как follow-up до появления эталонных данных.
 
@@ -145,7 +145,7 @@ halfAxis = 0.9731 * fullAxis * sqrt(profileX * (1 - profileX) * (1.5 - profileX)
 | `MaxWl` | `halfBreadthY` |
 | `MaxBt` | `halfHeightZ` |
 
-`radius` в legacy snapshot остается compatibility/display scalar и равен `halfHeightZ`. Точная форма сечения задается эллипсом `y^2 / halfBreadthY^2 + z^2 / halfHeightZ^2 <= 1`.
+`radius` в legacy snapshot остается compatibility/display scalar и равен `halfHeightZ`. Точная форма сечения задается `SectionShape.kind = "ellipse"`; containment, area и intersections считаются через общий shape helper, а не через локальные formulas в consumers.
 
 ## Cylindrical Insert (ЦВК) in Current Formula
 
@@ -185,7 +185,7 @@ insertEnd = insertStart + Lcyl
 
 Это предотвращает расхождение между canvas, таблицей, SVG, CSV и 3D.
 
-Скалярные поля `radius`, `topRadius`, `bottomRadius` и `maxRadius` сохраняются для совместимости существующих XZ-представлений. Для точных сечений и 3D использовать `halfBreadthY` и `halfHeightZ`.
+Скалярные поля `radius`, `topRadius`, `bottomRadius` и `maxRadius` сохраняются для совместимости существующих XZ-представлений. Для точных сечений используется `shape`; compatibility полуоси `halfBreadthY` и `halfHeightZ` остаются рядом для таблиц, CSV/SVG, scale bounds и старых extent-only consumers.
 
 ## Station Points
 
@@ -213,27 +213,13 @@ insertEnd = insertStart + Lcyl
 
 Ватерлинии симметричны относительно нуля и строятся от `-maxHalfHeightZ` до `+maxHalfHeightZ`. Батоксы положительные: от `0` до `maxHalfBreadthY`.
 
-Кривые сечений считаются по полуосям snapshot, а не повторным вызовом формулы радиуса:
-
-```text
-ratio = offset / sourceAxis
-target = targetAxis * sqrt(max(0, 1 - ratio^2))
-```
-
-При `B = H` это сводится к прежней формуле `sqrt(radius^2 - offset^2)`. При `B != H` это эллиптическая модель сечения.
+Кривые сечений считаются через `SectionShape` intersections: батоксы используют `intersectSectionWithButtockY()`, ватерлинии используют `intersectSectionWithWaterlineZ()`. Body-plan sections получают sampled `contourPoints`, поэтому Canvas/SVG adapters рисуют готовый контур и не владеют ellipse equations.
 
 ## 3D Hull Mesh
 
 `src/modules/rendering/mesh.ts` строит корпус как набор поперечных колец из `ProfileSnapshot.smoothPoints`.
 
-Для каждой точки профиля вершины кольца задаются напрямую из точных полуосей сечения:
-
-```text
-y = halfBreadthY * cos(theta)
-z = halfHeightZ * sin(theta)
-```
-
-3D mesh использует exact elliptical ring mesh из `halfBreadthY`/`halfHeightZ`, а не compatibility approximation телом вращения. Mesh signature включает `geometryMode`, `breadth`, `height`, `maxHalfBreadthY`, `maxHalfHeightZ` и подпись полуосей сечений, поэтому 3D-геометрия пересобирается при смене режима или сечений.
+Для каждой точки профиля вершины кольца берутся из `sampleSectionContour(point.shape, radialSegments)`, а нормали — из `sectionNormalAtPoint()`. При текущем ellipse-only seam это сохраняет exact elliptical ring mesh, но сам renderer больше не содержит формулу эллипса. Mesh signature включает `geometryMode`, `breadth`, `height`, `maxHalfBreadthY`, `maxHalfHeightZ` и подпись сечений, поэтому 3D-геометрия пересобирается при смене режима или сечений.
 
 ## Equipment Geometry
 
