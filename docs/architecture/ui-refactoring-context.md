@@ -1,895 +1,388 @@
-# Архитектурный контекст рефакторинга для обсуждения будущего UI
+# Архитектурный контекст будущего UI
 
-Дата: 2026-07-31
+## 4.1 Паспорт анализа
 
-Обновлено: 2026-08-03. Этот документ остается историческим контекстом обсуждения будущего UI. В коде уже выполнена часть описанного рефакторинга: `ProjectStore` владеет canonical `ProjectInputs`, `deriveProject()` создает `ProjectEvaluation`, а `projectEvaluationRuntime` публикует последнюю успешную coherent пару `{ inputsSnapshot, evaluation }`. Разделы ниже сохраняют исходный анализ на дату создания; актуальный runtime flow см. в `docs/architecture.md`.
+Дата актуализации: 2026-08-05.
 
-Статус: аналитический документ. Исходный код, UI, зависимости, JSON-схема и расчётные формулы в рамках подготовки документа не изменялись.
+Baseline анализа: `master`, `8557a48b8bc72aec53eb7f040c5e134189d74e77`.
 
-Путь выбран по запросу задачи: `docs/architecture/ui-refactoring-context.md`. В репозитории уже есть обзорный документ `docs/architecture.md`; новый каталог `docs/architecture/` используется для более узкого архитектурного материала, который не должен перегружать обзорную страницу.
+Статус рабочей копии перед анализом: clean, `HEAD` синхронизирован с `origin/master`.
 
-## 1. Резюме
+Назначение документа: дать контекст для принятия решений по следующему обсуждению UI без проектирования финального визуального дизайна и без изменения кода приложения.
 
-Планируемый рефакторинг нужен не для немедленного изменения внешнего вида, а для отделения инженерной модели приложения от DOM, Canvas, Three.js и форм ввода. Сейчас приложение работает как единая frontend-only SPA, но фактический orchestration layer сосредоточен в `src/app/main.ts`, а состояние распределено между DOM controls, runtime-переменными и экспортным aggregate `ProjectState`.
+Границы работы: этот документ описывает фактическое состояние текущего `HEAD`, архитектурные ограничения и решения, которые стоит принять перед следующим UI seam. Он не заменяет `docs/architecture.md`, а уточняет важную для UI часть архитектуры.
 
-Главная архитектурная проблема: в проекте нет канонического application state и единого контракта изменения состояния. Пользовательский ввод сейчас часто проходит путь `DOM -> readState() -> расчёты -> render`, а импорт JSON частично записывает значения в DOM и затем заново читает их через общий update cycle. Это усложняет будущие UI-сценарии: Undo/Redo, dirty state, autosave, выбор объектов в 2D/3D, локальные пересчёты и независимое обновление панелей.
+Изменения в рамках актуализации: изменен только `docs/architecture/ui-refactoring-context.md`. HTML, CSS, TypeScript приложения, зависимости, JSON-схема, расчётные формулы, snapshots, branch, commit и PR не менялись.
 
-Принятое целевое направление в `.ai-factory/ARCHITECTURE.md` и `.ai-factory/RESEARCH.md`: Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters. Расчёты должны оставаться чистыми TypeScript-модулями, приложение должно получить канонические `ProjectInputs`, общий normalization pipeline, application API или store и чистую функцию производных данных наподобие `deriveProject()`.
+Основные источники: `AGENTS.md`, `.ai-factory/ARCHITECTURE.md`, `.ai-factory/RESEARCH.md`, `.ai-factory/ROADMAP.md`, архивные AI Factory планы по import/export, `deriveProject()`, command/reducer/store и `SectionShape`, `docs/architecture.md`, `docs/ui-ux.md`, `docs/calculations.md`, `docs/data-and-export.md`, `index.html`, `src/app/*`, `src/application/project/*`, `src/modules/*`, `playwright.config.ts`, `tests/e2e/import-export.spec.ts`.
 
-Будущий UI зависит от рефакторинга не полностью. Уже сейчас можно обсуждать назначение продукта, терминологию, структуру рабочей среды, основные панели, разделение landing page и workbench, визуальную иерархию, desktop/mobile сценарии и способы показа предупреждений. До архитектурных решений лучше отложить Undo/Redo, автосохранение, несколько открытых проектов, дерево оборудования, двустороннее редактирование в сцене, сохранение view state в JSON и окончательный выбор UI-framework.
+Дополнительная проверка UI: приложение было открыто в браузере на `http://127.0.0.1:5173/#controls`; snapshot подтверждает текущую публичную структуру hero, рабочей области, секций координат, размерений, оборудования, экспериментального баланса, теоретического чертежа и таблицы станций.
 
-Ключевое ограничение для UI: интерфейс не должен становиться источником инженерной истины. Он должен отображать нормализованные inputs, structured reports и view models, а не дублировать геометрические формулы, координатные преобразования или расчётные правила.
+## 4.2 Резюме для принятия решений
 
-## 2. Источники анализа
+Ключевой вывод: блокирующий архитектурный долг предыдущего анализа уже существенно погашен. В проекте есть canonical `ProjectInputs`, typed `ProjectCommand`, pure `reduceProject()`, `ProjectStore`, pure `deriveProject()` и согласованная publication `{ inputsSnapshot, evaluation }` через `projectEvaluationRuntime`.
 
-Изученные инструкции и AI Factory материалы:
+UI больше не нужно планировать вокруг проблемы «DOM является единственным источником инженерной истины». Текущая правильная рамка: DOM остается browser adapter, но `main.ts` все еще слишком широк как composition root, контроллер событий, контроллер import/export и координатор рендеринга.
 
-- `AGENTS.md`: карта проекта, координатный контракт Body/SNAME-NED, термины `ЦВК` и `ЦВ`, правила модульных границ.
-- `.ai-factory/DESCRIPTION.md`: назначение проекта, стек, текущие возможности.
-- `.ai-factory/ARCHITECTURE.md`: целевое направление Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters, desired flow `DOM event -> application command -> ProjectStore -> deriveProject()`.
-- `.ai-factory/RESEARCH.md`: текущие seams рефакторинга, риски data integrity, DOM-backed import, duplicated normalization, logger side effects.
-- `.ai-factory/RULES.md` и `.ai-factory/rules/base.md`: правила терминологии, координат, разделения расчётов и UI.
-- `.ai-factory/config.yaml`: структура AI Factory.
-- `.ai-factory/ROADMAP.md`: целевые расширения и roadmap-направления.
+Следующий UI шаг должен быть не «переписать все на framework», а выделить узкий UI seam вокруг projection состояния и адаптеров. Наиболее полезный seam: сделать интерфейсные panels/view-models явными, чтобы будущий React/Svelte/vanilla split мог потреблять `ProjectInputs`, `ProjectEvaluationPublication` и `ProjectViewState`, не зная формул корпуса и не пересчитывая geometry.
 
-Изученные планы и заметки:
+Решение о framework пока можно отложить. Текущий vanilla UI уже работает, а application layer достаточно отделен, чтобы сначала уточнить информационную архитектуру, UX-модель workbench, contracts для панелей и правила сохранения view state.
 
-- `.ai-factory/plans/feature-public-demo-v1-site.md`: scope публичного demo и ограничения обещаний пользователю.
-- `.ai-factory/plans/feature-elliptical-section-dimensions.md`: переход от радиуса к независимым `breadth`/`height`, влияние на 2D/3D и расчёты.
-- `.ai-factory/plans/feature-hull-center-of-buoyancy.md`: будущая тема полного ЦВ корпуса, не смешивать с текущим equipment-only balance.
-- `.ai-factory/plans/fix-cvk-terminology-and-geometry.md`: терминология ЦВК и геометрические ограничения.
-- `.ai-factory/archive/plans/feature-sname-ned-coordinate-migration.md`: миграция координат на Body/SNAME-NED и JSON v2.
+Главные решения, которые нужны до крупной UI-перестройки: модель навигации продукта, приоритет desktop/mobile, владение transient view state, dirty/autosave policy, object selection model, представление diagnostics, JSON contract для camera/view state и уровень амбиций интерактивности 2D/3D.
 
-Изученная документация:
+## 4.3 Дельта относительно предыдущего анализа
 
-- `README.md`: пользовательское назначение, current-formula и legacy DSNP_PA режимы, текущие возможности.
-- `TECHNICAL_SPEC.md`: baseline 3D-версии, остаточные требования, ограничения расчётов.
-- `docs/architecture.md`: текущая архитектура, целевые границы, refactoring seams.
-- `docs/ui-ux.md`: текущий UI/UX, сценарии и ограничения публичного интерфейса.
-- `docs/calculations.md`: геометрия, оборудование, constraints, balance, координаты.
-- `docs/data-and-export.md`: JSON v1/v2, CSV, SVG, project export/import.
-- `docs/testing.md`: тестовые сценарии и smoke checks.
-- `docs/legacy/dsnp-pa-system-map.md`, `docs/legacy/dsnp-pa-data-model.md`, `docs/legacy/dsnp-pa-calculation-catalog.md`, `docs/legacy/dsnp-pa-integration-roadmap.md`: контекст legacy DSNP_PA и будущей интеграции.
+Предыдущая версия этого документа была исторической. Она утверждала, что в проекте нет canonical application state, `ProjectStore`, command/reducer layer и `deriveProject()`. Для текущего `HEAD` это утверждение неверно.
 
-Ключевые исходные файлы:
+Уже реализовано:
 
-- `index.html`: Vite HTML shell.
-- `src/app/main.ts`: composition root, DOM lookup, update loop, import/export, rendering orchestration.
-- `src/app/appState.ts`: DOM-backed чтение и нормализация profile inputs.
-- `src/app/projectEvaluationRuntime.ts`: browser-free coordinator для derive и atomic publication последней успешной `ProjectEvaluation`.
-- `src/modules/geometry/model.ts`: `GeometryMode`, `ProfileState`, `SectionExtents`, `ProfileSnapshot`.
-- `src/modules/geometry/profile.ts`: `makeProfileSnapshot()`, `sectionExtentsAt()`.
-- `src/modules/geometry/current-formula.ts`: current-formula geometry и ЦВК.
-- `src/modules/geometry/legacy-dsnp-pa.ts`: legacy DSNP_PA evaluator.
-- `src/modules/geometry/theoretical-drawing.ts`: pure данные теоретического чертежа.
-- `src/modules/equipment/model.ts`: `EquipmentItem`, формы, объём, центр, displaced volume.
-- `src/modules/equipment/placement.ts`: add/update/delete/rename оборудования, генератор ID.
-- `src/modules/equipment/constraints.ts`: containment/intersection checks и `EquipmentConstraintReport`.
-- `src/modules/balance/equipment-balance.ts`: equipment-only balance.
-- `src/modules/balance/stability.ts`: BG, deltas и moments.
-- `src/modules/rendering/canvas2d.ts`: Canvas side profile.
-- `src/modules/rendering/scene3d.ts`, `src/modules/rendering/mesh.ts`, `src/modules/rendering/equipment3d.ts`: Three.js scene, hull mesh, equipment meshes.
-- `src/modules/rendering/coordinate-adapter.ts`: Body-to-Three и projection adapters.
-- `src/modules/rendering/viewSettings.ts`: нормализация 3D settings.
-- `src/modules/persistence/project-json.ts`: JSON v2 build/parse.
-- `src/modules/persistence/project-json-migrations.ts`: v1 -> v2 coordinate migration.
-- `src/modules/persistence/csv.ts`, `src/modules/persistence/svg.ts`, `src/modules/persistence/theoretical-drawing-svg.ts`: exports.
-- `src/modules/ui/equipment.ts`, `src/modules/ui/metrics.ts`, `src/modules/ui/scene3dControls.ts`, `src/modules/ui/table.ts`: DOM UI modules.
-- `src/shared/body-coordinates.ts`: Body/Profile coordinate model.
-- `src/shared/logger.ts`: Vite-aware logger, который сейчас импортируется некоторыми domain-like модулями.
+- `ProjectInputs` в `src/application/project/model.ts` хранит `profile`, `equipment`, `balanceSettings`.
+- `ProjectCommand` в `src/application/project/commands.ts` описывает canonical mutations.
+- `reduceProject()` в `src/application/project/reducer.ts` выполняет immutable transitions.
+- `ProjectStore` в `src/application/project/store.ts` владеет canonical snapshot и dispatch contract.
+- `deriveProject(ProjectInputs)` в `src/application/project/derive.ts` строит `ProjectEvaluation`.
+- `projectEvaluationRuntime` публикует последнюю успешную согласованную пару `{ inputsSnapshot, evaluation }`.
+- `ProjectViewState` в `src/app/projectProjection.ts` отделяет grid/points/3D settings от engineering inputs.
+- JSON import/export идет через projection между serializable project и `ProjectInputs + ProjectViewState`.
+- `SectionShape` seam введен, consumers используют shape operations или shape-derived data.
+- Playwright E2E infrastructure и import/export round-trip tests присутствуют.
 
-Изученные тесты:
+Все старые рекомендации про «ввести canonical state», «создать `deriveProject()`» и «перестать собирать временный `ProjectState` в `main.ts`» теперь следует считать выполненными для текущего объема canonical mutations.
 
-- `src/shared/body-coordinates.test.ts`.
-- `src/app/appState.test.ts`, `src/app/dom-contract.test.ts`.
-- `src/modules/geometry/*.test.ts`.
-- `src/modules/equipment/*.test.ts`.
-- `src/modules/balance/*.test.ts`.
-- `src/modules/rendering/*.test.ts`.
-- `src/modules/persistence/*.test.ts`.
-- `src/modules/ui/*.test.ts`.
-- `tests/fixtures/`: fixture-данные, включая регрессии по `formula.xlsx`.
+Актуальный долг переместился выше: `main.ts` все еще связывает DOM controls, command dispatch, runtime commit, view-only rerender, import/export, download actions, notifications и жизненный цикл renderers. Это не расчетный долг, а долг browser controller и UI adapters.
 
-Git-контекст:
+## 4.4 Фактическая текущая архитектура
 
-- Текущая ветка при анализе: `master`.
-- `master` синхронизирован с `origin/master` по данным обзора.
-- Релевантная remote branch: `origin/feature/public-demo-v1-site`.
-- Релевантные коммиты в недавней истории: `ec9246b refactor(coordinates): establish sname ned domain model`, `0bc9169 feat(geometry): add legacy dsnp pa mode`, `993be90 feat(geometry): support section breadth and height`, `a719a45 feat(ui): redesign public demo interface`, `8da6295 chore(aif): refresh project context and tooling`.
-
-## 3. Текущее архитектурное состояние
-
-Точка входа приложения:
-
-- `index.html` загружает `/src/app/main.ts` как Vite entrypoint.
-- `src/app/main.ts` является фактическим composition root и application controller.
-
-Orchestration layer сейчас сосредоточен в `src/app/main.ts`. Этот файл выполняет сразу несколько ролей: DOM lookup, binding событий, runtime state, чтение форм, запуск расчётов, импорт/экспорт, canvas rendering, Three.js rendering, equipment editor rendering, focus preservation и resize lifecycle.
-
-Расчётные модули в целом уже отделены от DOM:
-
-- `src/modules/geometry/*` строит профиль, станции, extents и данные теоретического чертежа.
-- `src/modules/equipment/model.ts` считает объёмы и центры оборудования.
-- `src/modules/equipment/constraints.ts` проверяет выход за корпус и пересечения.
-- `src/modules/balance/equipment-balance.ts` считает equipment-only CG/CB/weight/buoyancy/moments.
-- `src/modules/balance/center-of-buoyancy.ts` содержит устаревший current-formula-only hull CB и не является реализацией полного ЦВ герметичного корпуса.
-
-Модель состояния фактически распределена:
-
-- Profile inputs живут в DOM и читаются/нормализуются через `createAppStateController()` в `src/app/appState.ts`.
-- `equipmentItems` хранится как runtime-переменная в `src/app/main.ts`.
-- 3D settings читаются из DOM через `src/modules/ui/scene3dControls.ts` и нормализуются через `src/modules/rendering/viewSettings.ts`.
-- Balance settings частично читаются из DOM: плотность воды берётся из input, а gravity сейчас подставляется из `DEFAULT_GRAVITY_M_PER_S2` в `src/app/main.ts`.
-- `ProjectState` из `src/app/projectState.ts` создаётся заново при каждом update и используется как aggregate для JSON export, но не является каноническим store.
-
-Управление оборудованием:
-
-- Предметная модель: `EquipmentItem` в `src/modules/equipment/model.ts`.
-- Формы: `sphere`, `cylinder`, `box`.
-- Оси цилиндра: `x`, `y`, `z` в Body/SNAME-NED.
-- Операции add/update/delete/rename находятся в `src/modules/equipment/placement.ts` и возвращают immutable/frozen arrays.
-- Генератор ID находится в module-level переменной `nextGeneratedId`, а не в application state.
-
-Расчёт ограничений:
-
-- `evaluateEquipmentConstraints(snapshot, items)` из `src/modules/equipment/constraints.ts` использует `ProfileSnapshot`.
-- Проверяются валидность оборудования, продольные bounds, попадание в эллиптическое сечение и пересечения.
-- Для UI важно, что report уже содержит статусы и issues, пригодные для отображения в списке, 2D и 3D.
-- Нежелательная связь: calculation module содержит пользовательские сообщения на русском языке и импортирует logger.
-
-Расчёт баланса:
-
-- `calculateEquipmentBalance()` в `src/modules/balance/equipment-balance.ts` считает только equipment-only balance.
-- `buoyancyModel` сейчас равен `equipmentDisplacedVolume`.
-- CB взвешивается по displaced volume оборудования, а не по внешней герметичной оболочке.
-- Это обязательно должно быть явно отражено в UI, чтобы не создавать впечатление полного гидростатического расчёта аппарата.
-
-Canvas 2D:
-
-- `renderCanvasProfile(canvas, snapshot, equipment, report)` в `src/modules/rendering/canvas2d.ts` рисует XZ-профиль, сетку, станции и equipment overlay.
-- Рендер использует `ProfileSnapshot`, не пересчитывает геометрию самостоятельно.
-
-Three.js:
-
-- `createHullScene3d(container)` в `src/modules/rendering/scene3d.ts` создаёт сцену.
-- `buildHullMeshData(snapshot)` в `src/modules/rendering/mesh.ts` строит эллиптические rings по `halfBreadthY` и `halfHeightZ`.
-- `src/modules/rendering/equipment3d.ts` создаёт equipment meshes и signatures.
-- Внутри 3D есть оптимизация: hull/equipment meshes пересоздаются только при изменении signature.
-
-Теоретический чертёж:
-
-- Pure data создаётся в `src/modules/geometry/theoretical-drawing.ts` через `makeTheoreticalDrawing(snapshot)`.
-- Canvas-rendering находится в `src/modules/rendering/theoretical-drawing.ts`.
-- SVG export находится в `src/modules/persistence/theoretical-drawing-svg.ts`.
-
-Persistence:
-
-- JSON v2 строится и читается в `src/modules/persistence/project-json.ts`.
-- JSON v1 мигрируется в `src/modules/persistence/project-json-migrations.ts`.
-- CSV/SVG exports используют `ProfileSnapshot` или `TheoreticalDrawing`, что хорошо поддерживает единый источник геометрии.
-
-UI-модули:
-
-- `src/modules/ui/equipment.ts`: rendering и чтение updates из equipment editor.
-- `src/modules/ui/table.ts`: таблица станций.
-- `src/modules/ui/metrics.ts`: метрики и предупреждения баланса.
-- `src/modules/ui/scene3dControls.ts`: DOM controls 3D.
-
-Обработка событий и общий update cycle:
+Текущий runtime flow:
 
 ```text
-DOM event
-  -> update(source)
-  -> appState.readState(source)
-  -> makeProfileSnapshot(profile)
-  -> makeTheoreticalDrawing(snapshot)
-  -> evaluateEquipmentConstraints(snapshot, equipmentItems)
-  -> normalizeScene3dSettings(readScene3dControls(), bounds)
-  -> makeProjectState(profile, equipment, scene3dSettings, balanceSettings)
-  -> calculateEquipmentBalance(project-derived input)
-  -> renderCanvasProfile()
-  -> renderTheoreticalDrawing()
-  -> renderEquipmentEditor()
-  -> renderTable()
-  -> renderBalanceMetrics()
-  -> hullScene3d.render()
+DOM controls/events
+  -> appState.readState()/import adapters
+  -> ProjectCommand
+  -> ProjectStore.dispatch()/reduceProject()
+  -> ProjectInputs
+  -> projectEvaluationRuntime.commit()
+  -> deriveProject()
+  -> ProjectEvaluation
+  -> renderPublication()
+  -> DOM/Canvas/Three.js/export adapters
 ```
 
-Что уже разделено хорошо:
+View-only flow:
 
-- Координатные преобразования вынесены в `src/shared/body-coordinates.ts` и `src/modules/rendering/coordinate-adapter.ts`.
-- Geometry snapshot является общим источником для canvas/table/SVG/3D.
-- JSON v1 -> v2 migration отделена от основного парсинга.
-- Three.js изолирован в `src/modules/rendering/*`, а не размазан по UI.
-- Большинство расчётных модулей не используют DOM.
+```text
+DOM view event
+  -> ProjectViewState update
+  -> projectEvaluationRuntime.rerender()
+  -> renderPublication() with existing ProjectEvaluation
+```
 
-Нежелательные связи:
-
-- `src/app/main.ts` слишком широкий и содержит application logic, browser adapters и rendering orchestration одновременно.
-- `src/app/appState.ts` читает и пишет DOM, поэтому DOM участвует в state model.
-- JSON import в `applyImportedProject()` из `src/app/main.ts` записывает часть данных в controls и затем вызывает общий update.
-- `src/modules/geometry/profile.ts`, `src/modules/equipment/placement.ts`, `src/modules/equipment/constraints.ts`, `src/modules/balance/equipment-balance.ts` импортируют `src/shared/logger.ts`, а logger завязан на `import.meta.env`.
-- `src/modules/persistence/project-json.ts` использует `normalizeScene3dSettings()` из rendering, что смешивает persistence DTO и rendering settings.
-- `src/modules/equipment/constraints.ts` пока знает о `geometryMode` и частично пересчитывает current-formula sections через state.
+`index.html` остается Vite shell. `src/app/main.ts` является composition root и browser controller. Он не содержит формул geometry, но отвечает за binding, reading controls, dispatching commands, explicit runtime commits, rerender, import/export, downloads, resize and scene lifecycle.
 
-Где UI напрямую связан с расчётами или DOM:
-
-- `src/app/main.ts` напрямую вызывает расчёты и renderers.
-- `src/app/appState.ts` совмещает нормализацию предметных параметров с записью в DOM controls.
-- `src/modules/ui/equipment.ts` читает DOM event и формирует equipment updates.
-
-Где один пользовательский ввод вызывает избыточное обновление:
-
-- Изменение только плотности воды вызывает полный geometry/constraints/render pipeline.
-- Изменение только 3D opacity/section вызывает полный update, хотя domain geometry и balance не должны меняться.
-- Изменение имени оборудования вызывает пересчёт geometry, theoretical drawing, constraints, balance и full UI render.
-- Ввод в equipment editor перерисовывает весь editor через `innerHTML`, а focus восстанавливается вручную.
-
-## 4. Цель рефакторинга
-
-Уже принятые решения:
-
-- Архитектурное направление: Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters, основание: `.ai-factory/ARCHITECTURE.md`.
-- Расчётная геометрия, equipment, balance и coordinate logic должны оставаться чистыми TypeScript-модулями без DOM/canvas/browser side effects, основание: `AGENTS.md`, `.ai-factory/ARCHITECTURE.md`, `.ai-factory/RULES.md`.
-- DOM не должен быть источником истины, основание: `.ai-factory/RESEARCH.md` и `docs/architecture.md`.
-- Все views и exports должны использовать общий `ProfileSnapshot` или будущий аналог, основание: `AGENTS.md`, `docs/architecture.md`, текущий код `src/modules/geometry/profile.ts`.
-
-Предполагаемые решения:
-
-- Ввести canonical `ProjectInputs`, который хранит проектные данные независимо от DOM.
-- Ввести общий normalization pipeline для DOM input и JSON import.
-- Ввести `ProjectStore`, reducer или application controller с явными commands/use cases.
-- Ввести pure `deriveProject(projectInputs)` для `ProjectEvaluation`: geometry snapshot, drawing, constraints, balance, reports, availability states.
-- Сократить `src/app/main.ts` до bootstrap/wiring/subscriptions.
-
-Рекомендации:
-
-- UI должен обращаться к application layer через команды или use cases, а не напрямую мутировать objects.
-- Derived calculations должны быть read-only результатами, а не частью editable state.
-- Для UI лучше подготовить presentation/read models со статусами, форматированными значениями, units и reasons, а не отдавать только raw domain objects.
-- Normalization should happen before derive/render, а не внутри DOM controls.
-
-Открытые вопросы:
-
-- Нужен ли custom store/reducer, command bus, простой application controller или другая форма API.
-- Будет ли state immutable целиком или частично.
-- Какие действия войдут в command history для Undo/Redo.
-- Должен ли `ProjectViewState` сохраняться в JSON проекта.
-- Где будут храниться selected/hovered objects и transient form drafts.
-- Какой точный contract заменит `SectionExtents`: `SectionShape`, `HullGeometry` evaluator или другой интерфейс.
-
-Что должно стать проще тестировать:
-
-- Import/export без DOM.
-- Dirty state и сохранение.
-- Изменения отдельных inputs через commands.
-- Локальные пересчёты: geometry-only, balance-only, rendering-only.
-- Reports для UI: validation, constraints, balance warnings.
-- Undo/Redo, если будет принято.
-
-Что должно стать проще расширять:
-
-- Новые geometry modes и `SectionShape`.
-- Mass properties, watertight envelope и full hydrostatics.
-- Equipment groups/systems, если будут приняты.
-- 2D/3D interactions и selection synchronization.
-- Autosave/recent projects/multiple projects, если будут приняты.
-
-## 5. Целевые слои и их ответственность
-
-Имена слоёв ниже являются аналитической проекцией на уже принятое направление. Документы репозитория фиксируют не названия каталогов как самоцель, а границы зависимостей: core/application/adapters/UI.
-
-| Слой | Ответственность | Может зависеть от | Не должен зависеть от | Значение для UI |
-| ---- | --------------- | ----------------- | --------------------- | --------------- |
-| Shared/kernel | Координаты, единицы, pure math, базовые типы, branded/domain primitives при необходимости | Ничего прикладного или только standard TS | DOM, Canvas, Three.js, persistence, UI | Даёт единый язык координат, единиц и ограничений |
-| Domain/core | Геометрия корпуса, оборудование, mass properties, constraints, balance/hydrostatics как pure logic | Shared/kernel | DOM, UI controls, rendering, browser APIs, JSON adapters, logger с side effects | UI не дублирует формулы, а отображает domain results |
-| Project state | Канонические project inputs, metadata, view/persistence boundaries | Shared/kernel, domain types | DOM как store, renderers | Определяет, что является сохраняемым проектом |
-| Application/use cases | Commands, normalization, import apply, dirty tracking, derive orchestration, validation pipeline | Domain/core, project state, persistence DTO types через ports | Canvas/Three implementation details, direct DOM mutation | Основной контракт UI: изменить корпус, добавить оборудование, выбрать объект, сохранить |
-| Presentation/view models | Read models, structured reports, formatted values, action availability, blocking reasons | Application results, format helpers | Domain mutations, DOM direct reads as source of truth | UI получает готовые данные для панелей, таблиц, warnings и disabled states |
-| Rendering | Canvas 2D, Three.js, theoretical drawing rendering, mesh generation, coordinate adapters | Profile/evaluation read models, rendering settings | Application commands кроме callback boundaries, persistence ownership | UI может включать/выключать views и синхронизировать selection |
-| UI | Layout, controls, panels, interactions, keyboard/touch, forms | Application API, presentation models, renderer adapters | Geometry formulas, direct persistence schema ownership, direct domain mutation | Свободнее проектировать интерфейс без риска сломать расчёты |
-| Persistence/infrastructure | JSON/CSV/SVG encode/decode, migrations, file download, future local storage | DTOs, migration helpers, application ports | DOM controls as intermediate state, renderer internal state except export inputs | Определяет save/open/export UX, backward compatibility и warnings |
+`src/application/project/` является текущим application layer. Он знает о project contracts, commands, reducer, store, defaults, normalization and derive. Dependency checks фиксируют, что application reducer/store не должны импортировать DOM, rendering, persistence или logger.
 
-Данные, которые предоставляет UI:
+`src/modules/geometry/`, `src/modules/equipment/`, `src/modules/balance/` остаются functional core-like расчетными модулями. Rendering, persistence и UI читают готовые snapshots/reports, а не должны владеть инженерной моделью.
 
-- Raw пользовательские drafts: строки/числа из форм, выбранные опции, pointer/keyboard actions.
-- User intent: команды наподобие изменить размерение корпуса, добавить оборудование, выбрать объект.
-- Transient interaction state: selected/hovered/active panel, если оно не хранится внутри application store.
+## 4.5 Модель состояния
 
-Действия, которые может инициировать UI:
-
-- Создание/открытие/сохранение проекта.
-- Изменение project inputs.
-- Изменение view settings.
-- Выбор, hover, focus и scene interactions.
-- Export actions.
-- Undo/Redo, если command history будет принят.
-
-## 6. Изменения предметной модели
-
-| Сущность | Сейчас | Входит в планируемый рефакторинг | Возможное изменение структуры | UI-представление | Нерешённые вопросы |
-| -------- | ------ | -------------------------------- | ----------------------------- | ---------------- | ------------------ |
-| Проект | `ProjectState` aggregate в `src/app/projectState.ts`, JSON document v2 | Да | Перейти к canonical `ProjectInputs` и separate `ProjectEvaluation` | Project header, save/open status, metadata | Имя, описание, project ID, dates, dirty state не приняты |
-| Корпус | `ProfileState` в geometry model | Да | Разделить inputs, derived geometry и будущие envelopes | Панель размерений и режима геометрии | Как представлять несколько физических моделей корпуса |
-| Геометрическая модель | `current-formula` и `legacy-dsnp-pa` | Да | Ввести `SectionShape` или аналог | Выбор режима, объяснение ограничений модели | Точный contract не принят |
-| Режим геометрии | `GeometryMode` union | Да | Возможно расширение legacy beyond elliptical first slice | Select/segmented control, diagnostics | Priam/Kr и будущие режимы не утверждены |
-| Станции и профиль | `ProfileSnapshot`, `stationPoints`, `smoothPoints` | Да, как stable read model или аналог | Может перейти к shape-based sections | Таблица координат, графика 2D, exports | Как показывать non-ellipse sections в будущем |
-| Оборудование | Flat list `EquipmentItem[]` | Да | Возможен переход к groups/systems, но не принят | Список, inspector, selection | Группы/системы/дерево не приняты |
-| Формы оборудования | `sphere`, `cylinder`, `box` | Возможно | Новые типы компонентов не приняты | Shape selector и shape-specific fields | Какие CAD-like shapes нужны дальше |
-| Положение и размеры | Body coordinates, dimensions per shape | Да | Возможны manipulators/gizmos позже | Numeric inspector, 2D/3D handles в будущем | Direct manipulation не принято |
-| Ограничения | `EquipmentConstraintReport` | Да | Structured reports без UI strings в core | Badges, warnings, highlight в 2D/3D | Где хранить localized messages |
-| Масса | `massKg` per item | Да | Mass groups/structural mass model в будущем | Поля массы, summaries | Группы масс и tensor inertia не реализованы |
-| Вытесненный объём | По форме оборудования | Да | Отделить equipment displaced volume от watertight envelope | Balance panel с явной моделью | Как избежать double counting |
-| Центр тяжести | Equipment-only CG | Да | Full mass properties позже | CG marker, metrics | Structural mass model не принят |
-| Центр величины | Equipment-only CB в balance; deprecated hull CB отдельно | Да, но full CB позже | `BuoyancyModel` discriminator нужен | CB marker с подписью ограниченности | Watertight envelope не реализован |
-| Балласт | Нет отдельной модели | Не решено | Может быть equipment subtype или отдельная модель | Не проектировать детально пока | Scope и расчётная модель не приняты |
-| Оболочка/масса конструкции | Нет | Future target | StructuralMassModel | Не утверждать UI до модели | Какие параметры нужны неизвестно |
-| Параметры воды | Только density UI + default gravity | Да | Balance settings в canonical state | Поля среды/условий | Gravity import currently not live; future fields не приняты |
-| Расчётные результаты | Derived во время `update()` | Да | `ProjectEvaluation`/reports | Results panels, statuses | Нужно ли calculating/stale/error для sync/async |
-| Предупреждения и ошибки | Constraints issues, balance warnings, import warnings | Да | Structured codes + localized presentation | Persistent diagnostics area | Уровни severity и provenance не формализованы |
-| Варианты проекта | Нет | Не решено | Может потребовать multi-document/variant model | Не проектировать как принятое | Нужно ли comparison workflow |
-| Метаданные проекта | `exportedAt` в JSON root, schema metadata | Возможно | name, description, createdAt, modifiedAt | Project settings/header | Не принято |
-
-Переход от плоского списка оборудования к группам, системам, дереву проекта, вложенным объектам, агрегатам или нескольким типам компонентов не является принятым решением. Документы указывают mass groups и более точные CAD-подобные checks как будущие расширения, но конкретная предметная структура не утверждена. UI-специалист может обсуждать место для будущего дерева/систем, но не должен считать его обязательной моделью.
-
-## 7. Модель состояния приложения
-
-Единого состояния проекта сейчас нет. Есть несколько источников:
-
-- DOM controls профиля, читаемые `src/app/appState.ts`.
-- Runtime-переменная `equipmentItems` в `src/app/main.ts`.
-- DOM controls 3D, читаемые `src/modules/ui/scene3dControls.ts`.
-- DOM input плотности воды и constant gravity в `src/app/main.ts`.
-- Derived runtime-переменные `currentSnapshot`, `currentTheoreticalDrawing`, `currentConstraintReport`, `currentBalanceResult`, `currentProjectState`.
-
-После рефакторинга project state должен находиться в application layer, а DOM должен стать adapter/input surface. Предполагаемый центр: `ProjectInputs` плюс отдельные slices для view state, interaction state и persistence state. Точное API не принято.
-
-Предметное состояние проекта:
-
-- Размерения корпуса, режим геометрии, ЦВК, станции.
-- Оборудование, его масса, объёмные размеры и положение.
-- Balance/environment settings: water density, gravity, будущие параметры воды.
-- Будущие metadata: имя, описание, createdAt/modifiedAt, если будут приняты.
-
-Результаты расчётов:
-
-- `ProfileSnapshot` или будущий geometry evaluation.
-- `TheoreticalDrawing` data.
-- Equipment constraints report.
-- Equipment balance result.
-- Future mass properties, hydrostatics, stability, provenance/validity.
-
-Состояние представления:
-
-- 2D view settings: сетка, точки, возможно zoom/pan в будущем.
-- 3D view mode, opacity, clipping section.
-- Camera parameters: сейчас находятся внутри Three.js scene instance и не входят в JSON; будущее хранение не принято.
-- Открытые панели и вкладки: сейчас это layout/DOM state, не project state; хранение не принято.
-
-Состояние текущего взаимодействия:
-
-- Selected equipment/project object: сейчас полноценного централизованного selected state нет.
-- Hover, focused field, active drag/gizmo: сейчас частично локально в DOM/focus restoration.
-- Draft values форм: сейчас form values сразу участвуют в update; отдельные drafts от подтверждённой модели не реализованы.
-
-Состояние хранения и сохранения:
-
-- JSON export создаётся из `ProjectState`.
-- Dirty state, autosave, recent projects, project ID и protection от потери несохранённых изменений не реализованы и не приняты.
-- Возможность нескольких одновременно открытых проектов не реализована и не принята.
-
-Undo/Redo:
-
-- Не реализованы.
-- Не принято, нужна ли command history.
-- Если будут нужны, UI-контракт должен стать command-based или reducer-based до дизайна interaction history.
-
-## 8. Способ изменения состояния
-
-Сейчас UI напрямую влияет на state через DOM: user input изменяет controls, затем `update()` читает DOM и заново собирает derived state. Equipment operations обновляют runtime array в `main.ts`. Это работает для текущего demo, но плохо подходит для сложного UI.
-
-Рекомендуемый контракт: UI вызывает application commands/use cases. Commands принимают input payload, application layer нормализует значения, обновляет canonical state, запускает derive pipeline и публикует read models для UI/renderers. Точный механизм не принят: это может быть reducer, store с `dispatch`, application controller или минимальный command API.
-
-| Операция | Входные данные | Изменяемое состояние | Вызываемые расчёты | Обновляемые представления |
-| -------- | -------------- | -------------------- | ------------------ | ------------------------- |
-| Создать новый проект | Шаблон или defaults | Project inputs, metadata, view defaults | Geometry, constraints, balance | Все панели, 2D, 3D, таблица, metrics |
-| Открыть проект | JSON/file document | Project inputs через migration/normalization | Geometry, constraints, balance | Все views, import warnings |
-| Сохранить проект | Current project inputs | Persistence state, dirty marker | Не обязательно | Save status |
-| Изменить размерения корпуса | length/breadth/height/slenderness | Profile inputs | Geometry, theoretical drawing, constraints, balance placement context | 2D, 3D hull, table, drawing, constraints, metrics |
-| Изменить режим геометрии | Geometry mode | Profile inputs | Geometry, drawing, constraints, balance context | 2D, 3D hull, table, drawing, warnings |
-| Изменить ЦВК | cylindricalInsertLength | Profile inputs | Geometry, drawing, constraints, balance context | 2D, 3D hull, table, drawing |
-| Добавить оборудование | Shape/defaults | Equipment list | Constraints, balance | Equipment list, 2D/3D equipment, metrics |
-| Выбрать оборудование | Equipment ID | Interaction/view state | Нет domain расчётов | Inspector, 2D/3D highlight |
-| Изменить оборудование | Patch fields | Equipment list | Constraints, balance | Inspector, list, 2D/3D equipment, metrics |
-| Переместить оборудование | Body position delta/absolute | Equipment item position | Constraints, balance | 2D/3D, inspector, metrics |
-| Удалить оборудование | Equipment ID | Equipment list | Constraints, balance | List, 2D/3D, metrics |
-| Изменить параметры воды | Density/gravity/future fields | Balance settings | Balance only | Metrics, warnings |
-| Изменить настройки 3D | mode/opacity/section/camera | View state or project view state | No domain calculations | 3D only, maybe controls |
-| Импортировать проект | JSON text/file | Project inputs atomically | Geometry, constraints, balance | All views + migration warnings |
-| Экспортировать проект | Export target | No project mutation, maybe exportedAt in DTO | No domain calculations if evaluation fresh | Download/status |
-| Сбросить проект | None/confirmation | Project inputs to defaults | Geometry, constraints, balance | All views |
-| Отменить изменение | Command history step | Project inputs/view state depending policy | Affected derived slices | Affected views |
-| Повторить изменение | Command history step | Project inputs/view state depending policy | Affected derived slices | Affected views |
-
-## 9. Граф зависимостей и пересчётов
-
-Обозначения: `Да` означает обязательный пересчёт/обновление после рефакторинга, `Нет` означает не требуется, `Локально` означает достаточно обновить локальное view/renderer state. Текущее приложение часто делает больше: почти любой input вызывает полный `update()`.
-
-| Изменение | Геометрия | Теоретический чертёж | Ограничения | Баланс | 2D | 3D | Таблица | Persistence |
-| --------- | --------: | -------------------: | ----------: | -----: | -: | -: | ------: | ----------: |
-| Геометрия корпуса | Да | Да | Да | Да, если balance зависит от placement context | Да | Да | Да | Dirty |
-| Количество станций | Да | Да | Возможно | Нет или возможно | Да | Возможно | Да | Dirty |
-| Оборудование | Нет | Нет | Да | Да | Да | Да | Нет | Dirty |
-| Только имя оборудования | Нет | Нет | Нет или локально | Нет | Локально, если labels есть | Локально, если labels есть | Нет | Dirty |
-| Положение оборудования | Нет | Нет | Да | Да | Да | Да | Нет | Dirty |
-| Плотность воды | Нет | Нет | Нет | Да | Нет | Нет, кроме balance markers | Нет | Dirty |
-| Режим отображения 3D | Нет | Нет | Нет | Нет | Нет | Локально | Нет | Dirty only if saved |
-| Положение камеры | Нет | Нет | Нет | Нет | Нет | Локально | Нет | Dirty only if saved |
-| Сечение 3D | Нет | Нет | Нет | Нет | Нет | Локально | Нет | Dirty only if saved |
-| Переключение сетки | Нет | Нет | Нет | Нет | Да | Возможно, если 3D grid есть | Нет | Dirty or view dirty |
-| Выбор объекта | Нет | Нет | Нет | Нет | Highlight | Highlight | Нет | No, unless saved selection |
-| Открытие/закрытие панели | Нет | Нет | Нет | Нет | Нет | Resize maybe | Нет | No, unless workspace state saved |
+Текущее состояние разделено на три уровня:
 
-Что пересчитывается сейчас:
+| State | Owner | Содержимое | Persisted |
+| --- | --- | --- | --- |
+| `ProjectInputs` | `ProjectStore` | `profile`, `equipment`, `balanceSettings` | Да, через JSON projection |
+| `ProjectViewState` | `src/app/projectProjection.ts` и `main.ts` | `showGrid`, `showPoints`, `scene3dSettings` | Да, в текущем JSON v2 |
+| `ProjectEvaluationPublication` | `projectEvaluationRuntime` | `inputsSnapshot`, `ProjectEvaluation` | Нет |
 
-- Полный `update()` пересчитывает geometry, drawing, constraints, project state, balance и renderers для большинства событий.
-- Resize отдельно перерисовывает Canvas/theoretical canvas и вызывает 3D resize без domain recalculation.
-- Three.js mesh внутри себя оптимизирует повторное создание meshes по signatures.
+`ProjectInputs.profile` содержит `geometryMode`, `length`, `breadth`, `height`, `cylindricalInsertLength`, `stations`.
 
-Что должно пересчитываться после рефакторинга:
+`ProjectInputs.equipment` содержит immutable список `EquipmentItem`.
 
-- Geometry changes должны invalidating geometry-dependent read models.
-- Equipment changes не должны пересчитывать geometry.
-- Balance settings changes не должны трогать hull mesh или table.
-- Pure view changes не должны менять project domain state, если принято не сохранять их в проект.
+`ProjectInputs.balanceSettings` содержит `waterDensityKgPerM3` и `gravityMPerS2`.
 
-Debounce нужен:
+`ProjectEvaluation` содержит `hullGeometry`, `theoreticalDrawing`, `constraints`, `balance`.
 
-- Numeric typing в hull dimensions, stations, equipment dimensions/position.
-- Drag/gizmo movement, если будет принято.
-- Resize и camera interaction.
+Текущие non-canonical или transient данные: camera interaction внутри Three.js scene, focus preservation, notification state, file input state, unsaved/dirty state, autosave state, selection state and recent-projects state. Эти вещи не являются частью `ProjectInputs` и сейчас не имеют отдельного versioned contract.
 
-Batching нужен:
+Важное UI-следствие: будущий UI должен читать canonical engineering inputs из `ProjectStore`, derived engineering outputs из current publication, а presentation/transient state из отдельного view/session layer. Нельзя добавлять новые инженерные поля только в DOM controls.
 
-- Import project.
-- Reset project.
-- Multi-field equipment edits.
-- Undo/Redo applying snapshots.
+## 4.6 Модель команд
 
-Достаточно локального обновления:
+Текущий `ProjectCommand` union:
 
-- Selection, hover, active panel.
-- 3D opacity/view mode/camera, если не влияет на derived reports.
-- Equipment name, если labels не участвуют в расчётах.
+| Command | Назначение |
+| --- | --- |
+| `ReplaceProfile` | Заменить normalized profile inputs |
+| `AddEquipment` | Добавить equipment item с optional requested id, shape, name |
+| `UpdateEquipment` | Изменить equipment item по `id` |
+| `DeleteEquipment` | Удалить equipment item по `id` |
+| `ReplaceBalanceSettings` | Заменить настройки расчета баланса |
+| `ReplaceProject` | Атомарно заменить весь canonical project |
 
-Длительные или асинхронные расчёты:
+Команды описывают engineering mutations, а не DOM actions. Это правильная граница для будущего UI framework: кнопки, формы, panels и keyboard shortcuts должны превращаться в commands, а не напрямую менять расчетные структуры.
 
-- Сейчас расчёты синхронные и небольшие.
-- Future hydrodynamics, energy, comparison, denser mesh или CAD-like constraints могут потребовать Web Workers и статусы `calculating`, `stale`, `error`, `ready`.
-- Пока это не принято, но UI может предусмотреть neutral diagnostics/status area.
+Чего command model пока не делает: Undo/Redo, batch transaction labels, dirty tracking, selection commands, camera/view commands, import preview, validation-only command simulation and optimistic updates. Их не нужно добавлять без конкретного UI сценария.
 
-## 10. Контракт UI с расчётными результатами
+Практический вывод: следующий UI seam может добавить adapter-level actions поверх текущих `ProjectCommand`, но не должен смешивать view-only actions с engineering commands без отдельного discriminator.
 
-UI должен получать не только raw domain objects, а специализированные read models или structured reports. Причина: UI должен показывать нормализованные значения, validation errors, warnings, units, disabled states и limitations без дублирования инженерных правил.
+## 4.7 Граф пересчета и рендеринга
 
-Рекомендуемый набор данных для UI:
+Canonical mutation выполняет полный derive:
 
-- Normalized project inputs: численные значения после clamp/round и связь `height`/`slenderness`.
-- Validation report: errors/warnings с codes, severity, field path, localized message отдельно от core.
-- Geometry result: `ProfileSnapshot` или будущий аналог, extents, stations, section shapes, limitations.
-- Theoretical drawing read model: данные чертежа без Canvas specifics.
-- Equipment report: per-item status, issues, summary, highlight severity.
-- Balance report: CG, CB, net buoyancy, moment arms, warning codes, model label `equipment-only`.
-- Presentation metadata: labels, units, formatted values, precision rules.
-- Action availability: canSave, canExport, canUndo, canRedo, canAddEquipment, with blocking reasons.
-- Calculation status: `ready` сейчас достаточно, но interface должен расширяться до `calculating/stale/error`, если появятся async tasks.
-- Provenance/limitations: например “ЦВ рассчитан только по вытесненному объёму оборудования”.
+```text
+ProjectInputs
+  -> makeProfileSnapshot/profile geometry
+  -> makeTheoreticalDrawing
+  -> evaluateEquipmentConstraints
+  -> calculateEquipmentBalance
+  -> ProjectEvaluation
+```
 
-Что UI не должен получать как единственный контракт:
+`renderPublication()` затем обновляет Canvas 2D, theoretical drawing Canvas, table, metrics, equipment editor, Three.js and export-ready runtime references.
 
-- Внутренние mutable domain objects.
-- DOM-derived state как source of truth.
-- Persistence DTO как рабочую модель приложения.
-- Renderer internal objects Three.js/Canvas как domain state.
+View-only mutation не должна вызывать `deriveProject()`. Текущая архитектура уже поддерживает `projectEvaluationRuntime.rerender()` для повторного rendering с последней publication.
 
-Рекомендуемый вариант: application layer отдаёт immutable read models и structured reports, а UI отправляет commands. Это позволит проектировать интерфейс независимо от будущей реализации store/reducer и снизит риск дублирования расчётной логики в UI.
+Если `deriveProject()` падает после canonical dispatch, `ProjectStore` уже содержит новые inputs, но engineering rendering/export сохраняют последнюю успешную согласованную publication. JSON export отражает свежий store, так как JSON intentionally serializes inputs/view, not evaluation.
 
-## 11. Архитектура 2D- и 3D-представлений
+UI-риск: пользователь может увидеть старую визуальную engineering publication при свежем JSON state, если derive error не представлен достаточно явно. Для будущего UI нужен explicit error/diagnostics surface вокруг runtime phases.
 
-Подтверждённые факты и планы:
+## 4.8 `main.ts`
 
-- Canvas 2D уже существует в `src/modules/rendering/canvas2d.ts` и остаётся частью текущего продукта.
-- Three.js уже существует в `src/modules/rendering/scene3d.ts`, `mesh.ts`, `equipment3d.ts` и используется для 3D hull/equipment view.
-- Теоретический чертёж имеет pure data в geometry и отдельные Canvas/SVG adapters.
-- Hull mesh должен использовать `halfBreadthY`/`halfHeightZ` из snapshot и строить эллиптические rings, а не тело вращения по compatibility `radius`, основание: `AGENTS.md` и текущий `src/modules/rendering/mesh.ts`.
+`src/app/main.ts` сейчас является рабочим composition root, но он остается самым крупным UI-архитектурным узлом.
 
-Желательный renderer contract после рефакторинга:
+Фактические обязанности `main.ts`:
 
-- Renderer получает immutable scene/view model: geometry, equipment visuals, statuses, view settings.
-- Renderer не пересчитывает domain geometry.
-- Renderer может emit interaction events: select, hover, drag start/move/end, camera changed.
-- Renderer не владеет project state; максимум хранит internal resources и transient camera/control state.
+- Находит DOM элементы и связывает events.
+- Читает profile controls через `appState`.
+- Преобразует DOM/import actions в `ProjectCommand`.
+- Вызывает `ProjectStore.dispatch()` и runtime commit.
+- Поддерживает `ProjectViewState`.
+- Управляет `projectEvaluationRuntime.rerender()` для view-only изменений.
+- Координирует Canvas 2D, theoretical drawing, table, metrics, equipment editor and Three.js.
+- Выполняет import/export/download workflows.
+- Обрабатывает notifications, resize and scene lifecycle.
 
-Общий scene model или view model:
+Что хорошо: формулы geometry и balance уже не живут в `main.ts`; canonical mutations проходят через application layer.
 
-- Не принято.
-- Рекомендуется подготовить common visual model для 2D/3D: equipment visual status, selected/hover/hidden/warning flags, body coordinate markers.
+Что мешает будущему UI: panels не имеют единого view-model contract, event wiring and render orchestration hard-coded together, import/export UX and engineering dispatch share one controller, and future selection/dirty/autosave would likely enlarge `main.ts` further.
 
-Независимость 2D и 3D:
+Минимальная следующая граница: выделить browser controller adapters per panel or feature without moving core/application contracts. Цель - уменьшить `main.ts` до startup, dependency creation and explicit subscriptions.
 
-- Сейчас оба получают общий snapshot/report из `main.ts`.
-- После рефакторинга они должны иметь возможность обновляться независимо при view-only changes.
-- Lazy enable/disable views возможен архитектурно, но не реализован.
+## 4.9 Взаимодействие 2D/3D
 
-Lazy loading Three.js:
+Canvas 2D сейчас отображает XZ-профиль, сетку, станции and equipment overlay. Он использует `ProfileSnapshot`, equipment list and constraints report.
 
-- Не принято.
-- Может быть полезно для public/demo/mobile performance, но переход не должен определять UI раньше анализа bundle/performance.
+Three.js сейчас отображает корпус and equipment meshes. Current 3D modes are `Сплошной` and `Рентген`; persisted legacy `cutaway` normalizes to `x-ray`. Section controls independent of view mode.
 
-Selection synchronization:
+Текущая 3D сцена имеет rendering lifecycle and camera interaction, но не имеет product-level object picking, selection, gizmo editing, measurement tools or synchronized 2D/3D selection.
 
-- Желательная возможность: выбор оборудования в списке, 2D и 3D должен синхронизироваться.
-- Сейчас централизованный selected state и picking в сцене не реализованы.
+UI-решение, которое нужно принять до интерактивного 2D/3D editing: является ли equipment selection частью `ProjectViewState`, transient session state или будущего command/view-store. Не следует сохранять selection в engineering `ProjectInputs`.
 
-Возможности вне текущего подтверждённого scope:
+Для будущего UI правильный contract: 2D/3D получают publication и view state, а наружу отправляют typed view/application actions. Они не должны изменять equipment arrays мутабельно или самостоятельно пересчитывать containment.
 
-- Выбор объекта непосредственно в 3D сцене.
-- Перемещение объектов мышью.
-- Gizmo/manipulators.
-- Изменение размеров оборудования из сцены.
-- Separate hover/selected/warning/hidden states как полноценная модель.
+## 4.10 `SectionShape`
 
-Камера и отображение в JSON:
+`SectionShape` уже введен как seam для обобщения сечений. Production contract сейчас намеренно поддерживает только ellipse:
 
-- Сейчас `scene3dSettings` входит в JSON проекта, но camera parameters хранятся внутри Three.js instance и не входят в project JSON.
-- Нужно отдельное решение: сохранять view state в проекте, отдельном workspace storage или не сохранять.
+```ts
+type SectionShape = { kind: "ellipse"; halfBreadthY: number; halfHeightZ: number };
+```
 
-## 12. Технологические ограничения пользовательского интерфейса
+Pure operations в `src/modules/geometry/section-shape.ts` покрывают area, containment, contour sampling, waterline/buttock intersections и связанные shape-derived operations.
 
-Текущее состояние:
+`ProfileSnapshot` несет shape-bearing section extents рядом с compatibility fields: `radius`, `halfBreadthY`, `halfHeightZ`, `topRadius`, `bottomRadius`. Mesh, constraints and theoretical drawing должны использовать shape operations or shape-derived data, а не локальные ellipse equations и не ветвления по `geometryMode`.
 
-- Vanilla TypeScript + HTML/CSS через Vite entrypoint.
-- Three.js для 3D.
-- Frontend-only архитектура без backend.
-- Тесты на Vitest.
-- Docker workflow для dev/build/smoke.
+Для UI это значит: controls будущих `Priam`/`Kr` или non-ellipse parameters должны добавляться как profile inputs and shape parameters through application normalization. Нельзя добавлять UI-only switches, из-за которых renderers расходятся с `ProfileSnapshot`.
 
-UI-framework:
+## 4.11 Будущие физические модели
 
-- Переход на React, Vue, Svelte или другой framework не принят.
-- Объективная необходимость перехода пока не доказана документами или кодом.
-- Сложность CSS, рост количества панелей или желание компонентности сами по себе не являются достаточным основанием.
-- Если появятся Undo/Redo, сложные drafts, scene picking, multiple documents и extensive component state, тогда framework можно анализировать как вариант, но не как автоматическое решение.
+Текущий balance является `Баланс оборудования`, а не full hydrostatics. UI уже помечает его как `Experimental` и содержит disclaimer.
 
-Frontend-only и offline:
+Нужно сохранять разделение физических моделей:
 
-- Frontend-only сохраняется в текущем направлении.
-- Offline file-based workflow сохраняется фактически: import/export JSON, CSV, SVG без backend.
-- Cloud storage, auth и collaboration не входят в текущий scope.
+| Model | Смысл |
+| --- | --- |
+| `HydrodynamicFairing` | Внешняя форма для обводов и future hydrodynamics |
+| `PlacementEnvelope` | Допустимая область размещения оборудования |
+| `StructuralMassModel` | Масса оболочки, переборок и конструкций |
+| `WatertightEnvelope` | Герметичный вытесняющий объем for hydrostatics |
 
-Web Workers:
+Equipment-only displaced volume и watertight-envelope buoyancy не должны неявно складываться. Future `BuoyancyModel` должен иметь discriminator и защиту от double counting.
 
-- Не планируются для текущих синхронных расчётов.
-- Возможны позже для тяжёлых hydrodynamics/energy/comparison или CAD-like checks.
+UI-последствие: будущие панели «Гидростатика», «Массы», «Остойчивость», «Энергетика» не должны переиспользовать current equipment-only balance terminology так, будто это full vehicle balance.
 
-Браузеры и WebGL:
+## 4.12 Сохранение и JSON
 
-- Документы не фиксируют строгую browser support matrix.
-- Three.js требует WebGL; UI должен иметь fallback/diagnostic для недоступного WebGL, особенно для public demo.
+Текущая версия JSON schema: `2`.
 
-Mobile/desktop:
+Текущий coordinate marker: `SNAME_NED_BODY_CENTER_V1`.
 
-- Будущий UI может обсуждать desktop-first CAD-lite workbench и mobile read/demo workflow.
-- Требование полноценного мобильного редактирования не принято.
-- Touch gestures и keyboard accessibility не формализованы, но их стоит обсуждать как UX requirements до реализации.
+JSON хранит serializable project state:
 
-## 13. Хранение, сохранение и версия проекта
+- `profile` с geometry inputs и view flags.
+- `equipment`.
+- `scene3dSettings`.
+- `balanceSettings`.
 
-Что сейчас входит в JSON проекта:
+JSON не хранит `ProjectEvaluation`. Derived geometry, constraints, drawing and balance пересчитываются после import.
 
-- `schemaVersion: 2`.
-- `coordinateSystem: "SNAME_NED_BODY_CENTER_V1"`.
-- `exportedAt`.
-- `project.profile`.
-- `project.equipment`.
-- `project.scene3dSettings`.
-- `project.balanceSettings`.
+Import поддерживает v2 и one-way v1 migration. Parsing нормализует profile, equipment, duplicated IDs, scene settings и balance settings, затем `serializableProjectToInputsAndView()` разделяет данные на `ProjectInputs` и `ProjectViewState`.
 
-Поддерживаемые версии:
+Открытые persistence decisions для UI: сохранять ли camera, selection, dirty/autosave metadata, panel collapse states, recent projects and comparison snapshots. Эти данные не стоит добавлять в текущий JSON v2 без решения о versioned DTO.
 
-- JSON v2 является текущей схемой.
-- JSON v1 поддерживается через migration в `src/modules/persistence/project-json-migrations.ts`.
-- v2 import требует правильный coordinate marker.
+## 4.13 Текущий UI
 
-Как работает миграция:
+Факты о текущем публичном UI:
 
-- v1 coordinates преобразуются в Body/SNAME-NED.
-- `body.x = L/2 - old.x`.
-- Старые оси оборудования и dimensions преобразуются к `lengthX/breadthY/heightZ` и Body axes.
-- Import v1 добавляет пользовательское warning о предположениях по старой оси `z`.
+- Hero использует реальный статический Three.js render в `public/images/hero-hull-render.png`.
+- Декоративный `.hull-blueprint` удален.
+- Geometry mode labels: `Базовая формула` и `Классическая методика`.
+- Coordinate aside states Body/SNAME-NED: X to bow, Y starboard, Z down.
+- 3D view modes: `Сплошной` и `Рентген`.
+- Section controls независимы от view mode.
+- Balance section: `Баланс оборудования`, collapsed by default, marked `Experimental`, with disclaimer.
+- Numeric inputs используют native `type="number"` controls with `inputmode="decimal"` or `numeric`.
+- Workbench sections включают dimensions, geometry/visual controls, equipment, balance, theoretical drawing and station table.
 
-Что планируется изменить:
+UI уже выглядит как публичное demo, а не только internal tooling. Следующая UI-работа должна сохранять это визуальное направление, если явная цель redesign не поставлена.
 
-- Документы рекомендуют отделить persistence DTO от canonical project state и применять import атомарно через normalization pipeline.
-- Будущий `ProjectDocumentV3` возможен, но не принят.
+## 4.14 Готовность тестов
 
-Не принятые решения:
+Релевантное текущее покрытие:
 
-- Имя проекта.
-- Описание проекта.
-- `createdAt` и `modifiedAt`.
-- Project ID.
-- Autosave в localStorage или IndexedDB.
-- Recent projects.
-- Protection от потери unsaved changes.
-- Сохранение camera/open panels/selection вместе с проектом.
+- Unit tests для coordinates, app state, DOM contract, geometry, equipment, balance, rendering data, persistence and UI modules.
+- Application layer tests including dependency boundaries.
+- Playwright E2E configuration in `playwright.config.ts`.
+- E2E import/export round-trip in `tests/e2e/import-export.spec.ts`.
+- Encoding check script для UTF-8 и ключевых русских UI-строк.
 
-Что нельзя смешивать с предметным состоянием:
+Для UI refactoring минимальная safety net должна включать `npm run check:encoding`, `npm run test`, `npm run build` и targeted Playwright checks при изменении DOM behavior.
 
-- Renderer internal resources.
-- DOM focus и active input.
-- Hover/drag transient state.
-- Browser file handles/download state.
-- Calculation cache, если он восстанавливается из inputs.
+Потенциальные test gaps перед крупной UI-переписью: visual regression не настроен, full mobile interaction coverage ограничен, 3D picking не существует, dirty/autosave не реализован, framework-level component tests отсутствуют, потому что UI сейчас vanilla DOM.
 
-Обратная совместимость:
+## 4.15 Оценка UI Framework
 
-- JSON v1 должен продолжать мигрироваться, пока есть сохранённые внешние файлы пользователей или regression fixtures.
-- JSON v2 coordinate contract нельзя ломать без новой версии и migration.
-- UI не должен предлагать ручное редактирование JSON как способ изменить инженерную модель.
+Framework migration возможна, но не требуется для разблокировки следующего архитектурного шага.
 
-## 14. Порядок и стратегия рефакторинга
+Причины отложить выбор framework:
 
-Документы указывают на strangler/vertical seams, а не на одномоментное массовое перемещение файлов. Рекомендуемый порядок должен минимизировать риск изменения расчётов и UI.
+- Application layer уже изолирует canonical state и derived evaluation.
+- Текущее public demo работает и имеет DOM contract coverage.
+- Главная текущая проблема - широта orchestration в `main.ts`, а не отсутствие virtual DOM.
+- Выбор framework зависит от будущей интерактивности: forms-only workbench, CAD-like editor или multi-document application.
 
-Предполагаемая последовательность:
+Причины, по которым framework может стать полезным:
 
-1. Стабилизация data-integrity tests: import/export, gravity preservation, equipment ID uniqueness после import/add, JSON round-trip.
-2. Введение canonical `ProjectInputs` и общего normalization pipeline.
-3. Введение application API: commands/use cases/store/reducer, точная форма не принята.
-4. Выделение pure `deriveProject()` или эквивалентной функции evaluation.
-5. Разделение project state, calculation results, view state, interaction state и persistence DTO.
-6. Разделение rendering pipeline: renderers получают read models, а не читают application internals.
-7. Введение presentation/read models для UI.
-8. Адаптация текущего UI к application layer без смены визуального дизайна как обязательного шага.
-9. Последующее обсуждение и реализация нового workbench/UI, если будет принято.
+- Более сложный equipment editor и validation UX.
+- Persistent panel state, selection и synchronized 2D/3D interactions.
+- Multi-screen responsive layout with reusable view models.
+- Undo/Redo and command history presentation.
+- Comparison workflows, snapshots and project browser.
 
-Когда безопасно начинать UI-работы:
+Если выбирать позже, React совместим с текущим TypeScript/Vite stack и application contracts. Svelte также подходит для adapter-heavy UI. Оставаться на vanilla тоже допустимо, если следующие seams небольшие, а tests targeted.
 
-- Обсуждать UI и создавать high-level wireframes можно уже сейчас.
-- Утверждать терминологию, состав панелей, информационную архитектуру верхнего уровня можно уже сейчас с пометкой об открытых state decisions.
-- Менять разметку безопаснее после появления application API или хотя бы стабильных view models.
-- Внедрять новый workbench безопаснее после отделения DOM от state.
-- Добавлять Undo/Redo безопасно только после решения о command history.
-- Добавлять взаимодействие со сценой безопасно после централизованного selection/interaction state и renderer event contract.
+## 4.16 Матрица UI-решений
 
-## 15. Что точно не входит в рефакторинг
+| Решение | Вариант A | Вариант B | Рекомендация |
+| --- | --- | --- | --- |
+| Framework now | Migrate immediately | Keep vanilla while extracting seams | Keep vanilla for next seam |
+| State ownership | Expand `ProjectInputs` | Separate engineering/view/session state | Separate states |
+| `main.ts` refactor | Big-bang rewrite | Panel-by-panel adapters | Panel-by-panel |
+| 2D/3D editing | Direct renderer mutation | Emit typed actions | Typed actions |
+| Persistence | Store all UI state in v2 | Version DTO before new state | Version DTO first |
+| Diagnostics | Russian strings from core | Codes/params from core, text in UI | Codes/params in future |
+| Balance UX | Present as full hydrostatics | Keep equipment-only disclaimer | Keep disclaimer |
+| Mobile | Full CAD parity | Read/inspect/export first | Inspect/export first |
 
-Non-goals текущего архитектурного рефакторинга:
+## 4.17 Ближайшие решения
 
-- Изменение расчётных формул.
-- Инженерная валидация исторических коэффициентов DSNP_PA.
-- Полноценный CAD kernel.
-- Backend.
-- Авторизация.
-- Облачное хранение.
-- Совместная работа.
-- База данных.
-- Новый формат экспорта как обязательный результат.
-- Физическое моделирование.
-- Ходкость.
-- Энергетика.
-- Стоимость.
-- Изменение визуального дизайна как часть архитектурного рефакторинга.
-- Новый UI-framework как обязательное решение.
+Решения, которые стоит принять перед следующей UI-реализацией:
 
-Пункты, которые могут появиться позже, но не являются scope этого рефакторинга:
+- Определить, на что нацелена следующая UI-работа: public landing polish, ясность engineering workbench или глубина interaction.
+- Определить desktop-first или mobile-supported scope для workbench.
+- Решить, являются ли panel collapse state, selected equipment и camera session-only или persisted.
+- Решить, входят ли dirty state и autosave в следующий milestone.
+- Решить первый object-selection contract для equipment в списках, Canvas и Three.js.
+- Решить, как показывать пользователю runtime derive/render errors.
+- Решить, нужно ли начинать миграцию diagnostics от пользовательского текста в core reports к stable codes plus UI messages.
 
-- Full hydrostatics/watertight envelope.
-- Mass groups и tensor inertia.
-- Hydrodynamics и energy modules.
-- Comparison workflow.
-- CAD-like scene editing.
+Решения, которые можно отложить:
 
-## 16. Архитектурные инварианты
+- Финальная visual design system.
+- Full framework migration.
+- Undo/Redo implementation.
+- Multi-project workspace.
+- Full hydrostatics UI.
+- CAD-like gizmo editing.
+- Project JSON v3, если не требуется новое persisted state.
 
-Будущий UI не должен нарушать следующие ограничения:
+## 4.18 Следующий UI Seam
 
-- Body/SNAME-NED coordinate contract: origin в центре, `+X` к носу, `+Y` на правый борт, `+Z` вниз.
-- Profile coordinate: `s=0` на носу, `s=L` на корме, `body.x = L/2 - s`.
-- Three.js и Canvas/SVG используют coordinate adapters, а не собственные скрытые соглашения.
-- `ProfileSnapshot` или будущий аналог является общим источником для 2D, 3D, таблицы и exports.
-- JSON v1/v2 migrations должны оставаться явными и тестируемыми.
-- Equipment-only balance нельзя называть полным ЦВ внешнего корпуса.
-- UI не должен дублировать геометрические формулы.
-- Расчёты не должны зависеть от DOM, Canvas или Three.js.
-- Persistence DTO не должен становиться вторым владельцем domain state.
-- UI не является источником инженерной истины; он только отправляет intent и отображает нормализованные results.
+Рекомендуемый следующий seam: ввести явные UI view-model/adapters вокруг текущей publication и view state без изменения engineering contracts.
 
-## 17. Влияние рефакторинга на проектирование UI
+Минимальный полезный slice:
 
-### 17.1. UI-решения, которые можно принимать уже сейчас
+- Выделить boundary в стиле `renderWorkbench(publication, viewState, actions)` или per-panel equivalent.
+- Оставить `ProjectCommand` dispatch в application-facing actions.
+- Держать view-only actions отдельно от `ProjectCommand`.
+- Выносить из `main.ts` orchestration по одной панели за раз.
+- Сохранять текущую DOM structure и tests, если UI-задача явно не меняет layout.
 
-- Разделение публичной landing/demo страницы и инженерной рабочей среды: подтверждается текущим public demo контекстом и frontend-only stack.
-- Общая структура CAD-lite workbench: центральная 2D/3D область, боковые панели inputs/inspector/results, верхняя панель file/export actions.
-- Терминология: `ЦВК` только цилиндрическая вставка, `ЦВ` только центр величины.
-- Визуальное разделение “форма корпуса”, “оборудование”, “ограничения”, “баланс”, “экспорт”.
-- Список и inspector оборудования для текущего flat list.
-- Постоянно заметные diagnostics/warnings, особенно для equipment-only balance и legacy limitations.
-- Desktop-first сценарий и отдельный mobile/demo сценарий как обсуждаемая UX-гипотеза.
-- Design system на уровне tokens/components без выбора framework.
+Хорошие первые кандидаты:
 
-### 17.2. UI-решения, которые зависят от рефакторинга
+- 3D controls panel, потому что он в основном меняет `ProjectViewState` и rerender от текущей publication.
+- Balance metrics panel, потому что он должен потреблять `ProjectEvaluation.balance` и показывать equipment-only disclaimers.
+- Equipment editor, потому что это наиболее ценная будущая interaction surface, но он требует большей осторожности из-за focus и dynamic inputs.
 
-- Undo/Redo: требует command history и state transition model.
-- Двустороннее взаимодействие со сценой: требует renderer event contract и centralized selection/interaction state.
-- Дерево оборудования: требует решения о groups/systems/aggregates.
-- Локальные пересчёты и stale indicators: требуют dependency graph и evaluation cache/status model.
-- Autosave: требует dirty tracking, persistence state и storage decision.
-- Несколько проектов: требует multi-document state model.
-- Background calculations: требуют async evaluation/Web Worker decision и statuses.
-- Сохранение camera/open panels: требует решения о project view state vs workspace state.
+Не брать первым seam:
 
-### 17.3. UI-решения, которые не следует принимать до дополнительных решений
+- Full import/export rewrite.
+- Full `main.ts` split.
+- Framework migration и UI redesign в одном patch.
+- Undo/Redo до описания command history requirements.
 
-| UI-решение | Требуемое архитектурное решение | Кто должен принять | Риск преждевременного выбора |
-| ---------- | ------------------------------ | ------------------ | ---------------------------- |
-| Framework migration | Нужен ли framework и какие проблемы он решает | Технический владелец проекта вместе с UI/frontend ответственным | Переписать UI без устранения state проблемы |
-| Equipment tree/systems UI | Предметная модель groups/systems/components | Product/engineering domain owner | Спроектировать навигацию под несуществующую модель |
-| Full hydrostatics panel | Watertight envelope и `BuoyancyModel` | Engineering/domain owner | UI будет обещать расчёт, которого нет |
-| Scene gizmos | Interaction state, coordinate snapping, command history | Architecture + UX + geometry owner | Сложные interactions без Undo и validation |
-| Autosave/recent projects | Storage backend: localStorage/IndexedDB/file handles | Architecture/product owner | Потеря данных или конфликт с file-based workflow |
-| Multi-project tabs | Multi-document application state | Architecture/product owner | Layout закрепит неподдерживаемую модель |
+## 4.19 Открытые вопросы
 
-## 18. Матрица архитектурных решений и влияния на UI
+- Будущий UI должен быть прежде всего public demo, engineering workbench или CAD-like editor?
+- Какие interactions обязаны хорошо работать на mobile: inspect, edit dimensions, edit equipment, export или все сразу?
+- Camera state нужно сохранять в project JSON, browser storage или не сохранять вообще?
+- Equipment selection является session concept или частью shareable project state?
+- View settings должны оставаться в JSON v2 или перейти в будущий `ProjectDocumentV3` view/session block?
+- Какое первое non-ellipse требование к `SectionShape`: legacy `Priam`/`Kr`, rounded sections или другая shape family?
+- Когда equipment-only balance может выйти из `Experimental`, и какая physical model должна появиться первой?
+- Нужны ли diagnostics stable machine-readable codes до следующей UI-работы?
+- Нужен ли visual regression testing до крупного public UI redesign?
 
-| Архитектурное решение | Статус | Варианты | Влияние на UI | Риск преждевременного решения | Требуется решение до UI |
-| --------------------- | ------ | -------- | ------------- | ----------------------------- | ----------------------- |
-| Modular Monolith + Functional Core + Application Layer + Browser Adapters | принято | Не выбирать microservices/Clean overengineering | UI работает через adapters/API | Низкий | Нет, уже принято |
-| Body/SNAME-NED coordinates | принято | Нет для текущей версии | Все labels/projections должны быть согласованы | Ошибки осей в 2D/3D/forms | Да, уже принято |
-| DOM не source of truth | принято | Application store/controller | UI не должен напрямую владеть domain state | Высокий при redesign до refactor | Да для реализации нового UI |
-| Canonical `ProjectInputs` | предварительно принято | Type + store/reducer/controller | Определит формы, save/dirty, import | Средний | Да для сложного UI |
-| `deriveProject()` / `ProjectEvaluation` | предварительно принято | Function или evaluation service | Определит read models/results | Средний | Да для локальных пересчётов |
-| Commands/use cases | рекомендовано | Dispatch/reducer, command API, controller methods | Определит event handling и Undo | Высокий | Да для Undo/Redo и scene editing |
-| `SectionShape` | рекомендовано | Discriminated union, evaluator interface | Влияет на geometry UI и renderers | Средний | До новых geometry modes |
-| Equipment groups/systems | не решено | Flat list, groups, tree, systems | Влияет на navigation/inspector | Высокий | Да для tree UI |
-| Full watertight hydrostatics | не решено | Equipment-only, watertight, composite | Влияет на balance panels | Высокий | Да для full CB UI |
-| Save view state in JSON | не решено | In project, workspace storage, not saved | Влияет на camera/panels persistence | Средний | До autosave/recent UX |
-| Undo/Redo history | не решено | Command history, snapshots, none | Влияет на toolbar and interactions | Высокий | Да для editing UX |
-| UI-framework migration | не решено | Vanilla TS, React, Vue, Svelte, other | Влияет на implementation, not IA alone | Высокий | Нет для wireframes, да для implementation |
-| Backend/cloud/collaboration | вне scope | None | Не проектировать account/cloud UX | Высокий | Нет |
+## 4.20 Копируемый контекст для UI-обсуждения
 
-## 19. Открытые вопросы
+Этот блок можно вставить в будущее обсуждение UI:
 
-Предметные:
+```text
+Underwater Vehicle Designer - Vite + TypeScript frontend-only engineering SPA для 2D/3D обводов корпуса подводного аппарата, проверок размещения оборудования, equipment-only balance diagnostics и SVG/CSV/JSON export.
 
-- Будут ли equipment groups/systems/tree. Важно для navigation и inspector. Варианты: flat list сохранить, добавить группы, добавить системы, добавить дерево агрегатов. UI можно обсуждать без ответа только на уровне extensible layout.
-- Как моделировать structural mass и ballast. Важно для mass properties и balance UI. Варианты: equipment subtype, отдельная mass model, system-level masses. Детальный UI преждевременен.
-- Какой full hydrostatics/watertight envelope нужен. Важно для ЦВ и предупреждений. Варианты: отдельный watertight envelope, composite buoyancy model, delayed scope. UI full CB преждевременен.
+Текущий `HEAD` уже имеет application layer: `ProjectInputs`, `ProjectCommand`, `reduceProject()`, `ProjectStore`, `deriveProject()`, `ProjectEvaluation` и `projectEvaluationRuntime`. Текущий flow: DOM/import adapters -> ProjectCommand -> ProjectStore.dispatch()/reduceProject() -> ProjectInputs -> deriveProject() -> ProjectEvaluation -> coherent publication -> DOM/Canvas/Three.js/export adapters.
 
-Архитектурные:
+`ProjectInputs` владеет engineering inputs: profile, equipment and balanceSettings. `ProjectViewState` владеет showGrid, showPoints and scene3dSettings. `ProjectEvaluation` владеет derived hullGeometry, theoreticalDrawing, constraints and equipment-only balance. JSON v2 сохраняет serializable `ProjectInputs + ProjectViewState`, а не `ProjectEvaluation`.
 
-- Store/reducer или application controller. Важно для commands, Undo/Redo, tests. UI wireframes можно продолжать; implementation должен ждать.
-- Где хранить view state. Важно для persistence UX. Варианты: project JSON, workspace storage, transient only. Можно обсуждать UX preference, но не фиксировать behaviour.
-- Как разделить validation messages и calculation codes. Важно для localization и diagnostics. UI может проектировать severity patterns.
+UI не должен дублировать geometry formulas, coordinate transforms, containment checks или balance rules. Canvas, tables, metrics, Three.js, profile SVG/CSV and theoretical SVG должны использовать `ProfileSnapshot`/`ProjectEvaluation` publication. View-only changes должны переиспользовать `projectEvaluationRuntime.rerender()` и не вызывать `deriveProject()`.
 
-UI/UX:
+Текущий UI - public demo/workbench с реальным статическим hero render, Body/SNAME-NED coordinate note, geometry labels `Базовая формула`/`Классическая методика`, 3D modes `Сплошной`/`Рентген`, independent section controls, native number inputs и experimental `Баланс оборудования` disclaimer.
 
-- Desktop-first или responsive-first. Важно для layout. Варианты: полноценный responsive editor, desktop editor + mobile viewer/demo. Можно обсуждать сейчас.
-- Нужно ли keyboard-first editing. Важно для forms, shortcuts, accessibility. Можно обсуждать сейчас.
-- Нужны ли touch gestures. Важно для 2D/3D scene controls. Можно обсуждать как requirement.
+Главный оставшийся UI architecture debt - не отсутствие canonical state. Проблема в том, что `src/app/main.ts` все еще широк: DOM binding, actions, runtime commits, view state, rendering orchestration, import/export/downloads, notifications and lifecycle. Предпочтительны небольшие panel/view-model seams до framework migration.
 
-Производительность:
+Не представлять текущий balance как full hydrostatics. Он equipment-only. Future physical models должны разделять hydrodynamic fairing, placement envelope, structural mass model и watertight envelope.
 
-- Нужны ли debounce/batching policies. Важно для typing и drag. Варианты: debounce form inputs, batch commands, local render updates. UI implementation зависит от refactor.
-- Нужны ли Web Workers. Важно для async statuses. Сейчас не нужно, future open.
+Перед крупным UI-изменением нужно решить product mode, desktop/mobile scope, selected equipment state, camera persistence, dirty/autosave policy, diagnostics presentation и нужен ли JSON v3 view/session contract.
+```
 
-Persistence:
+## 4.21 Правила обновления
 
-- Autosave/local storage/IndexedDB. Важно для save UX. Не принято.
-- Recent projects. Важно для landing/workbench. Не принято.
-- Защита от потери unsaved changes. Важно для navigation. Не реализовано, но UX можно обсуждать.
+Обновляйте этот документ, когда происходит одно из изменений:
 
-2D/3D:
-
-- Будет ли picking в 2D/3D. Важно для selection model. Не принято.
-- Будут ли gizmos/manipulators. Важно для scene UI и Undo. Не принято.
-- Нужны ли hidden/locked/warning visual states. Желательно, но модель не утверждена.
-
-Тестирование:
-
-- Нужна ли browser E2E suite. Сейчас Vitest покрывает modules, но committed Playwright suite нет. Важно для redesigned UI. Решение не принято.
-- Какие regression tests добавлять перед state refactor. Рекомендованы data-integrity tests.
-
-Scope:
-
-- Должен ли refactor включать visual redesign. Документы говорят, что нет: это отдельный последующий этап.
-- Должен ли refactor включать новый framework. Нет принятого решения.
-
-## 20. Рекомендации для последующего обсуждения UI
-
-Рекомендуемые пользовательские роли:
-
-- Инженер/проектировщик, который задаёт корпус, размещает оборудование и смотрит ограничения.
-- Рецензент/заказчик demo, который смотрит 2D/3D, таблицы и exports без глубокого редактирования.
-- Разработчик/исследователь, который проверяет legacy DSNP_PA traceability и regression outputs.
-
-Основные пользовательские сценарии:
-
-- Создать или открыть проект.
-- Задать размерения корпуса и режим геометрии.
-- Настроить ЦВК и stations.
-- Добавить и отредактировать оборудование.
-- Проверить выход за корпус, пересечения и balance warnings.
-- Сравнить 2D, 3D, таблицу и theoretical drawing.
-- Экспортировать JSON/CSV/SVG.
-
-Предполагаемая структура рабочего пространства:
-
-- Верхняя панель: new/open/save/export/reset, undo/redo placeholders if accepted later.
-- Левая или правая панель inputs: корпус, geometry mode, stations, environment.
-- Центральная область: tabs/split для 2D profile, 3D scene, theoretical drawing.
-- Equipment panel: flat list сейчас, future-ready место для groups/tree.
-- Inspector: выбранное оборудование или выбранный project/hull section.
-- Diagnostics/results: constraints summary, balance status, limitations.
-
-Данные, которые должны быть видны одновременно:
-
-- Основные размерения корпуса и geometry mode.
-- 2D/3D визуализация текущего корпуса.
-- Equipment status summary.
-- Balance headline: mass, buoyancy, CG/CB with equipment-only label.
-- Critical warnings/errors.
-
-Данные, которые можно вынести во вкладки:
-
-- Подробная таблица stations.
-- Теоретический чертёж.
-- Полные JSON/export settings.
-- Подробные diagnostics/reports.
-
-Действия верхней панели:
-
-- New/open/import/save/export/reset.
-- Future undo/redo только после command history decision.
-- View layout toggles, если будут относиться к workspace state.
-
-Действия выбранного объекта:
-
-- Rename, duplicate if accepted, delete.
-- Edit position/dimensions/mass/displaced volume parameters.
-- Focus/show in 2D/3D.
-- Future lock/hide/group actions только после предметного решения.
-
-Результаты и предупреждения, которые должны быть постоянно заметны:
-
-- Ошибки валидности equipment.
-- Выход equipment за корпус.
-- Пересечения.
-- Net buoyancy и major balance warnings.
-- Явный label: текущий ЦВ/CB относится к equipment-only displaced volume.
-- Import migration warnings для JSON v1.
-
-Каждая рекомендация опирается на архитектурный вывод: state должен перейти в application layer, calculations должны выдавать structured reports, а UI должен отображать limitations и statuses без владения расчётами.
-
-## Контекст для обсуждения пользовательского интерфейса
-
-Underwater Vehicle Designer — браузерный инженерный инструмент для построения 2D/3D-обводов корпуса подводного аппарата и базовой компоновки оборудования. Сейчас это Vite + TypeScript SPA без backend. Пользователь задаёт размерения корпуса, выбирает режим геометрии `current-formula` или legacy DSNP_PA, смотрит Canvas 2D, Three.js 3D, теоретический чертёж, таблицу станций, список оборудования, constraints и equipment-only balance. Экспортируются JSON, CSV, SVG и SVG теоретического чертежа.
-
-Текущее приложение работает, но архитектурно всё завязано на `src/app/main.ts`. Этот файл читает DOM, держит runtime state, запускает расчёты и рендерит views. Состояние не единое: profile inputs находятся в DOM, equipment list хранится в переменной `main.ts`, 3D settings читаются из DOM, balance settings частично берутся из DOM и constants. `ProjectState` сейчас является aggregate для export, а не настоящим store.
-
-Цель рефакторинга — не redesign UI, а отделение инженерной модели от DOM и renderers. Принятое направление: Modular Monolith + Functional Core + Explicit Application Layer + Browser Adapters. Предполагается ввести canonical `ProjectInputs`, общий normalization pipeline, application commands/use cases или store, и pure `deriveProject()`/`ProjectEvaluation`, который будет выдавать geometry snapshot, theoretical drawing, constraints, balance и reports. DOM, Canvas, Three.js, JSON и download должны быть adapters.
-
-Будущие слои можно понимать так: shared/kernel для координат и math; domain/core для geometry/equipment/balance; project state для canonical inputs; application/use cases для commands and normalization; presentation/read models для UI; rendering для Canvas/Three; persistence для JSON/CSV/SVG; UI для layout and interactions. UI должен отправлять команды и получать read models, а не дублировать формулы.
-
-Предметная модель сейчас включает корпус (`ProfileState`), режим геометрии, станции, flat list оборудования, формы `sphere/cylinder/box`, constraints, mass, displaced volume, equipment-only CG/CB и параметры воды. Не решены groups/systems/tree оборудования, structural mass, ballast, watertight envelope, full hull CB, variants and project metadata. Поэтому UI может предусмотреть место под будущие группы, но не должен проектировать их как уже принятую модель.
-
-Граф пересчётов сейчас грубый: почти любое изменение вызывает полный update. После рефакторинга изменение корпуса должно пересчитывать geometry/drawing/constraints/balance; изменение equipment — constraints/balance/views без пересчёта geometry; изменение density — только balance; изменение camera/3D opacity/selection — только локальные views. Для typing и drag нужны debounce/batching. Future async calculations могут потребовать statuses `calculating`, `stale`, `error`, `ready`, но сейчас расчёты синхронные.
-
-2D и 3D остаются важными частями продукта. Canvas 2D и Three.js уже есть. Они должны работать от общего geometry/read model и синхронизировать selection через application state, если selection будет реализован. Picking в сцене, drag, gizmos и изменение размеров из 3D не приняты и зависят от command history, interaction state и renderer event contract.
-
-Persistence сейчас: JSON v2 с marker `SNAME_NED_BODY_CENTER_V1`, import/export project profile/equipment/scene3d/balance settings, migration v1 -> v2. Не решены name/description, createdAt/modifiedAt, project ID, autosave, recent projects, dirty protection и сохранение camera/open panels. JSON v1/v2 backward compatibility нельзя ломать без новой версии и migration.
-
-Жёсткие ограничения для UI: Body/SNAME-NED оси неизменны; `ЦВК` означает цилиндрическую вставку, `ЦВ` — центр величины; текущий balance — equipment-only, не полный ЦВ внешнего корпуса; 2D, 3D, таблица и exports должны использовать общий `ProfileSnapshot` или будущий аналог; UI не должен быть источником инженерной истины.
-
-Можно обсуждать уже сейчас: landing vs workbench, CAD-lite layout, терминологию, панели корпуса/оборудования/результатов, визуальную иерархию, diagnostics area, desktop/mobile сценарии, design system без выбора framework. Преждевременно фиксировать: Undo/Redo, autosave, multi-project tabs, equipment tree, full hydrostatics panel, scene gizmos, сохранение camera/workspace state, переход на React/Vue/Svelte. Эти решения зависят от application state, command API, domain model и persistence strategy.
+- Добавлены новые `ProjectCommand` variants или command history.
+- Изменены `ProjectInputs`, `ProjectViewState`, `ProjectEvaluation` или JSON schema.
+- Responsibilities `main.ts` перенесены в explicit adapters/controllers.
+- Принят UI framework.
+- Реализованы 2D/3D selection или direct manipulation.
+- Добавлены non-ellipse variants для `SectionShape`.
+- Equipment-only balance заменен или дополнен full hydrostatics.
+- Camera, selection, dirty state, autosave или recent projects стали persisted или shareable.
