@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T00:00:00.000Z",
+  "title": "Design System: Underwater Vehicle Designer",
+  "extensions": {
+    "colorMeta": {
+      "abyss": { "role": "primary", "displayName": "Abyss Base", "canonical": "#07191f" },
+      "teal": { "role": "primary", "displayName": "Operational Teal", "canonical": "#0b7f77" },
+      "cyan": { "role": "secondary", "displayName": "Instrument Cyan", "canonical": "#75d9d0" },
+      "signal": { "role": "secondary", "displayName": "Signal Lime", "canonical": "#b8e24a" },
+      "amber": { "role": "tertiary", "displayName": "Diagnostic Amber", "canonical": "#c77c21" },
+      "rose": { "role": "tertiary", "displayName": "Diagnostic Rose", "canonical": "#bd3454" },
+      "paper": { "role": "neutral", "displayName": "Paper Field", "canonical": "#edf1ec" },
+      "panel": { "role": "neutral", "displayName": "Panel White", "canonical": "#fbfcf8" },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#14262c" }
+    },
+    "shadows": [
+      { "name": "panel", "value": "0 18px 48px rgba(13, 36, 40, 0.09)", "purpose": "Workbench panels and data bands." },
+      { "name": "hero", "value": "0 24px 80px rgba(1, 14, 19, 0.24)", "purpose": "Restrained public hero surface." }
+    ],
+    "breakpoints": [
+      { "name": "wide-collapse", "value": "1220px" },
+      { "name": "tablet", "value": "940px" },
+      { "name": "mobile", "value": "760px" },
+      { "name": "compact-mobile", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Workbench Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Compact operational action used near export/import/workbench actions.",
+      "html": "<button class=\"ds-btn-primary\">Скачать SVG</button>",
+      "css": ".ds-btn-primary { min-height: 38px; border: 1px solid #0b7f77; border-radius: 4px; padding: 0 13px; color: #fff; background: #0b7f77; font: 750 .78rem 'Segoe UI', sans-serif; } .ds-btn-primary:hover { background: #075f59; border-color: #075f59; } .ds-btn-primary:focus-visible { outline: 3px solid rgba(117,217,208,.38); outline-offset: 2px; }"
+    "northStar": "Abyssal Engineering Console",
+    "overview": "Current visual authority is a calm technical console: dark abyss hero, pale paper workbench, teal engineering accents, monospace metadata, tabular numbers, collapsible panels, and real hull visualization rather than decorative pseudo-CAD imagery.",
+    "keyCharacteristics": [
+      "Product-first engineering workbench with restrained public hero.",
+      "Real visualization and coordinate proof over marketing decoration.",
+      "Light operational surfaces with dark marine framing.",
+      "Native controls and explicit labels instead of custom faux-CAD widgets."
+    ],
+    "rules": [
+      { "name": "The Scarce Signal Rule", "body": "Signal lime is a hero emphasis color, not a general success token.", "section": "colors" },
+      { "name": "The Tabular Trust Rule", "body": "Engineering values should keep tabular-number treatment and units close to the value.", "section": "typography" }
+    ],
+    "dos": [
+      "Preserve the real 3D hero render as proof, or replace it only with another real product-derived render.",
+      "Keep Body/SNAME-NED coordinate clarity visible near controls, 3D sections, and equipment placement.",
+      "Keep equipment-only balance clearly marked as not full hydrostatics."
+    ],
+    "donts": [
+      "Do not turn the product into a generic SaaS dashboard.",
+      "Do not introduce glassmorphism, nested-card clutter, or decorative pseudo-CAD controls.",
+      "Do not imply full CAD/CAE, full hydrostatics, or validated production analysis."
+    ]
+  }
+}
