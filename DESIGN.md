@@ -151,7 +151,10 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 ### Statuses
 - Equipment status uses row background, left accent, badge, and textual issues.
 - Balance warning uses amber summary and an experimental disclaimer.
-- Current status system is useful but not yet unified across equipment, 2D, 3D, balance, and runtime errors.
+- UX-1 status foundation defines semantic statuses `normal`, `warning`, `error`, `experimental`, `selected`, `disabled`, `stale`, and `running` as CSS tokens in `src/app/styles.css` and a pure UI adapter contract in `src/modules/ui/statusTokens.ts`.
+- Current DOM status presentation uses `data-ui-status="..."` and `ui-status--...` alongside compatibility classes such as `equipment-row--outsideHull` and `equipment-status--intersects`.
+- Equipment domain statuses map as `ok -> normal`, `intersects -> warning`, `outsideHull -> error`, and `invalidEquipment -> error`; status labels remain visible text, not color-only signals.
+- Canvas and Three.js rendering mirror the semantic status vocabulary through `src/modules/rendering/statusColors.ts` instead of importing UI/CSS tokens at runtime.
 
 ### Signature Components
 - **Hero real render frame:** a static image from the actual Three.js scene with explicit caption that it is not decorative.
@@ -200,13 +203,17 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 - Mobile works structurally but is not yet a refined demo/export flow.
 
 ### Missing Tokens
-- Semantic status tokens: ok, warning, error, experimental, selected, disabled, stale, running.
 - Surface elevation tokens beyond the two shadows.
 - Breakpoint tokens and viewport mode names.
 - Motion and reduced-motion tokens.
-- Focus/selection tokens for 2D/3D/equipment linkage.
+- Focus/selection tokens for future 2D/3D/equipment linkage behavior beyond the current token-only foundation.
 - Canvas/3D overlay tokens for hull, equipment, selection, warning, and clipping states.
 - Density tokens for compact desktop rows versus mobile inspection cards.
+
+### UX-1 Semantic Foundation Scope
+
+- Implemented: status tokens, focus/disabled/touch-target tokens, stable DOM status attributes/classes, equipment accessibility IDs, no interactive descendants inside `summary`, and local descriptions for current canvas-like surfaces.
+- Intentionally not implemented: workbench shell redesign, equipment selection, CAD-lite viewport controls, mobile-specific flow, public hero redesign, UI framework change, calculation formulas, `ProjectInputs`, JSON schema, migrations, or new runtime `selected`/`stale`/`running` state.
 
 ### Owner Decisions Required
 - Whether the next UI goal is public MVP presentation, workbench clarity, CAD-lite interaction, or mobile demo/export.

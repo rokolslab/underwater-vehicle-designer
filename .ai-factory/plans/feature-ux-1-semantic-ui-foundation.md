@@ -137,7 +137,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
 ### Phase 3: Rendering Status Alignment And Verification
 
-- [ ] Task 9: Align 2D/3D equipment status colors with the semantic token model at adapter boundaries. (depends on Tasks 3 and 4)
+- [x] Task 9: Align 2D/3D equipment status colors with the semantic token model at adapter boundaries. (depends on Tasks 3 and 4)
 
   Deliverable: replace scattered hard-coded equipment status colors in Canvas/Three.js adapters with a small pure rendering status color map that mirrors the semantic token names and existing domain severity. Do not make `src/modules/rendering/*` import from `src/modules/ui/*`, and do not make Canvas/Three.js depend on runtime DOM/CSS custom property reads. CSS tokens and TS rendering colors should be mirrored by semantic names, tests, and docs. Do not change geometry sampling, containment, mesh generation, clipping, camera behavior, or equipment status derivation. The visual result should keep current warning/error meaning while making adapter colors traceable to the UI status vocabulary.
 
@@ -145,7 +145,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
   Logging requirements: keep pure color maps logger-free. Preserve existing scene status summary logging if present, but do not add per-frame or per-mesh logs. Unknown status fallback, if needed, should be `DEBUG [rendering.status]` and never run inside animation/frame loops.
 
-- [ ] Task 10: Add focused tests and docs updates for the semantic/accessibility foundation. (depends on Tasks 1-9)
+- [x] Task 10: Add focused tests and docs updates for the semantic/accessibility foundation. (depends on Tasks 1-9)
 
   Deliverable: update or add tests that assert required DOM IDs still cover all `requiredElement()` bindings, no interactive descendants remain inside `<summary>`, status labels remain text-visible, semantic status class/token mapping works, existing domain compatibility classes are preserved or intentionally migrated, equipment issue text is accessible without relying on color, safe equipment accessibility IDs handle arbitrary imported IDs, and import/WebGL live regions keep their status roles. For no-interactive-descendants checks, use Playwright real DOM assertions in `tests/e2e/import-export.spec.ts` or dependency-free string/regex checks in Vitest; do not add a DOM parser dependency just for this increment. Add rendering color-map tests if Task 9 introduces a helper. Add or update documentation so future plans know the token names, status rules, CSS/TS mirroring policy, scope boundaries, and that this increment intentionally did not implement workbench shell redesign, equipment selection, CAD-lite viewport, mobile flow, public hero redesign, framework change, formulas, `ProjectInputs`, or JSON schema changes.
 

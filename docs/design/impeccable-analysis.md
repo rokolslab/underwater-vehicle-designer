@@ -2,6 +2,8 @@
 
 Date: 2026-08-05
 
+Update 2026-08-06: UX-1 semantic foundation implemented the first accessibility/status slice: semantic status tokens, DOM status attributes/classes, no interactive descendants in `summary`, tokenized focus/disabled/touch-target states, equipment accessibility IDs, canvas-like surface descriptions, and rendering-local status colors. Remaining roadmap items from this audit still include workbench information architecture, equipment selection/diagnostic queue, CAD-lite viewport controls, mobile flow, and public hero refinements.
+
 Scope: read-only design critique, technical audit, detector classification, and planning input for future AI Factory plans. Product code was not changed.
 
 ## Sources Reviewed
