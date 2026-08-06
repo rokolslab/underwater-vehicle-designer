@@ -21,6 +21,7 @@ import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { IMPORT_MIGRATION_UI_STATUS, IMPORT_SUCCESS_UI_STATUS, UI_STATUS_CLASS_NAMES, UI_STATUS_DATA_ATTRIBUTE, uiStatusClassName, uiStatusDataValue } from "../modules/ui/statusTokens";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
+import { renderWorkbenchSummary } from "../modules/ui/workbenchSummary";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
 import { geometryModePresentation, normalizeGeometryMode, type ProfileSnapshot } from "../modules/geometry/model";
 import { logger } from "../shared/logger";
@@ -91,6 +92,14 @@ const balanceMetrics = {
   deltaY: requiredElement("#balance-delta-y", HTMLElement),
   bg: requiredElement("#balance-bg", HTMLElement),
   warnings: requiredElement("#balance-warnings", HTMLElement),
+};
+const workbenchSummary = {
+  dimensions: requiredElement("#summary-dimensions", HTMLElement),
+  geometryMode: requiredElement("#summary-geometry-mode", HTMLElement),
+  stations: requiredElement("#summary-stations", HTMLElement),
+  equipmentCount: requiredElement("#summary-equipment-count", HTMLElement),
+  constraints: requiredElement("#summary-constraints", HTMLElement),
+  balance: requiredElement("#summary-balance", HTMLElement),
 };
 const projectImportNotice = requiredElement("#project-import-notice", HTMLElement);
 const geometryFormula = requiredElement("#geometry-formula", HTMLElement);
@@ -164,6 +173,7 @@ function renderPublication(publication: ProjectEvaluationPublication): void {
   renderEquipment(publication);
   renderTable(tableBody, pointCountEl, evaluation.hullGeometry);
   renderBalanceMetrics(balanceMetrics, evaluation.balance);
+  renderWorkbenchSummary(workbenchSummary, inputsSnapshot, evaluation);
   hullScene3d.render(evaluation.hullGeometry, inputsSnapshot.equipment, scene3dSettings, evaluation.constraints);
 }
 
