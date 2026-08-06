@@ -3,6 +3,7 @@ import { equipmentIssues, equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem, EquipmentShape } from "../equipment/model";
 import type { EquipmentUpdate } from "../equipment/placement";
 import { logger } from "../../shared/logger";
+import { equipmentConstraintUiStatus, uiStatusClassName, uiStatusHtmlAttributes } from "./statusTokens";
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -58,13 +59,15 @@ function renderIssueList(item: EquipmentItem, report: EquipmentConstraintReport 
 
 function renderStatus(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
   const status = equipmentStatus(report, item.id);
-  return `<div class="equipment-status equipment-status--${status}">${statusLabel(status)}</div>`;
+  const semanticStatus = equipmentConstraintUiStatus(status);
+  return `<div class="equipment-status equipment-status--${status} ${uiStatusClassName(semanticStatus)}" ${uiStatusHtmlAttributes(semanticStatus)}>${statusLabel(status)}</div>`;
 }
 
 function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
   const status = equipmentStatus(report, item.id);
+  const semanticStatus = equipmentConstraintUiStatus(status);
   return `
-    <div class="equipment-row ${statusClass(status)}" data-equipment-id="${escapeHtml(item.id)}">
+    <div class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)}>
       <label><span>Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Форма</span>

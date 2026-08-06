@@ -105,6 +105,8 @@ describe("equipment ui", () => {
     renderEquipmentEditor(container, [item], report);
 
     expect(container.innerHTML).toContain("equipment-row--outsideHull");
+    expect(container.innerHTML).toContain("ui-status--error");
+    expect(container.innerHTML).toContain('data-ui-status="error"');
     expect(container.innerHTML).toContain("Вне корпуса");
     expect(container.innerHTML).toContain("Проблемы компоновки");
   });

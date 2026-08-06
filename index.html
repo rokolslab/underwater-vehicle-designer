@@ -69,7 +69,7 @@
         <span><strong>Body/SNAME-NED</strong> X — нос; Y — правый борт; Z — вниз</span>
         <span class="axis-unit">Единицы: метры от центра корпуса</span>
       </aside>
-      <div id="project-import-notice" class="project-import-notice is-hidden" role="status" aria-live="polite" tabindex="-1"></div>
+      <div id="project-import-notice" class="project-import-notice is-hidden" data-ui-status="normal" role="status" aria-live="polite" tabindex="-1"></div>
 
       <section class="workbench" aria-label="Построение обводов">
         <details class="control-panel panel-details" open>
@@ -189,7 +189,7 @@
               </div>
             </div>
             <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
-            <div id="scene3d-fallback" class="scene3d-fallback is-hidden" role="status">
+            <div id="scene3d-fallback" class="scene3d-fallback ui-status--warning is-hidden" data-ui-status="warning" role="status">
               3D недоступен в этом браузере. 2D-визуализация и экспорт остаются доступными.
             </div>
           </details>
@@ -210,7 +210,7 @@
           <summary class="data-header">
             <h2>Баланс оборудования</h2>
             <span class="panel-actions">
-              <span class="experimental-pill">Experimental</span>
+              <span class="experimental-pill ui-status--experimental" data-ui-status="experimental">Experimental</span>
               <span class="details-action" aria-hidden="true"></span>
             </span>
           </summary>

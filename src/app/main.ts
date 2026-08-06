@@ -18,6 +18,7 @@ import { buildSvg } from "../modules/persistence/svg";
 import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
 import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, readEquipmentUpdate } from "../modules/ui/equipment";
 import { renderBalanceMetrics } from "../modules/ui/metrics";
+import { IMPORT_MIGRATION_UI_STATUS, IMPORT_SUCCESS_UI_STATUS, UI_STATUS_CLASS_NAMES, UI_STATUS_DATA_ATTRIBUTE, uiStatusClassName, uiStatusDataValue } from "../modules/ui/statusTokens";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
 import { renderTable } from "../modules/ui/table";
 import { writeIntegerInput, writeNumericInput, type ControlElements } from "../modules/ui/controls";
@@ -360,6 +361,7 @@ function userFacingImportWarnings(warnings: readonly string[]): readonly string[
 
 function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: readonly string[]): void {
   const messages = userFacingImportWarnings(warnings).filter((warning) => !warning.includes("старая ось z"));
+  const semanticStatus = migratedFromVersion === 1 ? IMPORT_MIGRATION_UI_STATUS : IMPORT_SUCCESS_UI_STATUS;
   const migrationMessage = migratedFromVersion === 1
     ? "Проект v1 успешно преобразован в Body/SNAME-NED. Проверьте, что оборудование осталось на правильном (правом или левом) борту."
     : "Проект успешно импортирован.";
@@ -373,6 +375,9 @@ function showProjectImportNotice(migratedFromVersion: 1 | undefined, warnings: r
     projectImportNotice.append(details);
   }
   projectImportNotice.classList.remove("is-hidden");
+  projectImportNotice.classList.remove(...UI_STATUS_CLASS_NAMES);
+  projectImportNotice.classList.add(uiStatusClassName(semanticStatus));
+  projectImportNotice.setAttribute(UI_STATUS_DATA_ATTRIBUTE, uiStatusDataValue(semanticStatus));
   projectImportNotice.classList.toggle("project-import-notice--migration", migratedFromVersion === 1);
   projectImportNotice.focus();
   logger.info("project json import notice shown", { migratedFromVersion, userWarningCount: messages.length });

@@ -3,10 +3,32 @@ import type { EquipmentBalanceResult } from "../balance/model";
 import { renderBalanceMetrics } from "./metrics";
 
 function element(): HTMLElement {
+  const classes = new Set<string>();
+  const attributes = new Map<string, string>();
   return {
     textContent: "",
     classList: {
-      toggle() {},
+      add(...tokens: string[]) {
+        for (const token of tokens) classes.add(token);
+      },
+      remove(...tokens: string[]) {
+        for (const token of tokens) classes.delete(token);
+      },
+      contains(token: string) {
+        return classes.has(token);
+      },
+      toggle(token: string, force?: boolean) {
+        const shouldAdd = force ?? !classes.has(token);
+        if (shouldAdd) classes.add(token);
+        else classes.delete(token);
+        return shouldAdd;
+      },
+    },
+    getAttribute(name: string) {
+      return attributes.get(name) ?? null;
+    },
+    setAttribute(name: string, value: string) {
+      attributes.set(name, value);
     },
   } as unknown as HTMLElement;
 }
@@ -67,6 +89,8 @@ describe("balance metrics ui", () => {
     expect(elements.deltaY.textContent).toBe("0,100 м");
     expect(elements.bg.textContent).toBe("-0,200 м");
     expect(elements.warnings.textContent).toBe("Норма");
+    expect(elements.warnings.classList.contains("ui-status--normal")).toBe(true);
+    expect(elements.warnings.getAttribute("data-ui-status")).toBe("normal");
   });
 
   it("renders balance warnings", () => {
@@ -80,5 +104,7 @@ describe("balance metrics ui", () => {
     });
 
     expect(elements.warnings.textContent).toContain("Плавучесть");
+    expect(elements.warnings.classList.contains("ui-status--warning")).toBe(true);
+    expect(elements.warnings.getAttribute("data-ui-status")).toBe("warning");
   });
 });
