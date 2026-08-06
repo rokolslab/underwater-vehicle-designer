@@ -683,7 +683,7 @@ h1 span {
 .workbench-toolbar-nav a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: var(--touch-target-min);
   border: 1px solid rgba(11, 127, 119, 0.18);
   border-radius: 4px;
   padding: 0 10px;
@@ -907,10 +907,37 @@ h2 {
 
 .control-grid {
   display: grid;
+  gap: 12px;
+  padding: 18px 16px 12px;
+}
+
+.control-cluster {
+  display: grid;
   grid-template-columns: repeat(6, minmax(126px, 1fr));
   gap: 12px;
   align-items: end;
-  padding: 18px 16px 12px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid rgba(170, 184, 178, 0.54);
+  border-radius: 6px;
+  padding: 14px;
+  background: var(--panel-soft);
+}
+
+.control-cluster--method {
+  grid-template-columns: minmax(220px, 0.75fr) minmax(260px, 1.25fr);
+}
+
+.control-cluster--calculation {
+  grid-template-columns: minmax(180px, 0.33fr);
+}
+
+.control-cluster legend {
+  padding: 0 6px;
+  color: var(--teal-deep);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .control-grid label,
@@ -990,6 +1017,10 @@ h2 {
 .geometry-formula {
   grid-column: span 2;
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+.control-cluster--method .geometry-formula {
+  grid-column: auto;
 }
 
 .toggle-row {
@@ -1397,6 +1428,15 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
+caption {
+  padding: 10px 13px;
+  color: var(--muted);
+  background: var(--panel-soft);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: left;
+}
+
 th,
 td {
   border-bottom: 1px solid var(--line);
@@ -1461,8 +1501,12 @@ tbody tr:hover {
     padding: 42px;
   }
 
-  .control-grid {
+  .control-cluster {
     grid-template-columns: repeat(4, minmax(126px, 1fr));
+  }
+
+  .control-cluster--method {
+    grid-template-columns: minmax(220px, 0.75fr) minmax(260px, 1.25fr);
   }
 
   .visualization-panels {
@@ -1566,6 +1610,7 @@ tbody tr:hover {
   }
 
   .control-grid,
+  .control-cluster,
   .scene3d-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1665,12 +1710,17 @@ tbody tr:hover {
   }
 
   .control-grid,
+  .control-cluster,
   .scene3d-controls,
   .balance-grid {
     grid-template-columns: 1fr;
   }
 
   .control-grid {
+    padding: 12px;
+  }
+
+  .control-cluster {
     padding: 12px;
   }
 

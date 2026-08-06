@@ -63,6 +63,9 @@ describe("app DOM contract", () => {
     expect(html).toContain('class="workbench-zone equipment-zone" aria-labelledby="equipment-zone-title"');
     expect(html).toContain('class="workbench-zone diagnostics-zone" aria-labelledby="diagnostics-zone-title"');
     expect(html).toContain('class="workbench-zone export-data-zone" aria-labelledby="export-data-zone-title"');
+    expect(html).toContain("Оборудование и размещение");
+    expect(html).toContain("Диагностика и equipment-only баланс");
+    expect(html).toContain("Координаты станций расчетного профиля");
     expect(html).toContain('<details class="control-panel panel-details" open>');
     expect(html).toContain('<details class="drawing-panel panel-details" open>');
     expect(html).toContain('<details class="scene3d-panel panel-details" open>');
@@ -89,6 +92,21 @@ describe("app DOM contract", () => {
     expect(toolbar).not.toContain('id="download-svg"');
     expect(toolbar).not.toContain('id="download-csv"');
     expect(toolbar).not.toContain('id="download-theoretical-drawing-svg"');
+  });
+
+  it("keeps shell accessibility labels and semantic summary statuses visible", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain('aria-label="Операции проекта и переходы по рабочему экрану"');
+    expect(html).toContain('aria-label="Переходы по рабочим зонам"');
+    expect(html).toContain('<legend>Геометрия корпуса</legend>');
+    expect(html).toContain('<legend>Метод и формула</legend>');
+    expect(html).toContain('<legend>Расчётные настройки</legend>');
+    expect(html).toContain('id="summary-constraints" class="summary-status ui-status--normal" data-ui-status="normal">Норма</dd>');
+    expect(html).toContain('id="summary-balance" class="summary-status ui-status--experimental" data-ui-status="experimental">Experimental: equipment-only</dd>');
+    expect(html).not.toContain("orientation-cube");
+    expect(html).not.toContain("camera-preset");
+    expect(html).not.toContain("selectedEquipmentId");
   });
 
   it("keeps engineering exports near their owning workbench surfaces", () => {
@@ -127,6 +145,30 @@ describe("app DOM contract", () => {
     expect(html).toContain('id="stations" type="number" inputmode="numeric"');
     expect(html).toContain('id="water-density" type="number" inputmode="numeric"');
     expect(html).toContain('id="scene3d-section-x" type="number" inputmode="decimal"');
+  });
+
+  it("groups hull controls into geometry, method and calculation clusters", () => {
+    const html = readFileSync("index.html", "utf8");
+    const controlsStart = html.indexOf('<form id="controls" class="control-grid">');
+    const controlsEnd = html.indexOf("</form>", controlsStart);
+    const controls = html.slice(controlsStart, controlsEnd);
+
+    expect(controlsStart).toBeGreaterThan(-1);
+    expect(controls).toContain('class="control-cluster control-cluster--geometry"');
+    expect(controls).toContain("Геометрия корпуса");
+    expect(controls).toContain('id="length"');
+    expect(controls).toContain('id="breadth"');
+    expect(controls).toContain('id="height"');
+    expect(controls).toContain('id="cylindrical-insert-length"');
+    expect(controls).toContain('class="control-cluster control-cluster--method"');
+    expect(controls).toContain("Метод и формула");
+    expect(controls).toContain('id="geometry-mode"');
+    expect(controls).toContain('id="geometry-formula"');
+    expect(controls).toContain('class="control-cluster control-cluster--calculation"');
+    expect(controls).toContain("Расчётные настройки");
+    expect(controls).toContain('id="water-density"');
+    expect(controls).not.toContain('id="download-project-json"');
+    expect(controls).not.toContain('id="reset"');
   });
 
   it("keeps the Body axis memo and migration guidance in the app contract", () => {

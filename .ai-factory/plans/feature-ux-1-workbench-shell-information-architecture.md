@@ -125,7 +125,7 @@ Rationale: это второй slice UX-1 после semantic UI foundation: wor
 
 ### Phase 2: Information Architecture And Grouping
 
-- [ ] Task 5: Group hull dimensions, geometry method and calculation settings into readable control clusters. (depends on Tasks 1-4)
+- [x] Task 5: Group hull dimensions, geometry method and calculation settings into readable control clusters. (depends on Tasks 1-4)
 
   Deliverable: reorganize the `Размерения` area so a user can distinguish hull geometry inputs (`L`, `lambda`, `B`, `H`, `ЦВК`, stations), method/formula controls (`geometry-mode`, `geometry-formula`) and calculation settings (`water-density`) without scanning a flat grid. Project operations belong to the toolbar from Task 2 and must not be duplicated inside `Размерения`. Preserve the existing input IDs and `src/modules/ui/controls.ts` contract. Keep `H = L / lambda` behavior and application normalization unchanged. Do not add new `ProjectInputs` fields or JSON schema changes.
 
@@ -133,7 +133,7 @@ Rationale: это второй slice UX-1 после semantic UI foundation: wor
 
   Logging requirements: control grouping is presentation-only and should add no runtime logs. Existing input normalization and fallback logging policies remain unchanged; do not log user-entered numeric values from new grouping helpers.
 
-- [ ] Task 6: Clarify viewport, equipment, diagnostics and export zones while preserving export proximity. (depends on Tasks 1 and 4)
+- [x] Task 6: Clarify viewport, equipment, diagnostics and export zones while preserving export proximity. (depends on Tasks 1 and 4)
 
   Deliverable: make the visual boundary between 2D profile, 3D hull, theoretical drawing, equipment editor, balance/diagnostics and station table clearer through shell layout, section labels and local action groups. Keep `#download-svg` near `#profile-canvas`, `#download-theoretical-drawing-svg` near `#theoretical-drawing-canvas`, and `#download-csv` near the station table. Guard against known layout regressions: dense grids must use `min-width: 0`/wrapping or local scroll boundaries where needed, equipment rows must stay readable and must not be squeezed beside 3D merely to look CAD-like, and view toggles must not return to `summary`. Do not add central diagnostics queue, object selection, selected/hover state, inspector, CAD-lite controls, camera presets or pointer picking. Preserve Canvas/Three.js render contracts and do not make rendering adapters read DOM layout data for engineering calculations.
 
@@ -141,7 +141,7 @@ Rationale: это второй slice UX-1 после semantic UI foundation: wor
 
   Logging requirements: local action movement should not add logs. If moved export buttons require rebinding, preserve existing export error handling and do not add logs that include serialized project JSON, CSV, SVG or user-entered equipment values.
 
-- [ ] Task 7: Preserve and extend accessibility/focus/status contracts for the new shell. (depends on Tasks 2-6)
+- [x] Task 7: Preserve and extend accessibility/focus/status contracts for the new shell. (depends on Tasks 2-6)
 
   Deliverable: ensure new toolbar, summary, grouped controls and zone labels have accessible names, logical heading order, keyboard reachability, visible focus states, no interactive descendants inside `summary`, text-visible statuses and no color-only status meaning. Reuse existing semantic tokens and `data-ui-status`/`ui-status--*` classes. If the summary needs a shell-level status, map it to existing `normal`, `warning`, `error` or `experimental`; do not create runtime `selected`, `stale` or `running` state in this slice.
 
