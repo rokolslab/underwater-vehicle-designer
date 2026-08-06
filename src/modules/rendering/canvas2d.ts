@@ -1,4 +1,4 @@
-import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
+import type { EquipmentConstraintReport } from "../equipment/constraints";
 import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import type { ProfileSnapshot } from "../geometry/model";
@@ -7,6 +7,7 @@ import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
 import { bodyPointToXzProjection, type ScreenProjection2 } from "./coordinate-adapter";
 import type { RenderOptions } from "./model";
+import { renderingStatusColor } from "./statusColors";
 
 interface CanvasScale {
   readonly map: (point: ScreenProjection2) => Readonly<{ x: number; y: number }>;
@@ -20,20 +21,6 @@ export interface EquipmentXzProjection {
   readonly halfWidth: number;
   readonly halfHeight: number;
 }
-
-const statusStroke: Record<EquipmentConstraintStatus, string> = {
-  ok: "#2563eb",
-  outsideHull: "#be123c",
-  intersects: "#c47a13",
-  invalidEquipment: "#7f1d1d",
-};
-
-const statusFill: Record<EquipmentConstraintStatus, string> = {
-  ok: "rgba(37, 99, 235, 0.16)",
-  outsideHull: "rgba(190, 18, 60, 0.2)",
-  intersects: "rgba(196, 122, 19, 0.2)",
-  invalidEquipment: "rgba(127, 29, 29, 0.22)",
-};
 
 export function resizeCanvas(canvas: HTMLCanvasElement): void {
   const rect = canvas.getBoundingClientRect();
@@ -145,6 +132,7 @@ function drawEquipmentOverlay(
   context.save();
   for (const item of equipment) {
     const status = equipmentStatus(report, item.id);
+    const statusColor = renderingStatusColor(status);
     const projection = equipmentXzProjection(item);
     const left = scale.map({ right: projection.center.right - projection.halfWidth, down: projection.center.down }).x;
     const right = scale.map({ right: projection.center.right + projection.halfWidth, down: projection.center.down }).x;
@@ -153,8 +141,8 @@ function drawEquipmentOverlay(
     const width = Math.max(4, right - left);
     const height = Math.max(4, bottom - top);
 
-    context.fillStyle = statusFill[status];
-    context.strokeStyle = statusStroke[status];
+    context.fillStyle = statusColor.canvasFill;
+    context.strokeStyle = statusColor.canvasStroke;
     context.lineWidth = 1.8;
 
     if (item.shape === "sphere") {

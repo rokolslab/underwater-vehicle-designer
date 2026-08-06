@@ -4,6 +4,7 @@ import { equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
 import { bodyCylinderAxisToThreeEuler, bodyPointToThree } from "./coordinate-adapter";
+import { renderingStatusColor } from "./statusColors";
 
 export interface EquipmentTransform {
   readonly position: {
@@ -17,13 +18,6 @@ export interface EquipmentTransform {
     readonly z: number;
   };
 }
-
-const materialColorByStatus: Record<EquipmentConstraintStatus, number> = {
-  ok: 0x2563eb,
-  outsideHull: 0xbe123c,
-  intersects: 0xc47a13,
-  invalidEquipment: 0x7f1d1d,
-};
 
 export function equipmentSignature(items: readonly EquipmentItem[], report?: EquipmentConstraintReport): string {
   return items
@@ -64,7 +58,7 @@ export function equipmentSceneTransform(item: EquipmentItem): EquipmentTransform
 
 export function createEquipmentMaterial(status: EquipmentConstraintStatus): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
-    color: materialColorByStatus[status],
+    color: renderingStatusColor(status).materialColor,
     metalness: 0.04,
     roughness: 0.36,
     transparent: false,

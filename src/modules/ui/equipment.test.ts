@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evaluateEquipmentConstraints } from "../equipment/constraints";
 import { createDefaultEquipmentItem, updateEquipmentItem } from "../equipment/placement";
 import { makeProfileSnapshot } from "../geometry/profile";
-import { readEquipmentUpdate, renderEquipmentEditor } from "./equipment";
+import { makeEquipmentAccessibilityIds, readEquipmentUpdate, renderEquipmentEditor } from "./equipment";
 
 function row(values: Record<string, string>): HTMLElement {
   return {
@@ -105,6 +105,8 @@ describe("equipment ui", () => {
     renderEquipmentEditor(container, [item], report);
 
     expect(container.innerHTML).toContain("equipment-row--outsideHull");
+    expect(container.innerHTML).toContain("ui-status--error");
+    expect(container.innerHTML).toContain('data-ui-status="error"');
     expect(container.innerHTML).toContain("Вне корпуса");
     expect(container.innerHTML).toContain("Проблемы компоновки");
   });
@@ -138,5 +140,52 @@ describe("equipment ui", () => {
     expect(container.innerHTML).toContain('data-field="massKg" type="number" inputmode="decimal"');
     expect(container.innerHTML).toContain('data-field="x" type="number" inputmode="decimal"');
     expect(container.innerHTML).toContain('data-field="radius" type="number" inputmode="decimal"');
+  });
+
+  it("generates deterministic safe accessibility ids without changing equipment ids", () => {
+    const importedId = "pump / port #1";
+    const ids = makeEquipmentAccessibilityIds(importedId, 2);
+    const item = createDefaultEquipmentItem({ idFactory: () => importedId, name: "Pump" });
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item]);
+
+    expect(ids.row).toBe("equipment-2-70-75-6d-70-20-2f-20-70-6f-72-74-20-23-31-row");
+    expect(ids.row).not.toContain(importedId);
+    expect(container.innerHTML).toContain('data-equipment-id="pump / port #1"');
+    expect(container.innerHTML).toContain('id="equipment-0-70-75-6d-70-20-2f-20-70-6f-72-74-20-23-31-row"');
+    expect(container.innerHTML).toContain('id="equipment-0-70-75-6d-70-20-2f-20-70-6f-72-74-20-23-31-name-label"');
+    expect(container.innerHTML).toContain('id="equipment-0-70-75-6d-70-20-2f-20-70-6f-72-74-20-23-31-status"');
+  });
+
+  it("links equipment rows to visible status and issue text", () => {
+    const item = {
+      id: "outside",
+      name: "Outside",
+      shape: "sphere" as const,
+      massKg: 1,
+      position: { x: 4, y: 1.4, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.2 },
+    };
+    const report = evaluateEquipmentConstraints(
+      makeProfileSnapshot({
+        length: 10,
+        breadth: 2,
+        height: 2,
+        slenderness: 5,
+        diameter: 2,
+        cylindricalInsertLength: 0,
+        stations: 10,
+      }),
+      [item],
+    );
+    const container = { innerHTML: "" } as HTMLElement;
+
+    renderEquipmentEditor(container, [item], report);
+
+    expect(container.innerHTML).toContain('aria-labelledby="equipment-0-6f-75-74-73-69-64-65-name-label"');
+    expect(container.innerHTML).toContain('aria-describedby="equipment-0-6f-75-74-73-69-64-65-status equipment-0-6f-75-74-73-69-64-65-issues"');
+    expect(container.innerHTML).toContain('id="equipment-0-6f-75-74-73-69-64-65-issues"');
   });
 });

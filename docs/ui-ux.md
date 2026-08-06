@@ -14,6 +14,37 @@
 - экспортные кнопки расположены рядом с теми данными, которые они выгружают;
 - предупреждения компоновки видны в строках оборудования и в 2D/3D-представлениях.
 
+## Semantic UI Foundation
+
+UX-1 вводит общий semantic status foundation без смены UI framework и без изменения расчетных контрактов.
+
+Status vocabulary:
+
+| Semantic status | Current use |
+| --- | --- |
+| `normal` | Нормальное состояние оборудования, успешный import, отсутствие предупреждений баланса |
+| `warning` | Пересечение оборудования, migration notice, WebGL fallback, предупреждения баланса |
+| `error` | Выход оборудования за корпус или некорректные данные оборудования |
+| `experimental` | Маркер экспериментального equipment-only balance |
+| `selected` | Token-only placeholder; selection state не реализован |
+| `disabled` | Native `:disabled` styling для существующих controls |
+| `stale` | Token-only placeholder; runtime stale state не реализован |
+| `running` | Token-only placeholder; async phase state не реализован |
+
+DOM presentation uses `data-ui-status="..."` and `ui-status--...` next to existing compatibility classes. Domain statuses are not renamed: equipment constraints still use `ok`, `intersects`, `outsideHull`, and `invalidEquipment`, mapped in the UI adapter as `ok -> normal`, `intersects -> warning`, `outsideHull -> error`, `invalidEquipment -> error`.
+
+CSS tokens live in `src/app/styles.css`; the pure UI contract lives in `src/modules/ui/statusTokens.ts`. Canvas/Three.js adapters mirror the same semantic meanings through `src/modules/rendering/statusColors.ts` and must not import from `src/modules/ui/*` or read CSS custom properties at runtime.
+
+Accessibility foundation in this increment:
+
+- interactive actions and toggles are outside `<summary>` headers;
+- repeated `Скачать SVG` buttons have contextual accessible names;
+- equipment rows use deterministic safe accessibility IDs and preserve raw equipment IDs only in `data-equipment-id`;
+- status and issue text are linked to equipment rows with `aria-describedby`;
+- current canvas-like surfaces have local textual descriptions.
+
+Non-goals for this increment: workbench shell redesign, equipment selection, CAD-lite viewport controls, mobile-specific flow, public hero redesign, framework change, formulas, `ProjectInputs`, JSON schema, and migrations.
+
 ## Design Assets
 
 Локальный набор шрифтов для будущего визуального сравнения хранится в [`design-assets/fonts/`](../design-assets/fonts/README.md). Каталог содержит WOFF2-файлы с кириллицей, лицензии и справку по Onest, Manrope, Golos Text, Commissioner, IBM Plex Sans и IBM Plex Mono. Эти шрифты пока не подключены к сайту и не являются частью текущей дизайн-системы.

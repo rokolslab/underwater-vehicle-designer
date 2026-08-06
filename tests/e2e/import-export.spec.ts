@@ -145,7 +145,7 @@ test("SVG, CSV и теоретический SVG экспортируются и
   await page.locator("#breadth").fill("3");
   await page.locator("#height").fill("2");
   await page.locator("#geometry-mode").selectOption("legacy-dsnp-pa");
-  await expect(page.locator("#geometry-formula")).toContainText("DSNP_PA");
+  await expect(page.locator("#geometry-formula")).toContainText("Классическая методика");
 
   const profileSvg = await downloadText(page, "#download-svg");
   expect(profileSvg.filename).toBe("underwater-vehicle-profile.svg");

@@ -17,6 +17,46 @@
   --amber: #c77c21;
   --rose: #bd3454;
   --wash: #e4f1ed;
+  --status-normal-text: var(--teal-deep);
+  --status-normal-bg: #e8f4f0;
+  --status-normal-border: rgba(11, 127, 119, 0.34);
+  --status-normal-accent: var(--teal);
+  --status-warning-text: #794805;
+  --status-warning-bg: #fff4db;
+  --status-warning-border: rgba(199, 124, 33, 0.46);
+  --status-warning-accent: var(--amber);
+  --status-error-text: var(--rose);
+  --status-error-bg: #fff0f3;
+  --status-error-border: rgba(189, 52, 84, 0.4);
+  --status-error-accent: var(--rose);
+  --status-experimental-text: #8a5206;
+  --status-experimental-bg: #fff4db;
+  --status-experimental-border: rgba(199, 124, 33, 0.36);
+  --status-experimental-accent: var(--amber);
+  --status-selected-text: var(--teal-deep);
+  --status-selected-bg: #dff2ee;
+  --status-selected-border: rgba(11, 127, 119, 0.52);
+  --status-selected-accent: var(--cyan);
+  --status-disabled-text: #7c8989;
+  --status-disabled-bg: #eef1ed;
+  --status-disabled-border: rgba(170, 184, 178, 0.72);
+  --status-disabled-accent: var(--line-strong);
+  --status-stale-text: #5f6f73;
+  --status-stale-bg: #eef3f1;
+  --status-stale-border: rgba(102, 119, 123, 0.3);
+  --status-stale-accent: var(--muted);
+  --status-running-text: var(--teal-deep);
+  --status-running-bg: #e4f3ef;
+  --status-running-border: rgba(117, 217, 208, 0.46);
+  --status-running-accent: var(--cyan);
+  --focus-ring: rgba(117, 217, 208, 0.38);
+  --focus-border: var(--teal);
+  --focus-shadow: 0 0 0 3px rgba(11, 127, 119, 0.1);
+  --selection-surface: var(--status-selected-bg);
+  --selection-border: var(--status-selected-border);
+  --selection-accent: var(--status-selected-accent);
+  --touch-target-min: 38px;
+  --touch-target-comfortable: 44px;
   --shadow: 0 18px 48px rgba(13, 36, 40, 0.09);
   --shadow-strong: 0 24px 80px rgba(1, 14, 19, 0.24);
   font-family: "Segoe UI Variable", "Segoe UI", Helvetica, Arial, sans-serif;
@@ -65,6 +105,21 @@ input[type="range"] {
   cursor: pointer;
 }
 
+button:disabled,
+select:disabled,
+input:disabled {
+  border-color: var(--status-disabled-border);
+  color: var(--status-disabled-text);
+  background: var(--status-disabled-bg);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+input[type="checkbox"]:disabled,
+input[type="range"]:disabled {
+  accent-color: var(--status-disabled-accent);
+}
+
 button,
 a,
 input,
@@ -78,7 +133,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline: 3px solid rgba(117, 217, 208, 0.38);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -524,16 +579,16 @@ h1 span {
 }
 
 .project-import-notice {
-  border-color: rgba(11, 127, 119, 0.35);
-  color: var(--teal-deep);
-  background: #e4f3ef;
+  border-color: var(--status-normal-border);
+  color: var(--status-normal-text);
+  background: var(--status-normal-bg);
   font-weight: 650;
 }
 
 .project-import-notice--migration {
-  border-color: rgba(199, 124, 33, 0.48);
-  color: #794805;
-  background: #fff4db;
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
+  background: var(--status-warning-bg);
 }
 
 /* Workbench */
@@ -628,12 +683,23 @@ h2 {
   min-width: 0;
 }
 
+.panel-local-actions {
+  justify-content: flex-start;
+  border-bottom: 1px solid rgba(215, 222, 215, 0.72);
+  padding: 12px 14px;
+  background: var(--panel-soft);
+}
+
+.drawing-panel-actions.panel-local-actions {
+  justify-content: flex-end;
+}
+
 .details-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 82px;
-  min-height: 34px;
+  min-height: var(--touch-target-min);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 0 10px;
@@ -678,7 +744,7 @@ h2 {
 .equipment-row select {
   width: 100%;
   min-width: 0;
-  height: 38px;
+  min-height: var(--touch-target-min);
   border: 1px solid var(--line-strong);
   border-radius: 5px;
   padding: 0 10px;
@@ -691,7 +757,7 @@ h2 {
 .control-grid input[type="number"],
 .scene3d-controls input[type="number"],
 .equipment-row input[type="number"] {
-  min-height: 42px;
+  min-height: var(--touch-target-comfortable);
 }
 
 .control-grid input[type="number"]:hover,
@@ -700,7 +766,7 @@ h2 {
 .scene3d-controls input:hover,
 .equipment-row input:hover,
 .equipment-row select:hover {
-  border-color: var(--teal);
+  border-color: var(--focus-border);
 }
 
 .control-grid input:focus,
@@ -709,8 +775,8 @@ h2 {
 .scene3d-controls select:focus,
 .equipment-row input:focus,
 .equipment-row select:focus {
-  border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(11, 127, 119, 0.1);
+  border-color: var(--focus-border);
+  box-shadow: var(--focus-shadow);
   outline: 0;
 }
 
@@ -723,7 +789,7 @@ h2 {
 
 .control-note {
   align-self: stretch;
-  min-height: 38px;
+  min-height: var(--touch-target-min);
   border: 1px solid rgba(11, 127, 119, 0.22);
   border-radius: 5px;
   padding: 9px 10px;
@@ -748,7 +814,7 @@ h2 {
 .view-toggle-row input {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
+  accent-color: var(--focus-border);
 }
 
 .actions {
@@ -765,7 +831,7 @@ h2 {
 
 .actions button,
 .compact-action {
-  min-height: 38px;
+  min-height: var(--touch-target-min);
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   padding: 0 13px;
@@ -820,7 +886,7 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: var(--touch-target-min);
   color: var(--ink);
   font-size: 0.75rem;
   font-weight: 650;
@@ -833,6 +899,13 @@ h2 {
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.68rem;
   letter-spacing: 0.025em;
+}
+
+.surface-description {
+  margin: 8px 14px 12px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
 #profile-canvas {
@@ -863,7 +936,7 @@ h2 {
 
 .scene3d-controls input[type="range"] {
   padding: 0;
-  accent-color: var(--teal);
+  accent-color: var(--focus-border);
 }
 
 .scene3d {
@@ -901,11 +974,11 @@ h2 {
 
 .scene3d-fallback {
   margin: 0 12px 12px;
-  border: 1px solid rgba(199, 124, 33, 0.46);
+  border: 1px solid var(--status-warning-border);
   border-radius: 6px;
   padding: 11px 12px;
-  color: #774705;
-  background: #fff4db;
+  color: var(--status-warning-text);
+  background: var(--status-warning-bg);
   font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.45;
@@ -922,12 +995,12 @@ h2 {
 
 .equipment-row {
   display: grid;
-  grid-template-columns: 188px 116px 88px repeat(3, 80px) 80px repeat(3, 80px) minmax(132px, max-content) 38px;
+  grid-template-columns: 188px 116px 88px repeat(3, 80px) 80px repeat(3, 80px) minmax(132px, max-content) var(--touch-target-min);
   gap: 8px;
   align-items: end;
   min-width: max-content;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--teal);
+  border-left: 3px solid var(--status-normal-accent);
   border-radius: 7px;
   padding: 11px;
   background: #ffffff;
@@ -935,15 +1008,15 @@ h2 {
 
 .equipment-row--outsideHull,
 .equipment-row--invalidEquipment {
-  border-color: rgba(189, 52, 84, 0.48);
-  border-left-color: var(--rose);
-  background: #fff8f9;
+  border-color: var(--status-error-border);
+  border-left-color: var(--status-error-accent);
+  background: var(--status-error-bg);
 }
 
 .equipment-row--intersects {
-  border-color: rgba(199, 124, 33, 0.52);
-  border-left-color: var(--amber);
-  background: #fffaf0;
+  border-color: var(--status-warning-border);
+  border-left-color: var(--status-warning-accent);
+  background: var(--status-warning-bg);
 }
 
 .equipment-status {
@@ -953,12 +1026,12 @@ h2 {
   justify-content: center;
   width: 100%;
   min-width: 0;
-  min-height: 38px;
-  border: 1px solid rgba(11, 127, 119, 0.25);
+  min-height: var(--touch-target-min);
+  border: 1px solid var(--status-normal-border);
   border-radius: 4px;
   padding: 0 8px;
-  color: var(--teal-deep);
-  background: #e8f4f0;
+  color: var(--status-normal-text);
+  background: var(--status-normal-bg);
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.15;
@@ -968,22 +1041,23 @@ h2 {
 
 .equipment-status--outsideHull,
 .equipment-status--invalidEquipment {
-  border-color: rgba(189, 52, 84, 0.4);
-  color: var(--rose);
-  background: #fff0f3;
+  border-color: var(--status-error-border);
+  color: var(--status-error-text);
+  background: var(--status-error-bg);
 }
 
 .equipment-status--intersects {
-  border-color: rgba(199, 124, 33, 0.46);
-  color: #8a5206;
-  background: #fff2d6;
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
+  background: var(--status-warning-bg);
 }
 
 .equipment-delete {
   grid-column: -2 / -1;
   justify-self: end;
-  width: 38px;
-  height: 38px;
+  width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  height: var(--touch-target-min);
   border: 1px solid rgba(189, 52, 84, 0.38);
   border-radius: 4px;
   color: var(--rose);
@@ -1009,11 +1083,11 @@ h2 {
 
 .equipment-warning-summary,
 .balance-warning-summary {
-  border: 1px solid rgba(199, 124, 33, 0.44);
+  border: 1px solid var(--status-warning-border);
   border-radius: 5px;
   padding: 10px 12px;
-  color: #794805;
-  background: #fff4db;
+  color: var(--status-warning-text);
+  background: var(--status-warning-bg);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -1032,11 +1106,11 @@ h2 {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
-  border: 1px solid rgba(199, 124, 33, 0.36);
+  border: 1px solid var(--status-experimental-border);
   border-radius: 4px;
   padding: 0 9px;
-  color: #8a5206;
-  background: #fff4db;
+  color: var(--status-experimental-text);
+  background: var(--status-experimental-bg);
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.62rem;
   font-weight: 800;
@@ -1098,9 +1172,9 @@ h2 {
 }
 
 .balance-warning-summary--ok {
-  border-color: rgba(11, 127, 119, 0.34);
-  color: var(--teal-deep);
-  background: #e8f4f0;
+  border-color: var(--status-normal-border);
+  color: var(--status-normal-text);
+  background: var(--status-normal-bg);
 }
 
 .theoretical-drawing-scroll {
@@ -1304,6 +1378,10 @@ tbody tr:hover {
     justify-content: flex-start;
   }
 
+  .panel-local-actions {
+    align-items: flex-start;
+  }
+
   .drawing-panel-actions {
     align-items: flex-start;
     flex-direction: column;
@@ -1406,7 +1484,7 @@ tbody tr:hover {
   .details-action,
   .compact-action,
   .actions button {
-    min-height: 40px;
+    min-height: var(--touch-target-comfortable);
   }
 
   #profile-canvas,

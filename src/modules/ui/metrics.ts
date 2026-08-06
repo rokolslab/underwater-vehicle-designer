@@ -3,6 +3,7 @@ import type { EquipmentBalanceResult, BalanceWarningCode } from "../balance/mode
 import type { ProfileSnapshot } from "../geometry/model";
 import { formatNumber } from "../../shared/format";
 import { logger } from "../../shared/logger";
+import { UI_STATUS_CLASS_NAMES, UI_STATUS_DATA_ATTRIBUTE, balanceSummaryUiStatus, uiStatusClassName, uiStatusDataValue } from "./statusTokens";
 
 export interface MetricsElements {
   readonly maxRadius: HTMLElement;
@@ -56,6 +57,7 @@ function warningText(result: EquipmentBalanceResult): string {
 
 export function renderBalanceMetrics(elements: BalanceMetricsElements, result: EquipmentBalanceResult): void {
   logger.debug("balance metrics render started", { isValid: result.isValid, warningCount: result.warnings.length });
+  const warningStatus = balanceSummaryUiStatus(result.warnings.length > 0);
   elements.totalMass.textContent = formatNumber(result.totalMassKg, 3);
   elements.displacedVolume.textContent = formatNumber(result.displacedVolumeM3, 4);
   elements.weight.textContent = formatNumber(result.weightN, 1);
@@ -69,5 +71,8 @@ export function renderBalanceMetrics(elements: BalanceMetricsElements, result: E
   elements.bg.textContent = `${formatNumber(result.bgM, 3)} м`;
   elements.warnings.textContent = warningText(result);
   elements.warnings.classList.toggle("balance-warning-summary--ok", result.warnings.length === 0);
+  elements.warnings.classList.remove(...UI_STATUS_CLASS_NAMES);
+  elements.warnings.classList.add(uiStatusClassName(warningStatus));
+  elements.warnings.setAttribute(UI_STATUS_DATA_ATTRIBUTE, uiStatusDataValue(warningStatus));
   logger.debug("balance metrics render completed", { isValid: result.isValid, warningCount: result.warnings.length });
 }
