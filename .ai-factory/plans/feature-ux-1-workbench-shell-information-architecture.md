@@ -151,7 +151,7 @@ Rationale: это второй slice UX-1 после semantic UI foundation: wor
 
 ### Phase 3: Responsive Safety And Documentation
 
-- [ ] Task 8: Add targeted Vitest, Playwright and encoding coverage for the workbench shell. (depends on Tasks 1-7)
+- [x] Task 8: Add targeted Vitest, Playwright and encoding coverage for the workbench shell. (depends on Tasks 1-7)
 
   Deliverable: update tests to lock the new IA without overfitting visual pixels. Add Vitest contracts for required DOM IDs, new shell/summary IDs consumed by `requiredElement()`, toolbar/project action presence, engineering summary text/status, grouped control labels, export proximity, summary header validity and semantic status reuse. Add focused tests for any new `workbenchSummary`/`workbenchShell` helper so summary values come from publication-shaped inputs and not duplicated formulas. Add Playwright desktop smoke for toolbar/summary/workbench visibility, keyboard focus/disclosure smoke, import/export round-trip after toolbar movement, download actions from their local views, and mobile no-overflow regression for the updated shell. Update encoding checks with any new critical Russian UI strings.
 
@@ -159,7 +159,7 @@ Rationale: это второй slice UX-1 после semantic UI foundation: wor
 
   Logging requirements: tests should not add test-only runtime logs. If test helpers inspect console output, assert that pure UI formatting/token helpers remain logger-free and that any `DEBUG`/`WARN` boundaries introduced by earlier tasks are stable and non-data-bearing.
 
-- [ ] Task 9: Update documentation and design notes for the completed workbench IA slice. (depends on Tasks 1-8)
+- [x] Task 9: Update documentation and design notes for the completed workbench IA slice. (depends on Tasks 1-8)
 
   Deliverable: update `docs/ui-ux.md` with the new workbench shell structure, toolbar semantics, engineering summary scope, grouped controls and export proximity rules. Update `DESIGN.md` with the UX-1 workbench shell status and any new shell/layout tokens. Update `docs/design/impeccable-analysis.md` only with a short follow-up note, not a full rewrite. Update `docs/architecture/ui-refactoring-context.md` only if implementation creates explicit panel/view-model seams or changes `main.ts` responsibilities; otherwise leave architecture docs unchanged. Keep documentation clear that this slice did not add selection, central diagnostics, CAD-lite viewport controls, mobile flow, public hero redesign, formulas, `ProjectInputs`, JSON schema or migrations.
 

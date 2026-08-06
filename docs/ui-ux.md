@@ -51,11 +51,20 @@ Non-goals for this increment: workbench shell redesign, equipment selection, CAD
 
 ## Page Structure
 
-Порядок панелей на странице:
+Workbench теперь имеет явный desktop shell:
+
+- верхняя project toolbar содержит JSON-сохранение, JSON-загрузку, `Сброс` и навигационные якоря по рабочим зонам;
+- компактная инженерная сводка показывает размерения, режим, число станций, число объектов оборудования, severity компоновки и equipment-only balance status из текущей `ProjectEvaluationPublication`;
+- параметры корпуса, viewport, оборудование, диагностика и экспорт/данные разделены как самостоятельные зоны первого уровня;
+- SVG/CSV exports остаются рядом с теми представлениями, которые они сохраняют, а не переезжают в project toolbar.
+
+Порядок рабочих зон и панелей на странице:
 
 | Panel | Purpose |
 | --- | --- |
-| `Размерения` | Основные параметры корпуса, проекта и воды |
+| Project toolbar | JSON project operations, reset and anchors to workbench zones |
+| Engineering summary | Compact read-only overview from current inputs/evaluation |
+| `Размерения` | Основные параметры корпуса, метода и расчетных настроек |
 | `Боковой вид` | 2D-профиль, сетка, точки, SVG export |
 | `3D корпус` | Three.js-просмотр и сечения |
 | `Оборудование` | Добавление и редактирование объектов внутри корпуса |
@@ -66,6 +75,14 @@ Non-goals for this increment: workbench shell redesign, equipment selection, CAD
 `Боковой вид` и `3D корпус` расположены рядом на широком экране. На узких экранах панели складываются в одну колонку.
 
 ## Размерения
+
+Панель `Размерения` сгруппирована на три control cluster:
+
+- `Геометрия корпуса`: `L`, `lambda`, `B`, `H`, число станций и `ЦВК`;
+- `Метод и формула`: режим геометрии и текущая формула/traceability text;
+- `Расчётные настройки`: плотность воды для equipment-only balance.
+
+Project operations больше не дублируются внутри `Размерения`; они находятся в верхней toolbar. Все input/select IDs сохранены для текущего `src/modules/ui/controls.ts` и `src/app/main.ts` wiring.
 
 Поля ввода:
 
@@ -191,6 +208,8 @@ Status states:
 - Не помещать ввод оборудования рядом с 3D-сценой, если это уменьшает рабочую ширину строк.
 - Не использовать англоязычные предупреждения в UI.
 - Сохранять экспортные кнопки рядом с соответствующим представлением.
+- Не превращать project toolbar в pseudo-CAD ribbon: она содержит только project operations и навигацию по существующим engineering surfaces.
+- Не добавлять equipment selection, central diagnostics queue, camera presets, gizmo или pointer picking без отдельного плана и state contract.
 - Проверять mobile layout: кнопки и текст не должны перекрывать соседние поля.
 
 ## See Also

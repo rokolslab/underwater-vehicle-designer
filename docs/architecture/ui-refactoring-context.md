@@ -137,7 +137,7 @@ ProjectInputs
   -> ProjectEvaluation
 ```
 
-`renderPublication()` затем обновляет Canvas 2D, theoretical drawing Canvas, table, metrics, equipment editor, Three.js and export-ready runtime references.
+`renderPublication()` затем обновляет Canvas 2D, theoretical drawing Canvas, table, metrics, workbench summary, equipment editor, Three.js and export-ready runtime references.
 
 View-only mutation не должна вызывать `deriveProject()`. Текущая архитектура уже поддерживает `projectEvaluationRuntime.rerender()` для повторного rendering с последней publication.
 
@@ -147,7 +147,7 @@ UI-риск: пользователь может увидеть старую в�
 
 ## 4.8 `main.ts`
 
-`src/app/main.ts` сейчас является рабочим composition root, но он остается самым крупным UI-архитектурным узлом.
+`src/app/main.ts` сейчас является рабочим composition root, но он остается самым крупным UI-архитектурным узлом. UX-1 workbench shell вынес компактную инженерную сводку в `src/modules/ui/workbenchSummary.ts`; это небольшой UI adapter/view-model seam, который потребляет `ProjectInputs` и `ProjectEvaluation`, но не пересчитывает geometry, constraints или balance.
 
 Фактические обязанности `main.ts`:
 
@@ -158,6 +158,7 @@ UI-риск: пользователь может увидеть старую в�
 - Поддерживает `ProjectViewState`.
 - Управляет `projectEvaluationRuntime.rerender()` для view-only изменений.
 - Координирует Canvas 2D, theoretical drawing, table, metrics, equipment editor and Three.js.
+- Координирует workbench summary через `renderWorkbenchSummary()` на той же coherent publication boundary.
 - Выполняет import/export/download workflows.
 - Обрабатывает notifications, resize and scene lifecycle.
 
