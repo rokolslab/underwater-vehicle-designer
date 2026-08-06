@@ -1,3 +1,7 @@
+---
+archived: 2026-08-06
+---
+
 # Implementation Plan: UX-1 Semantic UI Foundation
 
 Branch: feature/ux-1-semantic-ui-foundation
