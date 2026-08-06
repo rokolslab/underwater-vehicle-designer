@@ -125,6 +125,31 @@ describe("app DOM contract", () => {
     expect(html).toContain('class="experimental-pill ui-status--experimental" data-ui-status="experimental"');
   });
 
+  it("describes existing canvas-like surfaces without adding new viewport controls", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).toContain('id="profile-canvas" aria-label="Теоретический обвод подводного аппарата" aria-describedby="profile-canvas-description"');
+    expect(html).toContain('id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса" aria-describedby="scene3d-description"');
+    expect(html).toContain('id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата" aria-describedby="theoretical-drawing-description"');
+    expect(html).not.toContain("orientation-cube");
+  });
+
+  it("keeps interactive controls out of summary headers", () => {
+    const html = readFileSync("index.html", "utf8");
+    const main = readFileSync("src/app/main.ts", "utf8");
+    const summaries = html.match(/<summary[\s\S]*?<\/summary>/g) ?? [];
+
+    expect(summaries.length).toBeGreaterThan(0);
+    for (const summary of summaries) {
+      expect(summary).not.toContain("<button");
+      expect(summary).not.toContain("<input");
+      expect(summary).not.toContain("<select");
+      expect(summary).not.toContain("<label");
+    }
+    expect(html).not.toContain("summary-action");
+    expect(main).not.toContain("stopPropagation");
+  });
+
   it("keeps visualization resize lifecycle wired through one scheduler", () => {
     const main = readFileSync("src/app/main.ts", "utf8");
 

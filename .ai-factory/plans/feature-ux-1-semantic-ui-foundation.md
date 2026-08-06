@@ -103,7 +103,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
 ### Phase 2: Accessibility Foundation
 
-- [ ] Task 5: Remove interactive descendants from `<summary>` headers without redesigning the workbench shell.
+- [x] Task 5: Remove interactive descendants from `<summary>` headers without redesigning the workbench shell.
 
   Deliverable: move current summary-embedded actions and toggles, such as view toggles, SVG/CSV/download actions, and add-equipment action, out of `<summary>` descendants into local adjacent header/action containers that preserve the same panel order, labels, IDs, and proximity to their views. Keep the current `details` panels and first-level workbench sequence. It is acceptable for local actions to be inside the expanded panel body if this is the smallest valid markup change; do not introduce a top project toolbar or full workbench shell in this increment. Ensure repeated visible labels such as `Скачать SVG` get distinct accessible names through `aria-label`, nearby text, or equivalent context. Remove or simplify the `main.ts` click `stopPropagation()` workaround for `.summary-action, .view-toggle-row` when it is no longer needed.
 
@@ -111,7 +111,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
   Logging requirements: no new runtime logging is needed for static markup movement. If event wiring changes in `main.ts`, log only missing required elements through the existing required-element failure path; do not add routine click logs.
 
-- [ ] Task 6: Make focus, disabled, and target states consistent across existing controls. (depends on Task 2)
+- [x] Task 6: Make focus, disabled, and target states consistent across existing controls. (depends on Task 2)
 
   Deliverable: use the new focus and disabled tokens for actual current controls: buttons, links, inputs, selects, summaries, compact actions, range controls, the visible JSON upload button, the hidden file input boundary, and generated equipment controls. Keep native controls. Ensure visible target size does not regress below the current mobile behavior and prefer tokenized `min-height`/spacing over one-off values. This is not a mobile-flow task. Do not invent new disabled/running workflow behavior; only style native `:disabled`, existing hidden states, and token placeholders.
 
@@ -119,7 +119,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
   Logging requirements: CSS/accessibility attribute changes should not add runtime logs. If generated equipment controls add `aria-describedby`/IDs, do not log ID generation; tests should verify deterministic output.
 
-- [ ] Task 7: Add deterministic safe equipment accessibility IDs. (depends on Task 5)
+- [x] Task 7: Add deterministic safe equipment accessibility IDs. (depends on Task 5)
 
   Deliverable: create a narrow helper for generated equipment row accessibility IDs that is safe for arbitrary imported `EquipmentItem.id` values. Do not put raw IDs directly into `id` attributes or CSS selectors unless they are escaped/sanitized for that exact context. Use the helper to assign deterministic IDs for row label/status/issues elements, avoid collisions, and preserve `data-equipment-id` behavior used by current event delegation. Keep this as UI adapter work only; do not change equipment IDs, persistence, reducer behavior, or JSON.
 
@@ -127,7 +127,7 @@ Rationale: это первый рекомендованный slice UX-1 из `.
 
   Logging requirements: helper must be pure and logger-free. Do not log generated IDs or equipment names. Tests should cover imported IDs with spaces or punctuation if the helper transforms them.
 
-- [ ] Task 8: Add accessible status relationships for existing notices, equipment rows, and canvas-like surfaces. (depends on Tasks 4 and 7)
+- [x] Task 8: Add accessible status relationships for existing notices, equipment rows, and canvas-like surfaces. (depends on Tasks 4 and 7)
 
   Deliverable: keep `#project-import-notice` as the success/migration live region and ensure its classes use semantic tokens. Preserve current alert behavior for invalid JSON/read failures unless this task also updates the relevant Playwright dialog expectations; do not create a new notification/diagnostics system. For equipment rows, link visible issue text/status to row controls with deterministic IDs and `aria-describedby` where practical without turning the row into a new inspector or selection model. Ensure duplicate labels like `Масса, кг` remain understandable in row context. Keep WebGL fallback as `role="status"` and style it via semantic tokens. Add concise fallback/description text for existing canvas-like surfaces where this can be done locally without CAD-lite viewport controls or new interaction models.
 

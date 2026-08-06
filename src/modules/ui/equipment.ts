@@ -24,6 +24,30 @@ function statusClass(status: EquipmentConstraintStatus): string {
   return `equipment-row--${status}`;
 }
 
+export interface EquipmentAccessibilityIds {
+  readonly row: string;
+  readonly nameLabel: string;
+  readonly status: string;
+  readonly issues: string;
+}
+
+function safeEquipmentIdStem(equipmentId: string, index: number): string {
+  const encodedId = Array.from(equipmentId)
+    .map((character) => character.codePointAt(0)?.toString(16).padStart(2, "0"))
+    .join("-");
+  return `equipment-${index}-${encodedId || "empty"}`;
+}
+
+export function makeEquipmentAccessibilityIds(equipmentId: string, index: number): EquipmentAccessibilityIds {
+  const stem = safeEquipmentIdStem(equipmentId, index);
+  return Object.freeze({
+    row: `${stem}-row`,
+    nameLabel: `${stem}-name-label`,
+    status: `${stem}-status`,
+    issues: `${stem}-issues`,
+  });
+}
+
 function dimensionFields(item: EquipmentItem): string {
   if (item.shape === "sphere") {
     return `
@@ -48,27 +72,29 @@ function dimensionFields(item: EquipmentItem): string {
   `;
 }
 
-function renderIssueList(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
-  const issues = equipmentIssues(report, item.id);
+function renderIssueList(issues: ReturnType<typeof equipmentIssues>, issuesId: string): string {
   if (issues.length === 0) return "";
 
-  return `<div class="equipment-issues" aria-label="Предупреждения по оборудованию">${issues
+  return `<div id="${issuesId}" class="equipment-issues" aria-label="Предупреждения по оборудованию">${issues
     .map((issue) => `<span>${escapeHtml(issue.message)}</span>`)
     .join("")}</div>`;
 }
 
-function renderStatus(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
+function renderStatus(item: EquipmentItem, report: EquipmentConstraintReport | undefined, statusId: string): string {
   const status = equipmentStatus(report, item.id);
   const semanticStatus = equipmentConstraintUiStatus(status);
-  return `<div class="equipment-status equipment-status--${status} ${uiStatusClassName(semanticStatus)}" ${uiStatusHtmlAttributes(semanticStatus)}>${statusLabel(status)}</div>`;
+  return `<div id="${statusId}" class="equipment-status equipment-status--${status} ${uiStatusClassName(semanticStatus)}" ${uiStatusHtmlAttributes(semanticStatus)}>${statusLabel(status)}</div>`;
 }
 
-function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined): string {
+function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined, index: number): string {
   const status = equipmentStatus(report, item.id);
   const semanticStatus = equipmentConstraintUiStatus(status);
+  const accessibilityIds = makeEquipmentAccessibilityIds(item.id, index);
+  const issues = equipmentIssues(report, item.id);
+  const describedBy = [accessibilityIds.status, ...(issues.length > 0 ? [accessibilityIds.issues] : [])].join(" ");
   return `
-    <div class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)}>
-      <label><span>Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
+    <div id="${accessibilityIds.row}" class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)} aria-labelledby="${accessibilityIds.nameLabel}" aria-describedby="${describedBy}">
+      <label><span id="${accessibilityIds.nameLabel}">Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Форма</span>
         <select data-field="shape">
@@ -90,9 +116,9 @@ function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | und
         </select>
       </label>
       ${dimensionFields(item)}
-      ${renderStatus(item, report)}
+      ${renderStatus(item, report, accessibilityIds.status)}
       <button class="equipment-delete" data-action="delete-equipment" type="button" aria-label="Удалить ${escapeHtml(item.name)}">×</button>
-      ${renderIssueList(item, report)}
+      ${renderIssueList(issues, accessibilityIds.issues)}
     </div>
   `;
 }
@@ -110,7 +136,7 @@ export function renderEquipmentEditor(
 ): void {
   logger.debug("equipment editor render started", { count: items.length, issueCount: report?.issues.length ?? 0 });
   container.innerHTML = items.length
-    ? `${renderSummary(report)}${items.map((item) => renderItem(item, report)).join("")}`
+    ? `${renderSummary(report)}${items.map((item, index) => renderItem(item, report, index)).join("")}`
     : '<div class="equipment-empty">Список пуст</div>';
   logger.debug("equipment editor render completed", { count: items.length, issueCount: report?.issues.length ?? 0 });
 }

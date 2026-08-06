@@ -128,21 +128,21 @@
           <details class="drawing-panel panel-details" open>
             <summary class="data-header">
               <h2>Боковой вид</h2>
-              <span class="panel-actions drawing-panel-actions">
-                <label class="view-toggle-row">
-                  <input id="show-grid" type="checkbox" checked />
-                  <span>Сетка</span>
-                </label>
-                <label class="view-toggle-row">
-                  <input id="show-points" type="checkbox" checked />
-                  <span>Точки обвода</span>
-                </label>
-                <button id="download-svg" class="compact-action summary-action" type="button">Скачать SVG</button>
-                <span class="details-action" aria-hidden="true"></span>
-              </span>
+              <span class="details-action" aria-hidden="true"></span>
             </summary>
-            <p class="projection-convention">Проекция XZ: вправо +X (нос), вниз +Z</p>
-            <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата"></canvas>
+            <div class="panel-actions drawing-panel-actions panel-local-actions" aria-label="Действия бокового вида">
+              <label class="view-toggle-row">
+                <input id="show-grid" type="checkbox" checked />
+                <span>Сетка</span>
+              </label>
+              <label class="view-toggle-row">
+                <input id="show-points" type="checkbox" checked />
+                <span>Точки обвода</span>
+              </label>
+              <button id="download-svg" class="compact-action" type="button" aria-label="Скачать SVG бокового вида">Скачать SVG</button>
+            </div>
+            <p id="profile-canvas-description" class="projection-convention">Проекция XZ: вправо +X (нос), вниз +Z. Canvas показывает расчетный боковой обвод по текущим размерениям.</p>
+            <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата" aria-describedby="profile-canvas-description"></canvas>
           </details>
 
           <details class="scene3d-panel panel-details" open>
@@ -188,7 +188,8 @@
                 </label>
               </div>
             </div>
-            <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса"></div>
+            <div id="hull-scene-3d" class="scene3d" aria-label="3D-модель корпуса" aria-describedby="scene3d-description"></div>
+            <p id="scene3d-description" class="surface-description">Интерактивная Three.js-сцена использует те же Body/SNAME-NED координаты и текущие настройки сечений.</p>
             <div id="scene3d-fallback" class="scene3d-fallback ui-status--warning is-hidden" data-ui-status="warning" role="status">
               3D недоступен в этом браузере. 2D-визуализация и экспорт остаются доступными.
             </div>
@@ -198,11 +199,11 @@
         <details class="equipment-band panel-details" open>
           <summary class="data-header">
             <h2>Оборудование</h2>
-            <span class="panel-actions">
-              <button id="add-equipment" class="compact-action summary-action" type="button">Добавить</button>
-              <span class="details-action" aria-hidden="true"></span>
-            </span>
+            <span class="details-action" aria-hidden="true"></span>
           </summary>
+          <div class="panel-actions panel-local-actions" aria-label="Действия с оборудованием">
+            <button id="add-equipment" class="compact-action" type="button">Добавить</button>
+          </div>
           <div id="equipment-list" class="equipment-list"></div>
         </details>
 
@@ -269,25 +270,26 @@
         <details class="theoretical-drawing-band panel-details" open>
           <summary class="data-header">
             <h2>Теоретический чертеж</h2>
-            <span class="panel-actions">
-              <button id="download-theoretical-drawing-svg" class="compact-action summary-action" type="button">Скачать SVG</button>
-              <span class="details-action" aria-hidden="true"></span>
-            </span>
+            <span class="details-action" aria-hidden="true"></span>
           </summary>
-          <div class="theoretical-drawing-scroll" aria-label="Прокручиваемая область теоретического чертежа">
-            <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата"></canvas>
+          <div class="panel-actions panel-local-actions" aria-label="Действия теоретического чертежа">
+            <button id="download-theoretical-drawing-svg" class="compact-action" type="button" aria-label="Скачать SVG теоретического чертежа">Скачать SVG</button>
           </div>
+          <div class="theoretical-drawing-scroll" aria-label="Прокручиваемая область теоретического чертежа">
+            <canvas id="theoretical-drawing-canvas" aria-label="Теоретический чертеж корпуса подводного аппарата" aria-describedby="theoretical-drawing-description"></canvas>
+          </div>
+          <p id="theoretical-drawing-description" class="surface-description">Лист объединяет бок, полушироту и корпус в едином масштабе для проверки формы корпуса.</p>
         </details>
 
         <details class="data-band panel-details" open>
           <summary class="data-header">
             <h2>Параметрические станции профиля</h2>
-            <span class="panel-actions coordinate-summary">
-              <span id="point-count"></span>
-              <button id="download-csv" class="compact-action summary-action" type="button">Скачать CSV</button>
-              <span class="details-action" aria-hidden="true"></span>
-            </span>
+            <span class="details-action" aria-hidden="true"></span>
           </summary>
+          <div class="panel-actions coordinate-summary panel-local-actions" aria-label="Действия таблицы координат">
+            <span id="point-count"></span>
+            <button id="download-csv" class="compact-action" type="button">Скачать CSV</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>

@@ -102,10 +102,6 @@ const projectJsonInput = requiredElement("#project-json-input", HTMLInputElement
 const downloadTheoreticalDrawingSvgButton = requiredElement("#download-theoretical-drawing-svg", HTMLButtonElement);
 const resetButton = requiredElement("#reset", HTMLButtonElement);
 
-for (const action of document.querySelectorAll<HTMLElement>(".summary-action, .view-toggle-row")) {
-  action.addEventListener("click", (event) => event.stopPropagation());
-}
-
 const appState = createAppStateController(inputs);
 const hullScene3d = createHullScene3d(scene3dContainer);
 
