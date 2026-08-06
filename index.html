@@ -71,13 +71,68 @@
       </aside>
       <div id="project-import-notice" class="project-import-notice is-hidden" data-ui-status="normal" role="status" aria-live="polite" tabindex="-1"></div>
 
-      <section class="workbench" aria-label="Построение обводов">
+      <section class="workbench" aria-labelledby="workbench-title">
+        <div class="workbench-shell-head">
+          <section class="workbench-project-strip" aria-labelledby="workbench-title">
+            <p class="workbench-shell-label">Рабочий экран</p>
+            <h2 id="workbench-title">Инженерный workbench корпуса</h2>
+            <p>Единый каркас для параметров корпуса, viewport, оборудования, диагностики и инженерного экспорта.</p>
+            <div class="workbench-toolbar" aria-label="Операции проекта и переходы по рабочему экрану">
+              <nav class="workbench-toolbar-nav" aria-label="Переходы по рабочим зонам">
+                <a href="#controls">Параметры</a>
+                <a href="#visualization">Viewport</a>
+                <a href="#equipment-zone-title">Оборудование</a>
+                <a href="#export-data-zone-title">Экспорт</a>
+              </nav>
+              <div class="actions project-actions">
+                <button id="download-project-json" type="button">Сохранить проект</button>
+                <button id="upload-project-json" type="button">Загрузить проект</button>
+                <input id="project-json-input" class="is-hidden" type="file" accept="application/json,.json" />
+                <button id="reset" type="button">Сброс</button>
+              </div>
+            </div>
+          </section>
+          <aside class="engineering-summary-strip" aria-labelledby="engineering-summary-title">
+            <p class="workbench-shell-label">Сводка</p>
+            <h2 id="engineering-summary-title">Компактный обзор проекта</h2>
+            <dl class="engineering-summary-grid" aria-label="Ключевые параметры текущего проекта">
+              <div>
+                <dt>Размерения</dt>
+                <dd id="summary-dimensions">L 0 м; B 0 м; H 0 м</dd>
+              </div>
+              <div>
+                <dt>Режим</dt>
+                <dd id="summary-geometry-mode">Базовая формула</dd>
+              </div>
+              <div>
+                <dt>Станции</dt>
+                <dd id="summary-stations">0</dd>
+              </div>
+              <div>
+                <dt>Оборудование</dt>
+                <dd id="summary-equipment-count">0</dd>
+              </div>
+              <div>
+                <dt>Компоновка</dt>
+                <dd id="summary-constraints" class="summary-status ui-status--normal" data-ui-status="normal">Норма</dd>
+              </div>
+              <div>
+                <dt>Баланс оборудования</dt>
+                <dd id="summary-balance" class="summary-status ui-status--experimental" data-ui-status="experimental">Experimental: equipment-only</dd>
+              </div>
+            </dl>
+          </aside>
+        </div>
+
+        <section class="workbench-zone hull-controls-zone" aria-labelledby="hull-controls-title">
         <details class="control-panel panel-details" open>
           <summary class="data-header">
-            <h2>Размерения</h2>
+            <h2 id="hull-controls-title">Размерения</h2>
             <span class="details-action" aria-hidden="true"></span>
           </summary>
           <form id="controls" class="control-grid">
+            <fieldset class="control-cluster control-cluster--geometry">
+              <legend>Геометрия корпуса</legend>
             <label>
               <span>Длина L</span>
               <input id="length" type="number" inputmode="decimal" min="0.1" step="0.1" value="6" />
@@ -102,6 +157,9 @@
               <span>ЦВК, м</span>
               <input id="cylindrical-insert-length" type="number" inputmode="decimal" min="0" max="3" step="0.1" value="0" />
             </label>
+            </fieldset>
+            <fieldset class="control-cluster control-cluster--method">
+              <legend>Метод и формула</legend>
             <label>
               <span>Режим геометрии корпуса</span>
               <select id="geometry-mode" title="ЦВК — цилиндрическая вставка; ЦВ — центр величины">
@@ -110,21 +168,25 @@
               </select>
             </label>
             <div id="geometry-formula" class="control-note geometry-formula" aria-live="polite"></div>
+            </fieldset>
+            <fieldset class="control-cluster control-cluster--calculation">
+              <legend>Расчётные настройки</legend>
             <label>
               <span>Плотность воды, кг/м3</span>
               <input id="water-density" type="number" inputmode="numeric" min="1" step="1" value="1025" />
             </label>
+            </fieldset>
 
           </form>
-          <div class="actions project-actions">
-            <button id="download-project-json" type="button">Сохранить проект</button>
-            <button id="upload-project-json" type="button">Загрузить проект</button>
-            <input id="project-json-input" class="is-hidden" type="file" accept="application/json,.json" />
-            <button id="reset" type="button">Сброс</button>
-          </div>
         </details>
+        </section>
 
-        <section id="visualization" class="visualization-panels">
+        <section id="visualization" class="workbench-zone viewport-zone" aria-labelledby="viewport-zone-title">
+          <div class="zone-heading">
+            <h2 id="viewport-zone-title">Viewport и расчетные представления</h2>
+            <p>Боковой вид и 3D используют общий расчетный профиль и Body/SNAME-NED контекст.</p>
+          </div>
+          <div class="visualization-panels">
           <details class="drawing-panel panel-details" open>
             <summary class="data-header">
               <h2>Боковой вид</h2>
@@ -194,8 +256,14 @@
               3D недоступен в этом браузере. 2D-визуализация и экспорт остаются доступными.
             </div>
           </details>
+          </div>
         </section>
 
+        <section class="workbench-zone equipment-zone" aria-labelledby="equipment-zone-title">
+          <div class="zone-heading">
+            <h2 id="equipment-zone-title">Оборудование и размещение</h2>
+            <p>Редактор оборудования остаётся отдельной зоной: строки не сжимаются рядом с viewport, статусы показывают проблемы компоновки текстом.</p>
+          </div>
         <details class="equipment-band panel-details" open>
           <summary class="data-header">
             <h2>Оборудование</h2>
@@ -206,7 +274,13 @@
           </div>
           <div id="equipment-list" class="equipment-list"></div>
         </details>
+        </section>
 
+        <section class="workbench-zone diagnostics-zone" aria-labelledby="diagnostics-zone-title">
+          <div class="zone-heading">
+            <h2 id="diagnostics-zone-title">Диагностика и equipment-only баланс</h2>
+            <p>Предупреждения баланса явно относятся к оборудованию и не заменяют полный расчет гидростатики герметичного корпуса.</p>
+          </div>
         <details class="balance-band panel-details">
           <summary class="data-header">
             <h2>Баланс оборудования</h2>
@@ -266,7 +340,13 @@
           </dl>
           <div id="balance-warnings" class="balance-warning-summary">Нет оборудования для расчета баланса.</div>
         </details>
+        </section>
 
+        <section class="workbench-zone export-data-zone" aria-labelledby="export-data-zone-title">
+          <div class="zone-heading">
+            <h2 id="export-data-zone-title">Экспорт и данные</h2>
+            <p>Экспорт остается рядом с тем инженерным представлением, которое он сохраняет.</p>
+          </div>
         <details class="theoretical-drawing-band panel-details" open>
           <summary class="data-header">
             <h2>Теоретический чертеж</h2>
@@ -292,6 +372,7 @@
           </div>
           <div class="table-wrap">
             <table>
+              <caption>Координаты станций расчетного профиля</caption>
               <thead>
                 <tr>
                   <th>№</th>
@@ -304,6 +385,7 @@
             </table>
           </div>
         </details>
+        </section>
       </section>
     </main>
   </body>

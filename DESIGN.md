@@ -116,7 +116,7 @@ The palette combines deep marine framing with quiet paper work surfaces and a li
 
 The current layout is desktop-first but responsive: a two-column hero collapses to one column, 2D/3D panels sit side by side on wide screens and stack below `1220px`, form grids reduce from six columns to four, two, then one column.
 
-Workbench panels are first-level and collapsible. This matches the documented intent that all working areas remain accessible without deep navigation. The cost is high initial density; future design should introduce clearer grouping and operational priorities without hiding critical engineering inputs.
+Workbench panels are first-level and collapsible. UX-1 workbench shell now adds an upper project toolbar, compact engineering summary, explicit workbench zones, grouped hull controls, and local zone headings for viewport, equipment, diagnostics, export, and data. The layout remains desktop-first and responsive; future work should refine interaction depth without hiding critical engineering inputs or implying CAD-lite capability.
 
 ## Elevation & Depth
 
@@ -141,7 +141,8 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 ### Panels
 - Collapsible `details` panels are the main structural component.
 - Numeric section markers (`01` through `07`) provide sequence and workbench identity.
-- Current panel headers sometimes contain interactive controls; this is a functional pattern but also a documented accessibility risk.
+- Interactive controls stay outside `summary` headers. Local actions sit in panel action rows or the upper project toolbar.
+- Workbench zone headings separate parameters, viewport, equipment, diagnostics, and export/data without turning every zone into nested cards.
 
 ### Inputs
 - Native number/select/range controls are retained.
@@ -159,6 +160,8 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 ### Signature Components
 - **Hero real render frame:** a static image from the actual Three.js scene with explicit caption that it is not decorative.
 - **Axis convention strip:** Body/SNAME-NED memo placed between hero and workbench.
+- **Project toolbar:** compact project-level JSON/reset operations and anchors to existing engineering zones. It is not a CAD ribbon.
+- **Engineering summary:** read-only compact status surface fed by existing inputs and `ProjectEvaluation`, including equipment-only balance wording.
 - **Theoretical drawing canvas:** horizontal scroll on small screens rather than forced downscaling.
 
 ## Do's and Don'ts
@@ -195,11 +198,10 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 - Diagnostic amber/rose status colors.
 
 ### Visual Debt
-- Workbench density is high and not yet guided by task priority.
+- Workbench density is lower after UX-1 shell grouping, but equipment rows and diagnostics are still dense for larger projects.
 - 3D viewport lacks professional view controls, reset/orientation affordance, and accessible state summary.
 - Equipment list behaves like a wide spreadsheet strip on desktop and a long form on mobile.
 - Diagnostics are distributed rather than centralized.
-- Some interactive controls are nested inside `summary` elements.
 - Mobile works structurally but is not yet a refined demo/export flow.
 
 ### Missing Tokens
@@ -213,7 +215,8 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 ### UX-1 Semantic Foundation Scope
 
 - Implemented: status tokens, focus/disabled/touch-target tokens, stable DOM status attributes/classes, equipment accessibility IDs, no interactive descendants inside `summary`, and local descriptions for current canvas-like surfaces.
-- Intentionally not implemented: workbench shell redesign, equipment selection, CAD-lite viewport controls, mobile-specific flow, public hero redesign, UI framework change, calculation formulas, `ProjectInputs`, JSON schema, migrations, or new runtime `selected`/`stale`/`running` state.
+- Implemented in the next UX-1 shell slice: project toolbar, compact engineering summary, workbench zones, grouped hull/method/calculation controls, clearer equipment/diagnostics/export boundaries, and targeted DOM/Playwright/encoding coverage.
+- Intentionally not implemented: equipment selection, central diagnostics queue, CAD-lite viewport controls, camera presets, pointer picking, mobile-specific flow, public hero redesign, UI framework change, calculation formulas, `ProjectInputs`, JSON schema, migrations, or new runtime `selected`/`stale`/`running` state.
 
 ### Owner Decisions Required
 - Whether the next UI goal is public MVP presentation, workbench clarity, CAD-lite interaction, or mobile demo/export.

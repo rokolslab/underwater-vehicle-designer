@@ -135,6 +135,32 @@ test("invalid JSON import после изменения проекта не ме
   expect(after.project).toEqual(before.project);
 });
 
+test("workbench shell показывает toolbar, сводку и grouped controls", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Инженерный workbench корпуса" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Переходы по рабочим зонам" })).toBeVisible();
+  await expect(page.locator(".workbench-toolbar").locator("#download-project-json")).toBeVisible();
+  await expect(page.locator(".workbench-toolbar").locator("#upload-project-json")).toBeVisible();
+  await expect(page.locator(".workbench-toolbar").locator("#reset")).toBeVisible();
+  await expect(page.locator("#summary-dimensions")).toContainText("L 6,00 м");
+  await expect(page.locator("#summary-geometry-mode")).toContainText("Базовая формула");
+  await expect(page.locator("#summary-balance")).toHaveAttribute("data-ui-status", "warning");
+
+  const controls = page.locator("#controls");
+  await expect(controls.getByText("Геометрия корпуса")).toBeVisible();
+  await expect(controls.getByText("Метод и формула")).toBeVisible();
+  await expect(controls.getByText("Расчётные настройки")).toBeVisible();
+  await expect(controls.locator("#download-project-json")).toHaveCount(0);
+
+  await expect(page.locator(".drawing-panel").locator("#download-svg")).toBeVisible();
+  await expect(page.locator(".theoretical-drawing-band").locator("#download-theoretical-drawing-svg")).toBeVisible();
+  await expect(page.locator(".data-band").locator("#download-csv")).toBeVisible();
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus")).toBeVisible();
+});
+
 test("SVG, CSV и теоретический SVG экспортируются из видимого UI", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#profile-canvas")).toBeVisible();
@@ -169,6 +195,7 @@ test("mobile viewport сохраняет доступность основных
 
   await expect(page.locator("#length")).toBeVisible();
   await expect(page.locator("#download-project-json")).toBeVisible();
+  await expect(page.locator("#summary-dimensions")).toBeVisible();
   await expect(page.locator("#add-equipment")).toBeVisible();
   await expect(page.locator("#profile-canvas")).toBeVisible();
   await expect(page.locator("#hull-scene-3d")).toBeVisible();
