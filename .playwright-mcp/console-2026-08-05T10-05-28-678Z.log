@@ -1,0 +1,58 @@
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:41602
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:41602
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:41602
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:41602
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: deleteVertexArray: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:42396
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:41602
+[       6ms] [WARNING] WebGL: INVALID_OPERATION: deleteVertexArray: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:42396
+[       7ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:47812
+[       7ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:47812
+[       7ms] [WARNING] WebGL: INVALID_OPERATION: delete: object does not belong to this context @ http://127.0.0.1:5173/node_modules/.vite/deps/three.js?v=8d04360b:47812
+[       7ms] [INFO] [DEBUG] 3d scene disposed {scope: airship} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     294ms] [INFO] [INFO] 3d body axis scheme initialized {scope: airship, sourceFrame: Body/SNAME-NED, targetFrame: Three.js, axisMapping: three=(body.x,-body.z,body.y), labels: Array(3)} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     324ms] [INFO] [DEBUG] 3d scene resized {scope: airship, width: 854, height: 518} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     324ms] [INFO] [DEBUG] 3d scene created {scope: airship, hasRenderer: true} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [DEBUG] 3d controls binding started {scope: airship} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [DEBUG] 3d controls binding completed {scope: airship, count: 6} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [INFO] application started {scope: airship} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [DEBUG] profile controls written from project json {scope: airship, length: 6, geometryMode: current-formula, breadth: 2, height: 2} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [DEBUG] 3d controls written {scope: airship, mode: solid, sectionType: disabled, hullOpacity: 0.28} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     325ms] [INFO] [DEBUG] profile render started {scope: airship, source: slenderness, equipmentCount: 0} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     330ms] [INFO] [DEBUG] 3d body section control bounds updated {scope: airship, sourceFrame: Body/SNAME-NED, minBodyX: -3, maxBodyX: 3, plane: xy} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     330ms] [INFO] [DEBUG] 3d scene settings normalization started {scope: airship, input: Object, bounds: Object} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     331ms] [INFO] [DEBUG] 3d scene settings normalization completed {scope: airship, mode: solid, settings: Object} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     333ms] [INFO] [DEBUG] 3d controls written {scope: airship, mode: solid, sectionType: disabled, hullOpacity: 0.28} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     333ms] [INFO] [DEBUG] project evaluation rendered {scope: airship, length: 6, breadth: 2, height: 2, cylindricalInsertLength: 0} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     336ms] [INFO] [DEBUG] canvas resized {scope: airship, width: 856, height: 520, ratio: 1} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     340ms] [INFO] [DEBUG] canvas scale created {scope: airship, frame: Body XZ: right=+X, down=+Z, xExtents: Array(2), zExtents: Array(2), totalLength: 6} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     350ms] [INFO] [DEBUG] theoretical drawing rendered {scope: airship, exportView: theoretical-drawing, projectionFrames: Array(3), bodyXRange: Array(2), radialRange: Array(2)} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     350ms] [INFO] [DEBUG] equipment editor render started {scope: airship, count: 0, issueCount: 0} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     350ms] [INFO] [DEBUG] equipment editor render completed {scope: airship, count: 0, issueCount: 0} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     352ms] [INFO] [DEBUG] balance metrics render started {scope: airship, isValid: false, warningCount: 2} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     353ms] [INFO] [DEBUG] balance metrics render completed {scope: airship, isValid: false, warningCount: 2} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     354ms] [INFO] [DEBUG] 3d view settings applied {scope: airship, mode: solid, opacity: 0.9, depthWrite: true} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     354ms] [INFO] [DEBUG] 3d hull mesh data creation started {scope: airship, sourceFrame: profile(s,section extents), targetFrame: Three(x,y,z), axisMapping: three=(body.x,-body.z,body.y), ringCount: 321} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     363ms] [INFO] [DEBUG] 3d hull mesh data creation completed {scope: airship, sourceFrame: profile(s,section extents), targetFrame: Three(x,y,z), vertices: 15729, triangles: 30720} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     441ms] [INFO] [DEBUG] [FIX] 3d camera framed to full hull {scope: airship, totalLength: 6, maxRadius: 0.999998648927421, maxSectionAxis: 0.999998648927421, aspect: 1.6486486486486487} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     442ms] [INFO] [DEBUG] 3d hull mesh replaced {scope: airship, points: 321, totalLength: 6, cylindricalInsertLength: 0} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     442ms] [INFO] [DEBUG] 3d equipment meshes replaced {scope: airship, count: 0, signature: , statusSummary: Object} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     447ms] [INFO] [DEBUG] [FIX] 3d camera framed to full hull {scope: airship, totalLength: 6, maxRadius: 0.999998648927421, maxSectionAxis: 0.999998648927421, aspect: 1.6486486486486487} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     478ms] [INFO] [DEBUG] 3d scene resized {scope: airship, width: 854, height: 518} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     665ms] [WARNING] [.WebGL-0x2b7c00d27200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://127.0.0.1:5173/:0
+[     666ms] [INFO] [DEBUG] canvas resized {scope: airship, width: 856, height: 520, ratio: 1} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     666ms] [INFO] [DEBUG] canvas scale created {scope: airship, frame: Body XZ: right=+X, down=+Z, xExtents: Array(2), zExtents: Array(2), totalLength: 6} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     673ms] [INFO] [DEBUG] theoretical drawing rendered {scope: airship, exportView: theoretical-drawing, projectionFrames: Array(3), bodyXRange: Array(2), radialRange: Array(2)} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     674ms] [INFO] [DEBUG] [FIX] 3d camera framed to full hull {scope: airship, totalLength: 6, maxRadius: 0.999998648927421, maxSectionAxis: 0.999998648927421, aspect: 1.6486486486486487} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     677ms] [INFO] [DEBUG] 3d scene resized {scope: airship, width: 854, height: 518} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[     787ms] [WARNING] [.WebGL-0x2b7c00d27200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ http://127.0.0.1:5173/:0
+[   11623ms] [INFO] [DEBUG] canvas resized {scope: airship, width: 325, height: 350, ratio: 1} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11624ms] [INFO] [DEBUG] canvas scale created {scope: airship, frame: Body XZ: right=+X, down=+Z, xExtents: Array(2), zExtents: Array(2), totalLength: 6} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11635ms] [INFO] [DEBUG] theoretical drawing rendered {scope: airship, exportView: theoretical-drawing, projectionFrames: Array(3), bodyXRange: Array(2), radialRange: Array(2)} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11645ms] [INFO] [DEBUG] [FIX] 3d camera framed to full hull {scope: airship, totalLength: 6, maxRadius: 0.999998648927421, maxSectionAxis: 0.999998648927421, aspect: 0.9281609195402298} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11647ms] [INFO] [DEBUG] 3d scene resized {scope: airship, width: 323, height: 348} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11702ms] [INFO] [DEBUG] canvas resized {scope: airship, width: 325, height: 350, ratio: 1} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11703ms] [INFO] [DEBUG] canvas scale created {scope: airship, frame: Body XZ: right=+X, down=+Z, xExtents: Array(2), zExtents: Array(2), totalLength: 6} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11709ms] [INFO] [DEBUG] theoretical drawing rendered {scope: airship, exportView: theoretical-drawing, projectionFrames: Array(3), bodyXRange: Array(2), radialRange: Array(2)} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11711ms] [INFO] [DEBUG] [FIX] 3d camera framed to full hull {scope: airship, totalLength: 6, maxRadius: 0.999998648927421, maxSectionAxis: 0.999998648927421, aspect: 0.9281609195402298} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[   11713ms] [INFO] [DEBUG] 3d scene resized {scope: airship, width: 323, height: 348} @ http://127.0.0.1:5173/src/shared/logger.ts:31
+[68461825ms] [INFO] [DEBUG] 3d scene disposed {scope: airship} @ http://127.0.0.1:5173/src/shared/logger.ts:31

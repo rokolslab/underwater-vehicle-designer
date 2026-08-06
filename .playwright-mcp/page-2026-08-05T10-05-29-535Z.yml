@@ -1,0 +1,284 @@
+- main [ref=f1e2]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - paragraph [ref=f1e6]: Public Demo v1
+        - generic [ref=f1e8]: UVD / MARINE GEOMETRY / 01
+      - paragraph [ref=f1e9]: Underwater Vehicle Designer
+      - heading "Проектируйте корпус. Видьте результат сразу." [level=1] [ref=f1e10]: Проектируйте корпус.Видьте результат сразу.
+      - paragraph [ref=f1e11]: Интерактивная инженерная среда для построения 2D/3D-обводов, проверки компоновки оборудования и экспорта проектных данных прямо в браузере.
+      - generic [ref=f1e12]:
+        - link "Открыть рабочий экран" [ref=f1e13] [cursor=pointer]:
+          - /url: "#controls"
+          - text: Открыть рабочий экран
+          - generic [ref=f1e14]: ↘
+        - link "Посмотреть визуализацию" [ref=f1e15] [cursor=pointer]:
+          - /url: "#visualization"
+      - generic "Свойства приложения" [ref=f1e16]:
+        - generic [ref=f1e17]: Без установки
+        - generic [ref=f1e18]: Расчет в реальном времени
+        - generic [ref=f1e19]: JSON / SVG / CSV
+    - generic "Статический рендер реальной 3D-модели и возможности демо" [ref=f1e20]:
+      - generic [ref=f1e21]:
+        - generic [ref=f1e22]: REAL 3D MODEL RENDER
+        - generic [ref=f1e23]: STATIC HERO SNAPSHOT
+      - figure "Скриншот рабочей Three.js-сцены, а не декоративный макет" [ref=f1e24]:
+        - img "Статический скриншот настоящей 3D-модели корпуса из приложения" [ref=f1e25]
+      - generic [ref=f1e27]:
+        - generic [ref=f1e28]:
+          - generic [ref=f1e29]: GEOMETRY
+          - strong [ref=f1e30]: 2 MODES
+        - generic [ref=f1e31]:
+          - generic [ref=f1e32]: VIEW
+          - strong [ref=f1e33]: 2D + 3D
+        - generic [ref=f1e34]:
+          - generic [ref=f1e35]: OUTPUT
+          - strong [ref=f1e36]: 4 FORMATS
+      - generic [ref=f1e37]:
+        - generic [ref=f1e38]:
+          - generic [ref=f1e39]: Готово в демо
+          - generic "Возможности демо" [ref=f1e40]:
+            - generic [ref=f1e41]: ЦВК и сечения
+            - generic [ref=f1e42]: Оборудование
+            - generic [ref=f1e43]: Экспорт
+        - generic [ref=f1e44]: Y = ± B/2 sqrt(f/fmax)Z = ± H/2 sqrt(f/fmax)
+  - complementary "Система координат Body/SNAME-NED" [ref=f1e45]:
+    - generic [ref=f1e46]: Система координат
+    - generic [ref=f1e47]:
+      - strong [ref=f1e48]: Body/SNAME-NED
+      - text: X — нос; Y — правый борт; Z — вниз
+    - generic [ref=f1e49]: "Единицы: метры от центра корпуса"
+  - region "Построение обводов" [ref=f1e50]:
+    - group [ref=f1e51]:
+      - generic [ref=f1e52] [cursor=pointer]:
+        - heading "01 Размерения" [level=2] [ref=f1e53]
+        - generic [ref=f1e54]: Скрыть
+      - generic [ref=f1e55]:
+        - generic [ref=f1e56]:
+          - generic [ref=f1e57]: Длина L
+          - spinbutton "Длина L" [ref=f1e58]: "6"
+        - generic [ref=f1e59]:
+          - generic [ref=f1e60]: Удлинение λ = L / H
+          - spinbutton "Удлинение λ = L / H" [ref=f1e61]: "3"
+        - generic [ref=f1e62]:
+          - generic [ref=f1e63]: Ширина B
+          - spinbutton "Ширина B" [ref=f1e64]: "2"
+        - generic [ref=f1e65]:
+          - generic [ref=f1e66]: Высота H
+          - spinbutton "Высота H" [ref=f1e67]: "2"
+        - generic [ref=f1e68]:
+          - generic [ref=f1e69]: Точек обвода
+          - spinbutton "Точек обвода" [ref=f1e70]: "20"
+        - generic [ref=f1e71]:
+          - generic [ref=f1e72]: ЦВК, м
+          - spinbutton "ЦВК, м" [ref=f1e73]: "0"
+        - generic [ref=f1e74]:
+          - generic [ref=f1e75]: Режим геометрии корпуса
+          - combobox "Режим геометрии корпуса" [ref=f1e76] [cursor=pointer]:
+            - option "Базовая формула" [selected]
+            - option "Классическая методика"
+        - generic [ref=f1e77]: "Базовая формула: f(t)=t(1-t)(1-0.5t); полуоси Y=B/2*sqrt(f/fmax), Z=H/2*sqrt(f/fmax)"
+        - generic [ref=f1e78]:
+          - generic [ref=f1e79]: Плотность воды, кг/м3
+          - spinbutton "Плотность воды, кг/м3" [ref=f1e80]: "1025"
+      - generic [ref=f1e81]:
+        - button "Сохранить проект" [ref=f1e82] [cursor=pointer]
+        - button "Загрузить проект" [ref=f1e83] [cursor=pointer]
+        - button "Сброс" [ref=f1e84] [cursor=pointer]
+    - generic [ref=f1e85]:
+      - group [ref=f1e86]:
+        - generic "02 Боковой вид Сетка Точки обвода Скачать SVG" [ref=f1e87] [cursor=pointer]:
+          - heading "02 Боковой вид" [level=2] [ref=f1e88]
+          - generic [ref=f1e89]:
+            - generic [ref=f1e90]:
+              - checkbox "Сетка" [checked] [ref=f1e91]
+              - generic [ref=f1e92]: Сетка
+            - generic [ref=f1e93]:
+              - checkbox "Точки обвода" [checked] [ref=f1e94]
+              - generic [ref=f1e95]: Точки обвода
+            - button "Скачать SVG" [ref=f1e96]
+            - generic [ref=f1e97]: Скрыть
+        - paragraph [ref=f1e98]: "Проекция XZ: вправо +X (нос), вниз +Z"
+        - generic "Теоретический обвод подводного аппарата" [ref=f1e99]
+      - group [ref=f1e100]:
+        - generic [ref=f1e101] [cursor=pointer]:
+          - heading "03 3D корпус" [level=2] [ref=f1e102]
+          - generic [ref=f1e103]: Скрыть
+        - generic "Настройки 3D" [ref=f1e105]:
+          - generic [ref=f1e106]:
+            - generic [ref=f1e107]: Режим
+            - combobox "Режим" [ref=f1e108] [cursor=pointer]:
+              - option "Сплошной" [selected]
+              - option "Рентген"
+          - generic [ref=f1e109]:
+            - generic [ref=f1e110]: Прозрачность
+            - slider "Прозрачность" [ref=f1e111] [cursor=pointer]: "0.28"
+          - generic [ref=f1e112]:
+            - generic "Сечения задаются в Body/SNAME-NED" [ref=f1e113]: Сечение
+            - combobox "Сечение" [ref=f1e114] [cursor=pointer]:
+              - option "Нет" [selected]
+              - option "Поперечное X"
+              - option "Продольная плоскость"
+          - generic [ref=f1e115]:
+            - 'generic "Body X: + к носу, − к корме" [ref=f1e116]': Body X, м
+            - spinbutton "Body X, м" [ref=f1e117]: "0"
+          - generic [ref=f1e118]:
+            - 'generic "XY: горизонтальная; XZ: диаметральная" [ref=f1e119]': Body-плоскость
+            - combobox "Body-плоскость" [ref=f1e120] [cursor=pointer]:
+              - option "XY" [selected]
+              - option "XZ"
+          - generic [ref=f1e121]:
+            - generic "XY смещается по Z (+ вниз); XZ смещается по Y (+ правый борт)" [ref=f1e122]: Смещение, м
+            - spinbutton "Смещение, м" [ref=f1e123]: "0"
+        - generic "3D-модель корпуса" [ref=f1e124]: DRAG TO ORBIT
+    - group [ref=f1e126]:
+      - generic [ref=f1e127] [cursor=pointer]:
+        - heading "04 Оборудование" [level=2] [ref=f1e128]
+        - generic [ref=f1e129]:
+          - button "Добавить" [ref=f1e130]
+          - generic [ref=f1e131]: Скрыть
+      - generic [ref=f1e132]: Список пуст
+    - group [ref=f1e134]:
+      - generic "05 Баланс оборудования Experimental" [ref=f1e135] [cursor=pointer]:
+        - heading "05 Баланс оборудования" [level=2] [ref=f1e136]
+        - generic [ref=f1e137]:
+          - generic [ref=f1e138]: Experimental
+          - generic [ref=f1e139]: Показать
+    - group [ref=f1e140]:
+      - generic [ref=f1e141] [cursor=pointer]:
+        - heading "06 Теоретический чертеж" [level=2] [ref=f1e142]
+        - generic [ref=f1e143]:
+          - button "Скачать SVG" [ref=f1e144]
+          - generic [ref=f1e145]: Скрыть
+      - generic "Прокручиваемая область теоретического чертежа" [ref=f1e146]:
+        - generic "Теоретический чертеж корпуса подводного аппарата" [ref=f1e147]
+    - group [ref=f1e148]:
+      - generic "07 Параметрические станции профиля 23 параметрических станций Скачать CSV" [ref=f1e149] [cursor=pointer]:
+        - heading "07 Параметрические станции профиля" [level=2] [ref=f1e150]
+        - generic [ref=f1e151]:
+          - generic [ref=f1e152]: 23 параметрических станций
+          - button "Скачать CSV" [ref=f1e153]
+          - generic [ref=f1e154]: Скрыть
+      - table [ref=f1e156]:
+        - rowgroup [ref=f1e157]:
+          - row [ref=f1e158]:
+            - columnheader "№" [ref=f1e159]
+            - columnheader "s, м" [ref=f1e160]
+            - columnheader "Верхний радиус, м" [ref=f1e161]
+            - columnheader "Нижний радиус, м" [ref=f1e162]
+        - rowgroup [ref=f1e163]:
+          - row [ref=f1e164]:
+            - cell "1" [ref=f1e165]
+            - cell "0,0000" [ref=f1e166]
+            - cell "0,0000" [ref=f1e167]
+            - cell "-0,0000" [ref=f1e168]
+          - row [ref=f1e169]:
+            - cell "2" [ref=f1e170]
+            - cell "0,1500" [ref=f1e171]
+            - cell "0,3537" [ref=f1e172]
+            - cell "-0,3537" [ref=f1e173]
+          - row [ref=f1e174]:
+            - cell "3" [ref=f1e175]
+            - cell "0,3000" [ref=f1e176]
+            - cell "0,4906" [ref=f1e177]
+            - cell "-0,4906" [ref=f1e178]
+          - row [ref=f1e179]:
+            - cell "4" [ref=f1e180]
+            - cell "0,6000" [ref=f1e181]
+            - cell "0,6665" [ref=f1e182]
+            - cell "-0,6665" [ref=f1e183]
+          - row [ref=f1e184]:
+            - cell "5" [ref=f1e185]
+            - cell "0,9000" [ref=f1e186]
+            - cell "0,7828" [ref=f1e187]
+            - cell "-0,7828" [ref=f1e188]
+          - row [ref=f1e189]:
+            - cell "6" [ref=f1e190]
+            - cell "1,2000" [ref=f1e191]
+            - cell "0,8650" [ref=f1e192]
+            - cell "-0,8650" [ref=f1e193]
+          - row [ref=f1e194]:
+            - cell "7" [ref=f1e195]
+            - cell "1,5000" [ref=f1e196]
+            - cell "0,9233" [ref=f1e197]
+            - cell "-0,9233" [ref=f1e198]
+          - row [ref=f1e199]:
+            - cell "8" [ref=f1e200]
+            - cell "1,8000" [ref=f1e201]
+            - cell "0,9631" [ref=f1e202]
+            - cell "-0,9631" [ref=f1e203]
+          - row [ref=f1e204]:
+            - cell "9" [ref=f1e205]
+            - cell "2,1000" [ref=f1e206]
+            - cell "0,9875" [ref=f1e207]
+            - cell "-0,9875" [ref=f1e208]
+          - row [ref=f1e209]:
+            - cell "10" [ref=f1e210]
+            - cell "2,4000" [ref=f1e211]
+            - cell "0,9988" [ref=f1e212]
+            - cell "-0,9988" [ref=f1e213]
+          - row [ref=f1e214]:
+            - cell "11" [ref=f1e215]
+            - cell "2,7000" [ref=f1e216]
+            - cell "0,9983" [ref=f1e217]
+            - cell "-0,9983" [ref=f1e218]
+          - row [ref=f1e219]:
+            - cell "12" [ref=f1e220]
+            - cell "3,0000" [ref=f1e221]
+            - cell "0,9871" [ref=f1e222]
+            - cell "-0,9871" [ref=f1e223]
+          - row [ref=f1e224]:
+            - cell "13" [ref=f1e225]
+            - cell "3,3000" [ref=f1e226]
+            - cell "0,9656" [ref=f1e227]
+            - cell "-0,9656" [ref=f1e228]
+          - row [ref=f1e229]:
+            - cell "14" [ref=f1e230]
+            - cell "3,6000" [ref=f1e231]
+            - cell "0,9343" [ref=f1e232]
+            - cell "-0,9343" [ref=f1e233]
+          - row [ref=f1e234]:
+            - cell "15" [ref=f1e235]
+            - cell "3,9000" [ref=f1e236]
+            - cell "0,8933" [ref=f1e237]
+            - cell "-0,8933" [ref=f1e238]
+          - row [ref=f1e239]:
+            - cell "16" [ref=f1e240]
+            - cell "4,2000" [ref=f1e241]
+            - cell "0,8422" [ref=f1e242]
+            - cell "-0,8422" [ref=f1e243]
+          - row [ref=f1e244]:
+            - cell "17" [ref=f1e245]
+            - cell "4,5000" [ref=f1e246]
+            - cell "0,7803" [ref=f1e247]
+            - cell "-0,7803" [ref=f1e248]
+          - row [ref=f1e249]:
+            - cell "18" [ref=f1e250]
+            - cell "4,8000" [ref=f1e251]
+            - cell "0,7063" [ref=f1e252]
+            - cell "-0,7063" [ref=f1e253]
+          - row [ref=f1e254]:
+            - cell "19" [ref=f1e255]
+            - cell "5,1000" [ref=f1e256]
+            - cell "0,6172" [ref=f1e257]
+            - cell "-0,6172" [ref=f1e258]
+          - row [ref=f1e259]:
+            - cell "20" [ref=f1e260]
+            - cell "5,4000" [ref=f1e261]
+            - cell "0,5072" [ref=f1e262]
+            - cell "-0,5072" [ref=f1e263]
+          - row [ref=f1e264]:
+            - cell "21" [ref=f1e265]
+            - cell "5,7000" [ref=f1e266]
+            - cell "0,3600" [ref=f1e267]
+            - cell "-0,3600" [ref=f1e268]
+          - row [ref=f1e269]:
+            - cell "22" [ref=f1e270]
+            - cell "5,8500" [ref=f1e271]
+            - cell "0,2548" [ref=f1e272]
+            - cell "-0,2548" [ref=f1e273]
+          - row [ref=f1e274]:
+            - cell "23" [ref=f1e275]
+            - cell "6,0000" [ref=f1e276]
+            - cell "0,0000" [ref=f1e277]
+            - cell "-0,0000" [ref=f1e278]
