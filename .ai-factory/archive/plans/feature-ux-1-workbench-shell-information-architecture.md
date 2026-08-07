@@ -1,3 +1,7 @@
+---
+archived: 2026-08-07
+---
+
 # Implementation Plan: UX-1 Workbench Shell And Information Architecture
 
 Branch: feature/ux-1-workbench-shell-information-architecture
