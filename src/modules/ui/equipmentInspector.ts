@@ -4,6 +4,14 @@ import type { EquipmentItem, EquipmentShape } from "../equipment/model";
 import { equipmentDisplacedVolume, equipmentVolume } from "../equipment/model";
 import { formatNumber } from "../../shared/format";
 
+function constraintIssueDescription(reason: string): string {
+  if (reason === "invalidEquipment") return "Данные оборудования некорректны. Проверьте название, массу, размеры и положение.";
+  if (reason === "outsideHull") return "Оборудование частично или полностью выходит за обводы корпуса.";
+  if (reason === "outsideLength") return "Оборудование выходит за пределы длины корпуса.";
+  if (reason === "intersects") return "Пересекается с другим оборудованием.";
+  return "Обнаружена проблема компоновки оборудования.";
+}
+
 export interface InspectorViewModel {
   readonly isEmpty: boolean;
   readonly name?: string;
@@ -83,7 +91,7 @@ export function makeInspectorViewModel(
     geometricVolume: geoVolume,
     status: statusText(status),
     statusType: status === "ok" ? "normal" : status === "invalidEquipment" ? "error" : "warning",
-    issues: issues.length > 0 ? issues.map((i) => i.message) : undefined,
+    issues: issues.length > 0 ? issues.map((i) => constraintIssueDescription(i.reason)) : undefined,
   };
 }
 

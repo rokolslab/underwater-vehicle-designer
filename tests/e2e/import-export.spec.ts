@@ -4,6 +4,23 @@ import { readFile } from "node:fs/promises";
 
 const DEFAULT_GRAVITY_M_PER_S2 = 9.80665;
 
+interface E2ECameraState {
+  readonly distance: number;
+  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+  readonly target: { readonly x: number; readonly y: number; readonly z: number };
+}
+
+interface UvdE2EHooks {
+  readonly bodyXzToCanvasPoint?: (right: number, down: number) => { readonly x: number; readonly y: number } | null;
+  readonly scene3dCameraState?: () => E2ECameraState | null;
+}
+
+async function enableE2EHooks(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as unknown as { __UVD_ENABLE_E2E_HOOKS__?: boolean }).__UVD_ENABLE_E2E_HOOKS__ = true;
+  });
+}
+
 const importedProject = {
   schemaVersion: 2,
   coordinateSystem: "SNAME_NED_BODY_CENTER_V1",
@@ -205,4 +222,148 @@ test("mobile viewport сохраняет доступность основных
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(4);
+});
+
+test("equipment row click selection синхронизирует inspector и 2D/3D", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  await expect(page.locator("#equipment-list [data-equipment-id]")).toHaveCount(1);
+
+  await page.locator("[data-equipment-id]").first().click();
+  await expect(page.locator("[data-equipment-id]").first()).toHaveClass(/equipment-row--selected/);
+  await expect(page.locator(".equipment-inspector-details")).toBeVisible();
+});
+
+test("canvas click selection выбирает оборудование по координатам и проверяет выбранный equipmentId", async ({ page }) => {
+  await enableE2EHooks(page);
+  await page.goto("/");
+  await importProject(page);
+  await expect(page.locator('#equipment-list [data-equipment-id="equipment-1"]')).toBeVisible();
+
+  const clickPos = await page.evaluate(() => {
+    const hooks = (window as unknown as { __UVD_E2E__?: UvdE2EHooks }).__UVD_E2E__;
+    return hooks?.bodyXzToCanvasPoint?.(1, 0.25) ?? null;
+  });
+
+  expect(clickPos).not.toBeNull();
+  if (!clickPos) return;
+
+  await page.locator("#profile-canvas").click({ position: clickPos });
+
+  const selectedRows = page.locator("[data-equipment-selected]");
+  await expect(selectedRows).toHaveCount(1);
+  await expect(selectedRows).toHaveAttribute("data-equipment-id", "equipment-1");
+
+  await expect(page.locator(".equipment-inspector-details")).toBeVisible();
+  await expect(page.locator("#equipment-inspector")).toContainText("Imported box");
+});
+
+test("diagnostics entry click навигирует к equipment row вне корпуса", async ({ page }) => {
+  await page.goto("/");
+  await importProject(page);
+  await expect(page.locator('#equipment-list [data-equipment-id="equipment-1"]')).toBeVisible();
+
+  const row = page.locator('#equipment-list [data-equipment-id="equipment-1"]');
+  const xInput = row.locator('[data-field="x"]');
+  await xInput.fill("8");
+
+  const diagEntry = page.locator(".diagnostics-entry[data-diagnostics-target]").first();
+  await expect(diagEntry).toBeVisible({ timeout: 5000 });
+
+  await diagEntry.click();
+  await expect(page.locator("[data-equipment-id]").first()).toHaveClass(/equipment-row--selected/);
+  await expect(page.locator("[data-equipment-id]").first()).toHaveAttribute("data-equipment-id", "equipment-1");
+  await expect(page.locator("[data-equipment-id]").first()).toBeFocused();
+});
+
+test("keyboard Enter выбирает equipment row", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  const row = page.locator("[data-equipment-id]").first();
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(row).toHaveClass(/equipment-row--selected/);
+});
+
+test("keyboard selection сохраняет focus на equipment row", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  const row = page.locator("[data-equipment-id]").first();
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(row).toBeFocused();
+  await expect(row).toHaveClass(/equipment-row--selected/);
+});
+
+test("selection не сохраняется в экспортируемом JSON", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  await page.locator("[data-equipment-id]").first().click();
+
+  const exported = await downloadText(page, "#download-project-json");
+  const parsed = JSON.parse(exported.text) as Record<string, unknown>;
+  expect(JSON.stringify(parsed)).not.toContain("selectedEquipmentId");
+  expect(JSON.stringify(parsed)).not.toContain("hoveredEquipmentId");
+});
+
+test("3D camera zoom сохраняется после selection", async ({ page }) => {
+  await enableE2EHooks(page);
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  await page.waitForSelector("#hull-scene-3d canvas");
+
+  const initialCamera = await page.evaluate(() => {
+    const hooks = (window as unknown as { __UVD_E2E__?: UvdE2EHooks }).__UVD_E2E__;
+    return hooks?.scene3dCameraState?.() ?? null;
+  });
+  expect(initialCamera).not.toBeNull();
+  if (!initialCamera) return;
+
+  await page.locator("#hull-scene-3d").hover();
+  await page.mouse.wheel(0, -300);
+
+  const zoomedCamera = await page.evaluate(() => {
+    const hooks = (window as unknown as { __UVD_E2E__?: UvdE2EHooks }).__UVD_E2E__;
+    return hooks?.scene3dCameraState?.() ?? null;
+  });
+  expect(zoomedCamera).not.toBeNull();
+  expect(zoomedCamera!.distance).not.toBeCloseTo(initialCamera.distance, 4);
+
+  await page.locator("[data-equipment-id]").first().click();
+
+  const afterSelectionCamera = await page.evaluate(() => {
+    const hooks = (window as unknown as { __UVD_E2E__?: UvdE2EHooks }).__UVD_E2E__;
+    return hooks?.scene3dCameraState?.() ?? null;
+  });
+  expect(afterSelectionCamera).not.toBeNull();
+  expect(afterSelectionCamera!.distance).toBeCloseTo(zoomedCamera!.distance, 8);
+  expect(afterSelectionCamera!.position.x).toBeCloseTo(zoomedCamera!.position.x, 8);
+  expect(afterSelectionCamera!.position.y).toBeCloseTo(zoomedCamera!.position.y, 8);
+  expect(afterSelectionCamera!.position.z).toBeCloseTo(zoomedCamera!.position.z, 8);
+});
+
+test("hover не вызывает перерисовку через projectEvaluationRuntime", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#add-equipment").click();
+  await page.locator("#add-equipment").click();
+
+  await expect(page.locator("[data-equipment-id]")).toHaveCount(2);
+
+  const firstRow = page.locator("[data-equipment-id]").first();
+  const domIdentity = await firstRow.evaluate((el: HTMLElement) => {
+    const marker = `__e2e_test_marker_${Date.now()}`;
+    (el as Record<string, unknown>).__e2e_dom_marker = marker;
+    return marker;
+  });
+
+  const secondRow = page.locator("[data-equipment-id]").last();
+  await secondRow.hover();
+
+  const afterHoverMarker = await firstRow.evaluate((el: HTMLElement) => {
+    return (el as Record<string, unknown>).__e2e_dom_marker as string | undefined;
+  });
+  expect(afterHoverMarker).toBe(domIdentity);
+
+  const rowCount = await page.locator("[data-equipment-id]").count();
+  expect(rowCount).toBe(2);
 });

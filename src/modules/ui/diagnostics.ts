@@ -1,7 +1,8 @@
-import type { EquipmentConstraintReport, EquipmentConstraintReason } from "../equipment/constraints";
+import type { EquipmentConstraintReport, EquipmentConstraintReason, EquipmentConstraintIssue } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
-import type { EquipmentBalanceResult } from "../balance/model";
+import type { EquipmentBalanceResult, BalanceWarningCode } from "../balance/model";
 import { warningLabels } from "./metrics";
+import { safeIdStem } from "../../shared/safe-id";
 
 export interface DiagnosticEntry {
   readonly id: string;
@@ -20,6 +21,10 @@ export interface DiagnosticsViewModel {
   readonly emptyReason: string | null;
 }
 
+function safeDiagnosticsIdStem(equipmentId: string, index: number): string {
+  return safeIdStem("equipment", equipmentId, index);
+}
+
 function constraintSeverity(reason: EquipmentConstraintReason): "error" | "warning" {
   if (reason === "invalidEquipment") return "error";
   if (reason === "outsideLength") return "error";
@@ -32,6 +37,21 @@ function constraintTitle(reason: EquipmentConstraintReason): string {
   if (reason === "outsideLength") return "Оборудование за пределами длины корпуса";
   if (reason === "intersects") return "Пересечение оборудования";
   return reason;
+}
+
+function constraintDescription(issue: EquipmentConstraintIssue): string {
+  if (issue.reason === "invalidEquipment") return "Данные оборудования некорректны. Проверьте название, массу, размеры и положение.";
+  if (issue.reason === "outsideHull") return "Оборудование частично или полностью выходит за обводы корпуса. Измените положение или размеры.";
+  if (issue.reason === "outsideLength") return "Оборудование выходит за пределы длины корпуса. Переместите оборудование или уменьшите его размеры.";
+  if (issue.reason === "intersects") {
+    if (issue.otherEquipmentId) return `Пересекается с другим оборудованием. Проверьте взаимное расположение.`;
+    return "Пересекается с другим оборудованием. Проверьте взаимное расположение.";
+  }
+  return "Обнаружена проблема компоновки оборудования.";
+}
+
+function balanceWarningDescription(code: BalanceWarningCode): string {
+  return warningLabels[code] ?? "";
 }
 
 function severityRank(severity: "error" | "warning" | "info"): number {
@@ -57,25 +77,26 @@ export function makeDiagnosticsViewModel(
     };
   }
 
-  const constraintIssueIds = new Set<string>();
   const entries: DiagnosticEntry[] = [];
   const equipmentIndexMap = new Map(items.map((item, idx) => [item.id, idx]));
+  const constraintEntryCountByKey = new Map<string, number>();
+  const balanceEntryCountByKey = new Map<string, number>();
 
   for (const issue of report?.issues ?? []) {
-    const entryId = `diag-constraint-${issue.reason}-${issue.equipmentId}`;
-    constraintIssueIds.add(entryId);
-    if (issue.reason === "invalidEquipment") {
-      constraintIssueIds.add(issue.equipmentId);
-    }
+    const key = `${issue.reason}-${issue.equipmentId}`;
+    const idx = constraintEntryCountByKey.get(key) ?? 0;
+    constraintEntryCountByKey.set(key, idx + 1);
+    const encodedId = safeDiagnosticsIdStem(issue.equipmentId, equipmentIndexMap.get(issue.equipmentId) ?? 0);
+    const entryId = `diag-constraint-${issue.reason}-${encodedId}${idx > 0 ? `-${idx}` : ""}`;
     entries.push({
       id: entryId,
       severity: constraintSeverity(issue.reason),
       source: "constraint",
       targetKind: "equipment",
       equipmentId: issue.equipmentId,
-      safeAnchorId: `diag-${entryId}`,
+      safeAnchorId: entryId,
       title: constraintTitle(issue.reason),
-      description: issue.message,
+      description: constraintDescription(issue),
     });
   }
 
@@ -92,15 +113,21 @@ export function makeDiagnosticsViewModel(
       continue;
     }
 
+    const key = `${warning.code}${warning.equipmentId ? `-${warning.equipmentId}` : ""}`;
+    const idx = balanceEntryCountByKey.get(key) ?? 0;
+    balanceEntryCountByKey.set(key, idx + 1);
+    const uniqueDiscriminator = idx > 0 ? `-${idx}` : "";
+    const encodedId = warning.equipmentId ? `-${safeDiagnosticsIdStem(warning.equipmentId, equipmentIndexMap.get(warning.equipmentId) ?? 0)}` : "";
+    const entryId = `diag-balance-${warning.code}${encodedId}${uniqueDiscriminator}`;
     entries.push({
-      id: `diag-balance-${warning.code}${warning.equipmentId ? `-${warning.equipmentId}` : ""}`,
+      id: entryId,
       severity: warning.code === "invalidEquipment" ? "error" : "warning",
       source: "balance",
       targetKind: warning.equipmentId ? "equipment" : "balanceGlobal",
       equipmentId: warning.equipmentId,
-      safeAnchorId: `diag-balance-${warning.code}${warning.equipmentId ? `-${warning.equipmentId}` : ""}`,
-      title: warningLabels[warning.code] ?? warning.message,
-      description: warning.message,
+      safeAnchorId: entryId,
+      title: warningLabels[warning.code] ?? warning.code,
+      description: balanceWarningDescription(warning.code),
     });
   }
 

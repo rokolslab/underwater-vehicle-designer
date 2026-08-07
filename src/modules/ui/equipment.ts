@@ -1,9 +1,18 @@
-import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
+import type { EquipmentConstraintReport, EquipmentConstraintStatus, EquipmentConstraintIssue } from "../equipment/constraints";
 import { equipmentIssues, equipmentStatus } from "../equipment/constraints";
 import type { EquipmentItem, EquipmentShape } from "../equipment/model";
 import type { EquipmentUpdate } from "../equipment/placement";
 import { logger } from "../../shared/logger";
 import { equipmentConstraintUiStatus, uiStatusClassName, uiStatusHtmlAttributes } from "./statusTokens";
+import { safeIdStem } from "../../shared/safe-id";
+
+function constraintIssueDescription(issue: EquipmentConstraintIssue): string {
+  if (issue.reason === "invalidEquipment") return "Данные оборудования некорректны. Проверьте название, массу, размеры и положение.";
+  if (issue.reason === "outsideHull") return "Оборудование частично или полностью выходит за обводы корпуса.";
+  if (issue.reason === "outsideLength") return "Оборудование выходит за пределы длины корпуса.";
+  if (issue.reason === "intersects") return "Пересекается с другим оборудованием.";
+  return "Обнаружена проблема компоновки оборудования.";
+}
 export interface EquipmentRenderSelection {
   readonly selectedEquipmentId: string | null;
   readonly hoveredEquipmentId: string | null;
@@ -35,11 +44,8 @@ export interface EquipmentAccessibilityIds {
   readonly issues: string;
 }
 
-function safeEquipmentIdStem(equipmentId: string, index: number): string {
-  const encodedId = Array.from(equipmentId)
-    .map((character) => character.codePointAt(0)?.toString(16).padStart(2, "0"))
-    .join("-");
-  return `equipment-${index}-${encodedId || "empty"}`;
+export function safeEquipmentIdStem(equipmentId: string, index: number): string {
+  return safeIdStem("equipment", equipmentId, index);
 }
 
 export function makeEquipmentAccessibilityIds(equipmentId: string, index: number): EquipmentAccessibilityIds {
@@ -80,7 +86,7 @@ function renderIssueList(issues: ReturnType<typeof equipmentIssues>, issuesId: s
   if (issues.length === 0) return "";
 
   return `<div id="${issuesId}" class="equipment-issues" aria-label="Предупреждения по оборудованию">${issues
-    .map((issue) => `<span>${escapeHtml(issue.message)}</span>`)
+    .map((issue) => `<span>${escapeHtml(constraintIssueDescription(issue))}</span>`)
     .join("")}</div>`;
 }
 
@@ -102,7 +108,7 @@ function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | und
   const hoveredClass = isHovered ? " equipment-row--hovered" : "";
   const selectedAttrs = isSelected ? ' data-equipment-selected="true" aria-selected="true"' : "";
   return `
-    <div id="${accessibilityIds.row}" class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}${selectedClass}${hoveredClass}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)}${selectedAttrs} aria-labelledby="${accessibilityIds.nameLabel}" aria-describedby="${describedBy}">
+    <div id="${accessibilityIds.row}" class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}${selectedClass}${hoveredClass}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)}${selectedAttrs} aria-labelledby="${accessibilityIds.nameLabel}" aria-describedby="${describedBy}" tabindex="0">
       <label><span id="${accessibilityIds.nameLabel}">Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Форма</span>
@@ -149,6 +155,32 @@ export function renderEquipmentEditor(
     ? `${renderSummary(report)}${items.map((item, index) => renderItem(item, report, index, selection)).join("")}`
     : '<div class="equipment-empty">Список пуст</div>';
   logger.debug("equipment editor render completed", { count: items.length, issueCount: report?.issues.length ?? 0 });
+}
+
+export function updateEquipmentRowsInteraction(
+  container: HTMLElement,
+  previous: EquipmentRenderSelection,
+  next: EquipmentRenderSelection,
+): void {
+  if (previous.selectedEquipmentId === next.selectedEquipmentId && previous.hoveredEquipmentId === next.hoveredEquipmentId) return;
+
+  const rows = container.querySelectorAll<HTMLElement>("[data-equipment-id]");
+  for (const row of rows) {
+    const id = row.dataset.equipmentId ?? "";
+    const isSelected = id === next.selectedEquipmentId;
+    const isHovered = !isSelected && id === next.hoveredEquipmentId;
+
+    row.classList.toggle("equipment-row--selected", isSelected);
+    row.classList.toggle("equipment-row--hovered", isHovered);
+
+    if (isSelected) {
+      row.dataset.equipmentSelected = "true";
+      row.setAttribute("aria-selected", "true");
+    } else {
+      delete row.dataset.equipmentSelected;
+      row.removeAttribute("aria-selected");
+    }
+  }
 }
 
 export function equipmentIdFromEvent(event: Event): string | null {

@@ -204,7 +204,10 @@
               <button id="download-svg" class="compact-action" type="button" aria-label="Скачать SVG бокового вида">Скачать SVG</button>
             </div>
             <p id="profile-canvas-description" class="projection-convention">Проекция XZ: вправо +X (нос), вниз +Z. Canvas показывает расчетный боковой обвод по текущим размерениям.</p>
-            <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата" aria-describedby="profile-canvas-description"></canvas>
+            <div class="profile-canvas-wrapper">
+              <canvas id="profile-canvas" aria-label="Теоретический обвод подводного аппарата" aria-describedby="profile-canvas-description"></canvas>
+              <canvas id="profile-canvas-overlay" aria-hidden="true"></canvas>
+            </div>
           </details>
 
           <details class="scene3d-panel panel-details" open>

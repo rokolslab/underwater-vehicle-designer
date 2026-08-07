@@ -94,12 +94,26 @@ describe("makeInspectorViewModel", () => {
   it("shows issues when present", () => {
     const items = [makeSphere("eq-1")];
     const report: EquipmentConstraintReport = {
-      issues: [{ equipmentId: "eq-1", reason: "outsideHull", message: "Выход за корпус", status: "outsideHull" }],
-      issuesById: new Map([["eq-1", [{ equipmentId: "eq-1", reason: "outsideHull", message: "Выход за корпус", status: "outsideHull" }]]]),
+      issues: [{ equipmentId: "eq-1", reason: "outsideHull", message: "Выход за корпус при body.x=1", status: "outsideHull" }],
+      issuesById: new Map([["eq-1", [{ equipmentId: "eq-1", reason: "outsideHull", message: "Выход за корпус при body.x=1", status: "outsideHull" }]]]),
       statusById: new Map([["eq-1", "outsideHull" as const]]),
     };
     const vm = makeInspectorViewModel(items, "eq-1", report);
     expect(vm.issues).toBeDefined();
     expect(vm.issues!.length).toBeGreaterThan(0);
+  });
+
+  it("maps issue messages to Russian UI text without raw domain messages", () => {
+    const items = [makeSphere("eq-1")];
+    const report: EquipmentConstraintReport = {
+      issues: [{ equipmentId: "eq-1", reason: "outsideHull", message: "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).", status: "outsideHull" }],
+      issuesById: new Map([["eq-1", [{ equipmentId: "eq-1", reason: "outsideHull", message: "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).", status: "outsideHull" }]]]),
+      statusById: new Map([["eq-1", "outsideHull" as const]]),
+    };
+    const vm = makeInspectorViewModel(items, "eq-1", report);
+    expect(vm.issues!.length).toBeGreaterThan(0);
+    expect(vm.issues![0]).not.toContain("body.x");
+    expect(vm.issues![0]).not.toContain("s=");
+    expect(vm.issues![0]).toContain("обводы корпуса");
   });
 });

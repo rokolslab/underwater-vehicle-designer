@@ -34,6 +34,20 @@ export interface HullScene3d {
   readonly dispose: () => void;
 }
 
+interface HullScene3dCameraState {
+  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+  readonly target: { readonly x: number; readonly y: number; readonly z: number };
+  readonly distance: number;
+}
+
+interface Scene3dE2EHooksWindow extends Window {
+  readonly __UVD_ENABLE_E2E_HOOKS__?: boolean;
+  __UVD_E2E__?: {
+    bodyXzToCanvasPoint?: (right: number, down: number) => { readonly x: number; readonly y: number } | null;
+    scene3dCameraState?: () => HullScene3dCameraState | null;
+  };
+}
+
 interface ViewState {
   readonly target: THREE.Vector3;
   rotationX: number;
@@ -620,6 +634,23 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     renderer?.dispose();
     renderer?.domElement.remove();
     logger.debug("3d scene disposed");
+  }
+
+  function getCameraState(): HullScene3dCameraState | null {
+    if (!renderer) return null;
+    return Object.freeze({
+      position: Object.freeze({ x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+      target: Object.freeze({ x: viewState.target.x, y: viewState.target.y, z: viewState.target.z }),
+      distance: viewState.distance,
+    });
+  }
+
+  const e2eWindow = window as unknown as Scene3dE2EHooksWindow;
+  if (e2eWindow.__UVD_ENABLE_E2E_HOOKS__) {
+    e2eWindow.__UVD_E2E__ = {
+      ...e2eWindow.__UVD_E2E__,
+      scene3dCameraState: getCameraState,
+    };
   }
 
   return {

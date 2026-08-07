@@ -87,6 +87,94 @@ describe("makeDiagnosticsViewModel", () => {
     expect(vm.entries[0].source).toBe("balance");
   });
 
+  it("uses safe IDs that do not contain raw equipmentId with special characters", () => {
+    const items = [{
+      id: "eq #1 / pump",
+      name: "Test",
+      shape: "sphere" as const,
+      massKg: 10,
+      position: { x: 0, y: 0, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.1 },
+    }];
+    const report = constraintReport([{
+      equipmentId: "eq #1 / pump",
+      reason: "outsideHull",
+      message: "Outside",
+      status: "outsideHull",
+    }]);
+    const vm = makeDiagnosticsViewModel(items, report);
+    expect(vm.entries.length).toBeGreaterThanOrEqual(1);
+    const entry = vm.entries[0];
+    expect(entry.id).not.toContain(" ");
+    expect(entry.id).not.toContain("#");
+    expect(entry.id).not.toContain("/");
+    expect(entry.safeAnchorId).not.toContain(" ");
+    expect(entry.safeAnchorId).not.toContain("#");
+    expect(entry.safeAnchorId).not.toContain("/");
+  });
+
+  it("ensures unique IDs for multiple issues of the same equipment and reason", () => {
+    const items = [makeItem("eq-1"), makeItem("eq-2")];
+    const report = constraintReport([
+      { equipmentId: "eq-1", reason: "intersects", message: "Intersects", status: "intersects" },
+      { equipmentId: "eq-1", reason: "intersects", message: "Intersects", status: "intersects", otherEquipmentId: "eq-2" },
+    ]);
+    const vm = makeDiagnosticsViewModel(items, report);
+    expect(vm.entries.length).toBeGreaterThanOrEqual(2);
+    const ids = vm.entries.map((e) => e.safeAnchorId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("maps constraint descriptions to Russian UI text without raw domain messages", () => {
+    const items = [makeItem("eq-1")];
+    const report = constraintReport([{
+      equipmentId: "eq-1",
+      reason: "outsideHull",
+      message: "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).",
+      status: "outsideHull",
+    }]);
+    const vm = makeDiagnosticsViewModel(items, report);
+    expect(vm.entries[0].description).not.toContain("body.x");
+    expect(vm.entries[0].description).not.toContain("s=");
+    expect(vm.entries[0].description).toContain("обводы корпуса");
+  });
+
+  it("maps balance warning descriptions to Russian UI text from warningLabels", () => {
+    const items = [makeItem("eq-1")];
+    const balance = balanceResult([{
+      code: "nonPositiveBuoyancy" as BalanceWarningCode,
+      message: "Non-positive buoyancy calculated",
+    }]);
+    const vm = makeDiagnosticsViewModel(items, undefined, balance);
+    expect(vm.entries[0].description).not.toContain("Non-positive");
+    expect(vm.entries[0].description).toContain("Плавучесть");
+  });
+
+  it("does not use raw constraint issue.message as description", () => {
+    const rawMessage = "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).";
+    const items = [makeItem("eq-1")];
+    const report = constraintReport([{
+      equipmentId: "eq-1",
+      reason: "outsideHull",
+      message: rawMessage,
+      status: "outsideHull",
+    }]);
+    const vm = makeDiagnosticsViewModel(items, report);
+    expect(vm.entries[0].description).not.toBe(rawMessage);
+  });
+
+  it("does not use raw balance warning.message as description", () => {
+    const rawMessage = "Net buoyancy is not positive";
+    const items = [makeItem("eq-1")];
+    const balance = balanceResult([{
+      code: "nonPositiveBuoyancy" as BalanceWarningCode,
+      message: rawMessage,
+    }]);
+    const vm = makeDiagnosticsViewModel(items, undefined, balance);
+    expect(vm.entries[0].description).not.toBe(rawMessage);
+  });
+
   it("dedupes invalidEquipment between constraint and balance", () => {
     const items = [makeItem("eq-1")];
     const report = constraintReport([{
