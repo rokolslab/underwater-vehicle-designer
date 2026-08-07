@@ -30,6 +30,10 @@ const requiredIds = [
   "summary-constraints",
   "summary-balance",
   "project-import-notice",
+  "equipment-inspector",
+  "diagnostics-panel",
+  "diagnostics-queue",
+  "diagnostics-empty",
 ];
 
 describe("app DOM contract", () => {
@@ -287,5 +291,42 @@ describe("app DOM contract", () => {
 
     expect(main).not.toContain("makeProjectState");
     expect(main).not.toContain("currentProjectState");
+  });
+
+  it("exposes equipment selection markers as separate from engineering status", () => {
+    const equipment = readFileSync("src/modules/ui/equipment.ts", "utf8");
+
+    expect(equipment).toContain("data-equipment-selected");
+    expect(equipment).toContain("aria-selected");
+    expect(equipment).toContain("equipment-row--selected");
+    expect(equipment).not.toContain('data-equipment-selected="true" aria-selected="true" /></div>');
+  });
+
+  it("keeps WorkbenchInteractionState out of project JSON and DOM id", () => {
+    const html = readFileSync("index.html", "utf8");
+
+    expect(html).not.toContain("selectedEquipmentId");
+    expect(html).not.toContain("hoveredEquipmentId");
+    expect(html).not.toContain("WorkbenchInteractionState");
+  });
+
+  it("requires confirmation dialog before equipment deletion", () => {
+    const main = readFileSync("src/app/main.ts", "utf8");
+
+    expect(main).toContain('window.confirm("Удалить выбранное оборудование?")');
+    expect(main).toContain("[ui.equipment] delete confirmed");
+    expect(main).toContain("[ui.equipment] delete cancelled");
+  });
+
+  it("exposes diagnostics panel with safe anchors separate from balance warnings", () => {
+    const html = readFileSync("index.html", "utf8");
+    const main = readFileSync("src/app/main.ts", "utf8");
+
+    expect(html).toContain('id="diagnostics-panel"');
+    expect(html).toContain('id="diagnostics-queue"');
+    expect(html).toContain('id="diagnostics-empty"');
+    expect(main).toContain("makeDiagnosticsViewModel");
+    expect(main).toContain("renderDiagnostics");
+    expect(html).not.toContain('id="diagnostics-panel" id="balance-warnings"');
   });
 });

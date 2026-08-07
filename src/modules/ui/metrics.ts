@@ -27,7 +27,7 @@ export interface BalanceMetricsElements {
   readonly warnings: HTMLElement;
 }
 
-const warningLabels: Record<BalanceWarningCode, string> = {
+export const warningLabels: Record<BalanceWarningCode, string> = {
   emptyEquipment: "Нет оборудования для расчета баланса.",
   invalidEquipment: "Есть оборудование с некорректными данными.",
   invalidWaterDensity: "Плотность воды должна быть положительным числом.",

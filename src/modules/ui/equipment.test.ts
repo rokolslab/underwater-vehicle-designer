@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { evaluateEquipmentConstraints } from "../equipment/constraints";
+import type { EquipmentConstraintReport } from "../equipment/constraints";
 import { createDefaultEquipmentItem, updateEquipmentItem } from "../equipment/placement";
 import { makeProfileSnapshot } from "../geometry/profile";
-import { makeEquipmentAccessibilityIds, readEquipmentUpdate, renderEquipmentEditor } from "./equipment";
+import { makeEquipmentAccessibilityIds, readEquipmentUpdate, renderEquipmentEditor, updateEquipmentRowsInteraction } from "./equipment";
 
 function row(values: Record<string, string>): HTMLElement {
   return {
@@ -187,5 +188,115 @@ describe("equipment ui", () => {
     expect(container.innerHTML).toContain('aria-labelledby="equipment-0-6f-75-74-73-69-64-65-name-label"');
     expect(container.innerHTML).toContain('aria-describedby="equipment-0-6f-75-74-73-69-64-65-status equipment-0-6f-75-74-73-69-64-65-issues"');
     expect(container.innerHTML).toContain('id="equipment-0-6f-75-74-73-69-64-65-issues"');
+  });
+
+  it("renders equipment rows with tabindex for keyboard focus", () => {
+    const item = {
+      id: "focus-test",
+      name: "Focus",
+      shape: "sphere" as const,
+      massKg: 1,
+      position: { x: 0, y: 0, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.1 },
+    };
+    const container = { innerHTML: "" } as HTMLElement;
+    renderEquipmentEditor(container, [item]);
+    expect(container.innerHTML).toContain('tabindex="0"');
+  });
+
+  it("preserves delete button data-action for keyboard event delegation", () => {
+    const item = {
+      id: "del-test",
+      name: "Del",
+      shape: "sphere" as const,
+      massKg: 1,
+      position: { x: 0, y: 0, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.1 },
+    };
+    const container = { innerHTML: "" } as HTMLElement;
+    renderEquipmentEditor(container, [item]);
+    expect(container.innerHTML).toContain('data-action="delete-equipment"');
+  });
+
+  it("uses mapped Russian issue descriptions instead of raw domain messages", () => {
+    const item = {
+      id: "eq-msg",
+      name: "Msg",
+      shape: "sphere" as const,
+      massKg: 1,
+      position: { x: 0, y: 0, z: 0 },
+      orientation: "x" as const,
+      dimensions: { radius: 0.1 },
+    };
+    const report = {
+      issues: [{ equipmentId: "eq-msg", reason: "outsideHull" as const, message: "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).", status: "outsideHull" as const }],
+      issuesById: new Map([["eq-msg", [{ equipmentId: "eq-msg", reason: "outsideHull", message: "Оборудование выходит за сечение корпуса при body.x=1.5 м (s=3.5 м).", status: "outsideHull" }]]]),
+      statusById: new Map([["eq-msg", "outsideHull" as const]]),
+    } as unknown as EquipmentConstraintReport;
+    const container = { innerHTML: "" } as HTMLElement;
+    renderEquipmentEditor(container, [item], report);
+    expect(container.innerHTML).not.toContain("body.x");
+    expect(container.innerHTML).not.toContain("s=3.5");
+    expect(container.innerHTML).toContain("обводы корпуса");
+  });
+});
+
+describe("updateEquipmentRowsInteraction", () => {
+  it("toggles selected class and aria-selected on targeted row", () => {
+    const container = {
+      innerHTML: "",
+      querySelectorAll: vi.fn(),
+    } as unknown as HTMLElement;
+
+    const row = {
+      dataset: { equipmentId: "eq-1" },
+      classList: { toggle: vi.fn(), contains: vi.fn() },
+      setAttribute: vi.fn(),
+      removeAttribute: vi.fn(),
+    } as unknown as HTMLElement;
+
+    (container.querySelectorAll as ReturnType<typeof vi.fn>).mockReturnValue([row]);
+
+    const prev = { selectedEquipmentId: null, hoveredEquipmentId: null };
+    const next = { selectedEquipmentId: "eq-1", hoveredEquipmentId: null };
+    updateEquipmentRowsInteraction(container, prev, next);
+
+    expect(row.classList.toggle).toHaveBeenCalledWith("equipment-row--selected", true);
+  });
+
+  it("clears selected attributes when selection is removed", () => {
+    const container = {
+      innerHTML: "",
+      querySelectorAll: vi.fn(),
+    } as unknown as HTMLElement;
+
+    const row = {
+      dataset: { equipmentId: "eq-1" },
+      classList: { toggle: vi.fn(), contains: vi.fn() },
+      setAttribute: vi.fn(),
+      removeAttribute: vi.fn(),
+    } as unknown as HTMLElement;
+
+    (container.querySelectorAll as ReturnType<typeof vi.fn>).mockReturnValue([row]);
+
+    const prev = { selectedEquipmentId: "eq-1", hoveredEquipmentId: null };
+    const next = { selectedEquipmentId: null, hoveredEquipmentId: null };
+    updateEquipmentRowsInteraction(container, prev, next);
+
+    expect(row.removeAttribute).toHaveBeenCalledWith("aria-selected");
+  });
+
+  it("skips update when previous and next are identical", () => {
+    const container = {
+      innerHTML: "",
+      querySelectorAll: vi.fn(),
+    } as unknown as HTMLElement;
+
+    const state = { selectedEquipmentId: "eq-1", hoveredEquipmentId: null };
+    updateEquipmentRowsInteraction(container, state, state);
+
+    expect(container.querySelectorAll).not.toHaveBeenCalled();
   });
 });

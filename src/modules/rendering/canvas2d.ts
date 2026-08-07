@@ -9,8 +9,9 @@ import { bodyPointToXzProjection, type ScreenProjection2 } from "./coordinate-ad
 import type { RenderOptions } from "./model";
 import { renderingStatusColor } from "./statusColors";
 
-interface CanvasScale {
+export interface CanvasScale {
   readonly map: (point: ScreenProjection2) => Readonly<{ x: number; y: number }>;
+  readonly inverse: (cssX: number, cssY: number) => ScreenProjection2;
   readonly width: number;
   readonly height: number;
   readonly yLimit: number;
@@ -30,7 +31,7 @@ export function resizeCanvas(canvas: HTMLCanvasElement): void {
   logger.debug("canvas resized", { width: canvas.width, height: canvas.height, ratio });
 }
 
-function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): CanvasScale {
+export function createCanvasProfileScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): CanvasScale {
   const ratio = window.devicePixelRatio || 1;
   const width = canvas.width / ratio;
   const height = canvas.height / ratio;
@@ -53,12 +54,45 @@ function createScale(canvas: HTMLCanvasElement, snapshot: ProfileSnapshot): Canv
     scale,
   });
 
-  return {
-    map: (point) => Object.freeze({ x: originX + point.right * scale, y: originY + point.down * scale }),
+  return Object.freeze({
+    map: (point: ScreenProjection2) => Object.freeze({ x: originX + point.right * scale, y: originY + point.down * scale }),
+    inverse: (cssX: number, cssY: number) => Object.freeze({
+      right: (cssX - originX) / scale,
+      down: (cssY - originY) / scale,
+    }),
     width,
     height,
     yLimit,
-  };
+  });
+}
+
+export function bodyXzToCanvas(scale: CanvasScale, right: number, down: number): { x: number; y: number } {
+  return scale.map({ right, down });
+}
+
+export function canvasToBodyXz(scale: CanvasScale, cssX: number, cssY: number): { bodyX: number; bodyZ: number } {
+  const { right, down } = scale.inverse(cssX, cssY);
+  return Object.freeze({ bodyX: right, bodyZ: down });
+}
+
+export function hitTestEquipmentXz(
+  bodyX: number,
+  bodyZ: number,
+  equipment: readonly EquipmentItem[],
+): string | null {
+  for (let idx = equipment.length - 1; idx >= 0; idx -= 1) {
+    const item = equipment[idx];
+    const projection = equipmentXzProjection(item);
+    const left = projection.center.right - projection.halfWidth;
+    const right = projection.center.right + projection.halfWidth;
+    const bottom = projection.center.down - projection.halfHeight;
+    const top = projection.center.down + projection.halfHeight;
+
+    if (bodyX >= left && bodyX <= right && bodyZ >= bottom && bodyZ <= top) {
+      return item.id;
+    }
+  }
+  return null;
 }
 
 function drawGrid(context: CanvasRenderingContext2D, scale: CanvasScale, totalLength: number): void {
@@ -166,6 +200,11 @@ function drawEquipmentOverlay(
   });
 }
 
+export interface CanvasInteractionState {
+  readonly selectedEquipmentId: string | null;
+  readonly hoveredEquipmentId: string | null;
+}
+
 export function renderCanvasProfile(
   canvas: HTMLCanvasElement,
   snapshot: ProfileSnapshot,
@@ -174,6 +213,116 @@ export function renderCanvasProfile(
   report?: EquipmentConstraintReport,
 ): void {
   resizeCanvas(canvas);
+  drawCanvasProfileContent(canvas, snapshot, options, equipment, report);
+}
+
+export function renderCanvasInteractionOverlay(
+  overlayCanvas: HTMLCanvasElement,
+  baseCanvas: HTMLCanvasElement,
+  snapshot: ProfileSnapshot,
+  equipment: readonly EquipmentItem[] = [],
+  interaction?: CanvasInteractionState,
+): void {
+  const scale = createCanvasProfileScale(baseCanvas, snapshot);
+  drawInteractionHighlights(overlayCanvas, scale, equipment, interaction);
+}
+
+export function syncOverlayCanvasSize(
+  overlayCanvas: HTMLCanvasElement,
+  baseCanvas: HTMLCanvasElement,
+): void {
+  const ratio = window.devicePixelRatio || 1;
+  const rect = baseCanvas.getBoundingClientRect();
+  overlayCanvas.width = Math.max(1, Math.round(rect.width * ratio));
+  overlayCanvas.height = Math.max(1, Math.round(rect.height * ratio));
+}
+
+export function clearCanvasOverlay(overlayCanvas: HTMLCanvasElement): void {
+  const context = overlayCanvas.getContext("2d");
+  if (!context) return;
+  const ratio = window.devicePixelRatio || 1;
+  const rect = overlayCanvas.getBoundingClientRect();
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, rect.width, rect.height);
+}
+
+function drawInteractionHighlights(
+  overlayCanvas: HTMLCanvasElement,
+  scale: CanvasScale,
+  equipment: readonly EquipmentItem[],
+  interaction?: CanvasInteractionState,
+): void {
+  const context = overlayCanvas.getContext("2d");
+  if (!context) {
+    logger.warn("2d overlay canvas context unavailable", { canvasId: overlayCanvas.id });
+    return;
+  }
+
+  const ratio = window.devicePixelRatio || 1;
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, scale.width, scale.height);
+
+  if (!interaction || equipment.length === 0) return;
+
+  const selectedId = interaction.selectedEquipmentId;
+  const hoveredId = interaction.hoveredEquipmentId;
+  const hoveredItem = hoveredId ? equipment.find((e) => e.id === hoveredId) : undefined;
+  const selectedItem = selectedId ? equipment.find((e) => e.id === selectedId) : undefined;
+  const hoverSkipId = selectedId === hoveredId ? selectedId : undefined;
+
+  const selectionStroke = "rgba(11, 127, 119, 0.85)";
+  const selectionFill = "rgba(11, 127, 119, 0.08)";
+  const hoverStroke = "rgba(56, 161, 156, 0.65)";
+  const hoverFill = "rgba(56, 161, 156, 0.06)";
+
+  const drawInteractionRect = (
+    item: EquipmentItem,
+    stroke: string,
+    fill: string,
+    expand: number,
+  ): void => {
+    const projection = equipmentXzProjection(item);
+    const left = scale.map({ right: projection.center.right - projection.halfWidth - expand, down: projection.center.down }).x;
+    const right = scale.map({ right: projection.center.right + projection.halfWidth + expand, down: projection.center.down }).x;
+    const top = scale.map({ right: projection.center.right, down: projection.center.down - projection.halfHeight - expand }).y;
+    const bottom = scale.map({ right: projection.center.right, down: projection.center.down + projection.halfHeight + expand }).y;
+    const width = Math.max(4, right - left);
+    const height = Math.max(4, bottom - top);
+
+    context.save();
+    context.strokeStyle = stroke;
+    context.fillStyle = fill;
+    context.lineWidth = 2.8;
+    context.globalAlpha = 1;
+
+    if (item.shape === "sphere") {
+      context.beginPath();
+      const center = scale.map(projection.center);
+      context.ellipse(center.x, center.y, width / 2, height / 2, 0, 0, Math.PI * 2);
+    } else {
+      context.beginPath();
+      context.rect(left, top, width, height);
+    }
+    context.fill();
+    context.stroke();
+    context.restore();
+  };
+
+  if (hoveredItem && hoveredItem.id !== hoverSkipId) {
+    drawInteractionRect(hoveredItem, hoverStroke, hoverFill, 0.12);
+  }
+  if (selectedItem) {
+    drawInteractionRect(selectedItem, selectionStroke, selectionFill, 0.12);
+  }
+}
+
+function drawCanvasProfileContent(
+  canvas: HTMLCanvasElement,
+  snapshot: ProfileSnapshot,
+  options: RenderOptions,
+  equipment: readonly EquipmentItem[] = [],
+  report?: EquipmentConstraintReport,
+): void {
   const context = canvas.getContext("2d");
   if (!context) {
     logger.warn("2d canvas context unavailable", { canvasId: canvas.id });
@@ -181,7 +330,7 @@ export function renderCanvasProfile(
   }
 
   const ratio = window.devicePixelRatio || 1;
-  const scale = createScale(canvas, snapshot);
+  const scale = createCanvasProfileScale(canvas, snapshot);
   const totalLength = snapshot.extents.totalLength;
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, scale.width, scale.height);

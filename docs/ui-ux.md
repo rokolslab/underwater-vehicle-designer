@@ -26,7 +26,7 @@ Status vocabulary:
 | `warning` | Пересечение оборудования, migration notice, WebGL fallback, предупреждения баланса |
 | `error` | Выход оборудования за корпус или некорректные данные оборудования |
 | `experimental` | Маркер экспериментального equipment-only balance |
-| `selected` | Token-only placeholder; selection state не реализован |
+| `selected` | Выбор оборудования в списке, инспекторе, 2D canvas и 3D сцене через `WorkbenchInteractionState` |
 | `disabled` | Native `:disabled` styling для существующих controls |
 | `stale` | Token-only placeholder; runtime stale state не реализован |
 | `running` | Token-only placeholder; async phase state не реализован |
@@ -43,7 +43,19 @@ Accessibility foundation in this increment:
 - status and issue text are linked to equipment rows with `aria-describedby`;
 - current canvas-like surfaces have local textual descriptions.
 
-Non-goals for this increment: workbench shell redesign, equipment selection, CAD-lite viewport controls, mobile-specific flow, public hero redesign, framework change, formulas, `ProjectInputs`, JSON schema, and migrations.
+Non-goals for this increment: workbench shell redesign, CAD-lite viewport controls, mobile-specific flow, public hero redesign, framework change, formulas, `ProjectInputs`, JSON schema, and migrations.
+
+## Equipment Selection and Diagnostics
+
+Реализован рабочий сценарий выбора, инспекции и диагностики оборудования:
+
+- `WorkbenchInteractionState` — view-only состояние (`selectedEquipmentId`, `hoveredEquipmentId`), не входит в `ProjectInputs`, `ProjectEvaluation` или project JSON. Изменение selection/hover не вызывает `deriveProject()` и не загрязняет engineering state.
+- **Selection lifecycle:** добавление → авто-выбор нового объекта; удаление выбранного → ближайший оставшийся по индексу; импорт/сброс → очистка selection/hover.
+- **Equipment list:** строки поддерживают клик для выбора, визуальные маркеры `equipment-row--selected`, `data-equipment-selected="true"`, `aria-selected="true"` и инженерный `data-ui-status` сохраняются независимо. Hover — отдельный класс `equipment-row--hovered`.
+- **Inspector (`#equipment-inspector`):** отображает параметры выбранного объекта (форма, масса, положение Body/SNAME-NED, размеры, объём, статус, проблемы). Пустое состояние: «Выберите оборудование для просмотра параметров». При наличии проблем — ссылка «перейти к проблеме» к панели диагностики.
+- **2D canvas:** клик по проекции оборудования в профиле выбирает объект (CSS-pixel координаты, reverse-order hit-test). Selection и hover отображаются отдельными overlay-слоями поверх инженерного статуса.
+- **3D scene:** selection и hover через material variants (`emissive` подсветка), обновляются без перестроения mesh и смены engineering-материалов.
+- **Diagnostics queue (`#diagnostics-panel`):** единая очередь проблем компоновки и баланса с severity-сортировкой и dedupе. Записи с `[data-diagnostics-target]` кликабельны/фокусируемы (Enter/Space) — выбор оборудования, скролл к строке и фокус. Балансовые предупреждения `equipmentOnlyBuoyancyModel` — информационный disclaimer, не блокирующий. `invalidEquipment` dedupe между constraints и balance.
 
 ## Design Assets
 
@@ -209,7 +221,7 @@ Status states:
 - Не использовать англоязычные предупреждения в UI.
 - Сохранять экспортные кнопки рядом с соответствующим представлением.
 - Не превращать project toolbar в pseudo-CAD ribbon: она содержит только project operations и навигацию по существующим engineering surfaces.
-- Не добавлять equipment selection, central diagnostics queue, camera presets, gizmo или pointer picking без отдельного плана и state contract.
+- Не добавлять camera presets, gizmo или pointer picking без отдельного плана и state contract.
 - Проверять mobile layout: кнопки и текст не должны перекрывать соседние поля.
 
 ## See Also

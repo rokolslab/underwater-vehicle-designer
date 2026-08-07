@@ -77,8 +77,29 @@ describe("csv export", () => {
 
     expect(rows).toEqual([
       "N;s_m;body_x_m;half_breadth_y_m;top_z_m;bottom_z_m",
-      "1;0;0.5;0.8;-0.1;0.1",
-      "2;1;-0.5;0.9;-0.2;0.2",
+      "1;0;0,5;0,8;-0,1;0,1",
+      "2;1;-0,5;0,9;-0,2;0,2",
     ]);
+  });
+
+  it("uses comma as decimal separator for fractional coordinates", () => {
+    const snapshot = makeProfileSnapshot({
+      length: 6,
+      breadth: 2,
+      height: 2,
+      slenderness: 3,
+      diameter: 2,
+      cylindricalInsertLength: 0,
+      stations: 20,
+    });
+
+    const csv = buildCsv(snapshot);
+    const fractionalRows = csv.split("\n").filter((row) => row.includes(","));
+
+    expect(fractionalRows.length).toBeGreaterThan(0);
+    for (const row of fractionalRows) {
+      expect(row).not.toMatch(/\.\d/);
+    }
+    expect(fractionalRows[0]).toMatch(/;/);
   });
 });

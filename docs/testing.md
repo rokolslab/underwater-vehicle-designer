@@ -60,7 +60,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 | `src/modules/balance/` | `equipment-balance.test.ts` |
 | `src/modules/rendering/` | `mesh.test.ts`, `scene3d.test.ts`, `equipment3d.test.ts` |
 | `src/modules/persistence/` | `csv.test.ts`, `svg.test.ts`, `project-json.test.ts` |
-| `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts` |
+| `src/modules/ui/` | `equipment.test.ts`, `metrics.test.ts`, `interactionState.test.ts`, `equipmentInspector.test.ts`, `diagnostics.test.ts` |
 | `src/app/` | `appState.test.ts`, `application-gravity.test.ts`, `projectEvaluationRuntime.test.ts`, `dom-contract.test.ts` |
 | `src/application/project/` | `derive.test.ts`, `dependency-contract.test.ts`, `normalize.test.ts`, `reducer.test.ts`, `store.test.ts` |
 | `tests/e2e/` | `import-export.spec.ts` |
@@ -158,7 +158,7 @@ docker compose -f compose.yml -f compose.e2e.yml run --rm e2e npm run test:e2e
 
 `dom-contract.test.ts` защищает DOM ids, которые требуются `main.ts`. Если в `index.html` переименовать элемент без изменения `main.ts`, тест должен упасть.
 
-`equipment.test.ts` проверяет HTML editor и чтение updates из строк оборудования.
+`equipment.test.ts` проверяет HTML editor и чтение updates из строк оборудования. `interactionState.test.ts` покрывает pure-функции `WorkbenchInteractionState`: дефолтное состояние, select/clear/hover/clearHover без мутации, `resolveSelectionAfterDelete` с выбором предыдущего/следующего/fallback. `equipmentInspector.test.ts` проверяет view-model инспектора для всех форм оборудования (сфера/цилиндр/блок), пустое состояние и отображение engineering-статуса. `diagnostics.test.ts` проверяет очередь диагностик: ограничения и баланс, dedupe `invalidEquipment`, пропуск `equipmentOnlyBuoyancyModel`, severity-сортировку, пустое состояние и equipment-targeted предупреждения.
 
 ## Browser E2E Tests
 

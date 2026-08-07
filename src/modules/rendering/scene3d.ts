@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { ProfileSnapshot } from "../geometry/model";
-import type { EquipmentConstraintReport } from "../equipment/constraints";
+import type { EquipmentConstraintReport, EquipmentConstraintStatus } from "../equipment/constraints";
 import { equipmentStatus, equipmentStatusSummary } from "../equipment/constraints";
 import type { EquipmentItem } from "../equipment/model";
 import { logger } from "../../shared/logger";
@@ -14,6 +14,11 @@ import {
   type BodyClippingPlane,
 } from "./coordinate-adapter";
 
+export interface HullScene3dInteractionState {
+  readonly selectedEquipmentId: string | null;
+  readonly hoveredEquipmentId: string | null;
+}
+
 export interface HullScene3d {
   readonly isAvailable: boolean;
   readonly failureReason: string | null;
@@ -22,9 +27,25 @@ export interface HullScene3d {
     equipment?: readonly EquipmentItem[],
     settings?: Scene3dSettings,
     report?: EquipmentConstraintReport,
+    interaction?: HullScene3dInteractionState,
   ) => void;
+  readonly setEquipmentInteractionState: (interaction: HullScene3dInteractionState) => void;
   readonly resize: () => void;
   readonly dispose: () => void;
+}
+
+interface HullScene3dCameraState {
+  readonly position: { readonly x: number; readonly y: number; readonly z: number };
+  readonly target: { readonly x: number; readonly y: number; readonly z: number };
+  readonly distance: number;
+}
+
+interface Scene3dE2EHooksWindow extends Window {
+  readonly __UVD_ENABLE_E2E_HOOKS__?: boolean;
+  __UVD_E2E__?: {
+    bodyXzToCanvasPoint?: (right: number, down: number) => { readonly x: number; readonly y: number } | null;
+    scene3dCameraState?: () => HullScene3dCameraState | null;
+  };
 }
 
 interface ViewState {
@@ -255,6 +276,24 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     intersects: createEquipmentMaterial("intersects"),
     invalidEquipment: createEquipmentMaterial("invalidEquipment"),
   };
+
+  const equipmentSelectionMaterials: Record<EquipmentConstraintStatus, THREE.MeshStandardMaterial> = {
+    ok: new THREE.MeshStandardMaterial({ color: 0x0b7f77, metalness: 0.04, roughness: 0.36, emissive: 0x0b7f77, emissiveIntensity: 0.35, transparent: false, depthWrite: true }),
+    outsideHull: new THREE.MeshStandardMaterial({ color: 0xbd3434, metalness: 0.04, roughness: 0.36, emissive: 0xbd3434, emissiveIntensity: 0.35, transparent: false, depthWrite: true }),
+    intersects: new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.04, roughness: 0.36, emissive: 0xd97706, emissiveIntensity: 0.35, transparent: false, depthWrite: true }),
+    invalidEquipment: new THREE.MeshStandardMaterial({ color: 0xbd3454, metalness: 0.04, roughness: 0.36, emissive: 0xbd3454, emissiveIntensity: 0.35, transparent: false, depthWrite: true }),
+  };
+
+  const equipmentHoverMaterials: Record<EquipmentConstraintStatus, THREE.MeshStandardMaterial> = {
+    ok: new THREE.MeshStandardMaterial({ color: 0x38a19c, metalness: 0.04, roughness: 0.36, emissive: 0x0b7f77, emissiveIntensity: 0.15, transparent: false, depthWrite: true }),
+    outsideHull: new THREE.MeshStandardMaterial({ color: 0xe05555, metalness: 0.04, roughness: 0.36, emissive: 0xbd3434, emissiveIntensity: 0.15, transparent: false, depthWrite: true }),
+    intersects: new THREE.MeshStandardMaterial({ color: 0xeba028, metalness: 0.04, roughness: 0.36, emissive: 0xd97706, emissiveIntensity: 0.15, transparent: false, depthWrite: true }),
+    invalidEquipment: new THREE.MeshStandardMaterial({ color: 0xe05565, metalness: 0.04, roughness: 0.36, emissive: 0xbd3454, emissiveIntensity: 0.15, transparent: false, depthWrite: true }),
+  };
+
+  const equipmentMeshMap = new Map<string, { mesh: THREE.Mesh; status: EquipmentConstraintStatus }>();
+  let prevSelection3dId: string | null = null;
+  let prevHover3dId: string | null = null;
   const hullGroup = new THREE.Group();
   const equipmentGroup = new THREE.Group();
   const axisHelper = createBodyAxisHelper(0.75);
@@ -325,6 +364,9 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       }
     });
     equipmentGroup.clear();
+    equipmentMeshMap.clear();
+    prevSelection3dId = null;
+    prevHover3dId = null;
     currentEquipmentSignature = null;
   }
 
@@ -370,7 +412,10 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       for (const item of items) {
         try {
           const status = equipmentStatus(report, item.id);
-          equipmentGroup.add(createEquipmentMesh(item, equipmentMaterials[status]));
+          const mesh = createEquipmentMesh(item, equipmentMaterials[status]);
+          mesh.userData.status = status;
+          equipmentGroup.add(mesh);
+          equipmentMeshMap.set(item.id, { mesh, status });
         } catch (error) {
           logger.error("3d equipment mesh creation failed", {
             id: item.id,
@@ -399,6 +444,62 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       throw error;
     }
   }
+  function restoreEquipmentMaterial(mesh: THREE.Mesh, originalStatus: EquipmentConstraintStatus): void {
+    mesh.material = equipmentMaterials[originalStatus];
+    mesh.material.needsUpdate = true;
+  }
+
+  function setEquipmentInteractionState(interaction: HullScene3dInteractionState): void {
+    if (!renderer) return;
+
+    const selectedId = interaction.selectedEquipmentId;
+    const hoveredId = interaction.selectedEquipmentId === interaction.hoveredEquipmentId
+      ? null
+      : interaction.hoveredEquipmentId;
+
+    const toRestore = new Set<string>();
+    if (prevSelection3dId && prevSelection3dId !== selectedId && prevSelection3dId !== hoveredId) {
+      toRestore.add(prevSelection3dId);
+    }
+    if (prevHover3dId && prevHover3dId !== selectedId && prevHover3dId !== hoveredId) {
+      toRestore.add(prevHover3dId);
+    }
+    if (prevSelection3dId === prevHover3dId && prevSelection3dId && prevSelection3dId !== selectedId && prevSelection3dId !== hoveredId) {
+      toRestore.add(prevSelection3dId);
+    }
+
+    for (const id of toRestore) {
+      const entry = equipmentMeshMap.get(id);
+      if (entry) {
+        restoreEquipmentMaterial(entry.mesh, entry.status);
+      }
+    }
+
+    if (hoveredId) {
+      const entry = equipmentMeshMap.get(hoveredId);
+      if (entry) {
+        entry.mesh.material = equipmentHoverMaterials[entry.status];
+        entry.mesh.material.needsUpdate = true;
+      } else {
+        logger.debug("[rendering.3d] hovered equipment not in mesh map", { equipmentId: hoveredId });
+      }
+    }
+
+    if (selectedId) {
+      const entry = equipmentMeshMap.get(selectedId);
+      if (entry) {
+        entry.mesh.material = equipmentSelectionMaterials[entry.status];
+        entry.mesh.material.needsUpdate = true;
+      } else {
+        logger.debug("[rendering.3d] selected equipment not in mesh map", { equipmentId: selectedId });
+      }
+    }
+
+    prevSelection3dId = selectedId;
+    prevHover3dId = hoveredId;
+    draw();
+  }
+
   function replaceHull(snapshot: ProfileSnapshot): void {
     try {
       disposeCurrentHull();
@@ -437,6 +538,7 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     equipment: readonly EquipmentItem[] = [],
     settings: Scene3dSettings = defaultScene3dSettings,
     report?: EquipmentConstraintReport,
+    interaction?: HullScene3dInteractionState,
   ): void {
     if (!renderer) return;
     applyViewSettings(bodyMaterial, wireMaterial, settings);
@@ -450,6 +552,9 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
       if (currentEquipmentSignature !== nextEquipmentSignature) {
         replaceEquipment(equipment, report);
       }
+    }
+    if (interaction) {
+      setEquipmentInteractionState(interaction);
     }
     resize();
   }
@@ -518,6 +623,8 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     bodyMaterial.dispose();
     wireMaterial.dispose();
     Object.values(equipmentMaterials).forEach((material) => material.dispose());
+    Object.values(equipmentSelectionMaterials).forEach((material) => material.dispose());
+    Object.values(equipmentHoverMaterials).forEach((material) => material.dispose());
     axisHelper.traverse((object) => {
       if (object instanceof THREE.Sprite) {
         object.material.map?.dispose();
@@ -529,10 +636,28 @@ export function createHullScene3d(container: HTMLElement): HullScene3d {
     logger.debug("3d scene disposed");
   }
 
+  function getCameraState(): HullScene3dCameraState | null {
+    if (!renderer) return null;
+    return Object.freeze({
+      position: Object.freeze({ x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+      target: Object.freeze({ x: viewState.target.x, y: viewState.target.y, z: viewState.target.z }),
+      distance: viewState.distance,
+    });
+  }
+
+  const e2eWindow = window as unknown as Scene3dE2EHooksWindow;
+  if (e2eWindow.__UVD_ENABLE_E2E_HOOKS__) {
+    e2eWindow.__UVD_E2E__ = {
+      ...e2eWindow.__UVD_E2E__,
+      scene3dCameraState: getCameraState,
+    };
+  }
+
   return {
     isAvailable: Boolean(renderer),
     failureReason: rendererResult.failureReason,
     render,
+    setEquipmentInteractionState,
     resize,
     dispose,
   };

@@ -215,8 +215,9 @@ Shapes are precise and slightly technical: small-radius buttons and chips, mediu
 ### UX-1 Semantic Foundation Scope
 
 - Implemented: status tokens, focus/disabled/touch-target tokens, stable DOM status attributes/classes, equipment accessibility IDs, no interactive descendants inside `summary`, and local descriptions for current canvas-like surfaces.
-- Implemented in the next UX-1 shell slice: project toolbar, compact engineering summary, workbench zones, grouped hull/method/calculation controls, clearer equipment/diagnostics/export boundaries, and targeted DOM/Playwright/encoding coverage.
-- Intentionally not implemented: equipment selection, central diagnostics queue, CAD-lite viewport controls, camera presets, pointer picking, mobile-specific flow, public hero redesign, UI framework change, calculation formulas, `ProjectInputs`, JSON schema, migrations, or new runtime `selected`/`stale`/`running` state.
+- Implemented in the next UX-1 shell slice (since merged): project toolbar, compact engineering summary, workbench zones, grouped hull/method/calculation controls, clearer equipment/diagnostics/export boundaries, and targeted DOM/Playwright/encoding coverage.
+- Not implemented: CAD-lite viewport controls, camera presets, pointer picking, mobile-specific flow, public hero redesign, UI framework change, calculation formulas, `ProjectInputs`, JSON schema, migrations, or runtime `stale`/`running` state.
+- Implemented in UX-2 milestone: equipment selection (`WorkbenchInteractionState`), inspector, 2D/3D selection+hover overlays, central diagnostics queue with severity sorting and dedupe, delete confirmation, and mobile card responsiveness.
 
 ### Owner Decisions Required
 - Whether the next UI goal is public MVP presentation, workbench clarity, CAD-lite interaction, or mobile demo/export.
