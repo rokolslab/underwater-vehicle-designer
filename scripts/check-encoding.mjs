@@ -68,6 +68,13 @@ const expectedStrings = [
   { file: "src/app/styles.css", value: "Показать" },
   { file: "src/app/styles.css", value: "Скрыть" },
   { file: "src/modules/ui/table.ts", value: "параметрических станций" },
+  { file: "src/modules/ui/equipmentInspector.ts", value: "Выберите оборудование для просмотра параметров" },
+  { file: "src/app/main.ts", value: "Удалить выбранное оборудование?" },
+  { file: "src/modules/ui/diagnostics.ts", value: "Добавьте оборудование, чтобы увидеть диагностику компоновки" },
+  { file: "src/modules/ui/diagnostics.ts", value: "Некорректные данные оборудования" },
+  { file: "src/modules/ui/diagnostics.ts", value: "Оборудование вне корпуса" },
+  { file: "src/modules/ui/diagnostics.ts", value: "Пересечение оборудования" },
+  { file: "src/modules/ui/equipmentInspector.ts", value: "перейти к проблеме" },
 ];
 
 const results = {

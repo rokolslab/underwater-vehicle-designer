@@ -80,6 +80,7 @@ export function createEquipmentMesh(item: EquipmentItem, material: THREE.Materia
   const transform = equipmentSceneTransform(item);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `equipment:${item.id}`;
+  mesh.userData.equipmentId = item.id;
   mesh.position.set(transform.position.x, transform.position.y, transform.position.z);
   mesh.rotation.set(transform.rotation.x, transform.rotation.y, transform.rotation.z);
   return mesh;

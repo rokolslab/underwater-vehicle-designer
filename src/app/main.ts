@@ -7,7 +7,7 @@ import { deriveProject } from "../application/project/derive";
 import type { ProjectInputs, ProjectProfileInputs } from "../application/project/model";
 import { projectProfileInputsWithViewToProfileState } from "../application/project/normalize";
 import { createProjectStore } from "../application/project/store";
-import { renderCanvasProfile } from "../modules/rendering/canvas2d";
+import { renderCanvasProfile, equipmentXzProjection } from "../modules/rendering/canvas2d";
 import { renderTheoreticalDrawing } from "../modules/rendering/theoretical-drawing";
 import { createHullScene3d } from "../modules/rendering/scene3d";
 import { defaultScene3dSettings, normalizeScene3dSettings } from "../modules/rendering/viewSettings";
@@ -16,7 +16,9 @@ import { buildProjectJson } from "../modules/persistence/project-json";
 import { download } from "../modules/persistence/download";
 import { buildSvg } from "../modules/persistence/svg";
 import { buildTheoreticalDrawingSvg } from "../modules/persistence/theoretical-drawing-svg";
-import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, readEquipmentUpdate } from "../modules/ui/equipment";
+import { renderEquipmentEditor, equipmentIdFromEvent, isEquipmentDeleteEvent, isEquipmentRowSelectionEvent, readEquipmentUpdate, type EquipmentRenderSelection } from "../modules/ui/equipment";
+import { renderEquipmentInspector } from "../modules/ui/equipmentInspector";
+import { makeDiagnosticsViewModel, renderDiagnostics } from "../modules/ui/diagnostics";
 import { renderBalanceMetrics } from "../modules/ui/metrics";
 import { IMPORT_MIGRATION_UI_STATUS, IMPORT_SUCCESS_UI_STATUS, UI_STATUS_CLASS_NAMES, UI_STATUS_DATA_ATTRIBUTE, uiStatusClassName, uiStatusDataValue } from "../modules/ui/statusTokens";
 import { bindScene3dControls, readScene3dControls, updateScene3dControlBounds, writeScene3dControls, type Scene3dControlElements } from "../modules/ui/scene3dControls";
@@ -28,6 +30,14 @@ import { logger } from "../shared/logger";
 import { createProjectEvaluationRuntime, type ProjectEvaluationPublication } from "./projectEvaluationRuntime";
 import { prepareProjectImport, type PreparedProjectImportResult } from "./projectImport";
 import { inputsAndViewToSerializableProject, type ProjectViewState } from "./projectProjection";
+import {
+  createDefaultInteractionState,
+  selectEquipment,
+  resolveSelectionAfterDelete,
+  clearHover,
+  hoverEquipment,
+  type WorkbenchInteractionState,
+} from "../modules/ui/interactionState";
 
 function requiredElement<T extends HTMLElement>(selector: string, type: { new (): T }): T {
   const element = document.querySelector(selector);
@@ -77,6 +87,9 @@ const scene3dFallback = requiredElement("#scene3d-fallback", HTMLElement);
 const tableBody = requiredElement("#coordinate-rows", HTMLTableSectionElement);
 const pointCountEl = requiredElement("#point-count", HTMLElement);
 const equipmentList = requiredElement("#equipment-list", HTMLElement);
+const equipmentInspector = requiredElement("#equipment-inspector", HTMLElement);
+const diagnosticsQueue = requiredElement("#diagnostics-queue", HTMLElement);
+const diagnosticsEmpty = requiredElement("#diagnostics-empty", HTMLElement);
 const addEquipmentButton = requiredElement("#add-equipment", HTMLButtonElement);
 const waterDensityInput = requiredElement("#water-density", HTMLInputElement);
 const balanceMetrics = {
@@ -135,6 +148,7 @@ let projectViewState: ProjectViewState = Object.freeze({
 });
 let resizeFrame: number | null = null;
 let projectImportRequestToken = 0;
+let interactionState: WorkbenchInteractionState = createDefaultInteractionState();
 
 function scene3dBoundsFromSnapshot(snapshot: ProfileSnapshot) {
   return Object.freeze({
@@ -144,8 +158,29 @@ function scene3dBoundsFromSnapshot(snapshot: ProfileSnapshot) {
   });
 }
 
+function getInteractionState(): WorkbenchInteractionState {
+  return interactionState;
+}
+
+function setInteractionState(
+  next: WorkbenchInteractionState,
+  trigger: string,
+): void {
+  if (next === interactionState) return;
+  const prev = interactionState;
+  interactionState = next;
+  logger.debug("[ui.interaction]", {
+    trigger,
+    selectedEquipmentId: next.selectedEquipmentId,
+    hoveredEquipmentId: next.hoveredEquipmentId,
+    prevSelectedId: prev.selectedEquipmentId,
+    prevHoveredId: prev.hoveredEquipmentId,
+  });
+}
+
 function renderPublication(publication: ProjectEvaluationPublication): void {
   const { inputsSnapshot, evaluation } = publication;
+  const currentInteraction = getInteractionState();
   const scene3dBounds = scene3dBoundsFromSnapshot(evaluation.hullGeometry);
   updateScene3dControlBounds(scene3dControls, scene3dBounds);
   const scene3dSettings = normalizeScene3dSettings(projectViewState.scene3dSettings, scene3dBounds);
@@ -168,13 +203,24 @@ function renderPublication(publication: ProjectEvaluationPublication): void {
     balanceWarningCount: evaluation.balance.warnings.length,
   });
 
-  renderCanvasProfile(canvas, evaluation.hullGeometry, projectViewState, inputsSnapshot.equipment, evaluation.constraints);
+  const interaction = {
+    selectedEquipmentId: currentInteraction.selectedEquipmentId,
+    hoveredEquipmentId: currentInteraction.hoveredEquipmentId,
+  };
+
+  renderCanvasProfile(canvas, evaluation.hullGeometry, projectViewState, inputsSnapshot.equipment, evaluation.constraints, interaction);
   renderTheoreticalDrawing(theoreticalDrawingCanvas, evaluation.theoreticalDrawing);
   renderEquipment(publication);
+  renderEquipmentInspector(equipmentInspector, inputsSnapshot.equipment, currentInteraction.selectedEquipmentId, evaluation.constraints);
+  renderDiagnostics(
+    diagnosticsQueue,
+    diagnosticsEmpty,
+    makeDiagnosticsViewModel(inputsSnapshot.equipment, evaluation.constraints, evaluation.balance),
+  );
   renderTable(tableBody, pointCountEl, evaluation.hullGeometry);
   renderBalanceMetrics(balanceMetrics, evaluation.balance);
   renderWorkbenchSummary(workbenchSummary, inputsSnapshot, evaluation);
-  hullScene3d.render(evaluation.hullGeometry, inputsSnapshot.equipment, scene3dSettings, evaluation.constraints);
+  hullScene3d.render(evaluation.hullGeometry, inputsSnapshot.equipment, scene3dSettings, evaluation.constraints, interaction);
 }
 
 const projectEvaluationRuntime = createProjectEvaluationRuntime({
@@ -193,7 +239,12 @@ function renderCurrentViewsForSize(): void {
     return;
   }
 
-  renderCanvasProfile(canvas, publication.evaluation.hullGeometry, projectViewState, publication.inputsSnapshot.equipment, publication.evaluation.constraints);
+  const currentInteraction = getInteractionState();
+  const interaction = {
+    selectedEquipmentId: currentInteraction.selectedEquipmentId,
+    hoveredEquipmentId: currentInteraction.hoveredEquipmentId,
+  };
+  renderCanvasProfile(canvas, publication.evaluation.hullGeometry, projectViewState, publication.inputsSnapshot.equipment, publication.evaluation.constraints, interaction);
   renderTheoreticalDrawing(theoreticalDrawingCanvas, publication.evaluation.theoreticalDrawing);
   hullScene3d.resize();
 }
@@ -250,7 +301,12 @@ function restoreEquipmentFocus(focusState: ReturnType<typeof focusedEquipmentFie
 
 function renderEquipment(publication: ProjectEvaluationPublication): void {
   const focusState = focusedEquipmentField();
-  renderEquipmentEditor(equipmentList, publication.inputsSnapshot.equipment, publication.evaluation.constraints);
+  const currentInteraction = getInteractionState();
+  const selection: EquipmentRenderSelection = {
+    selectedEquipmentId: currentInteraction.selectedEquipmentId,
+    hoveredEquipmentId: currentInteraction.hoveredEquipmentId,
+  };
+  renderEquipmentEditor(equipmentList, publication.inputsSnapshot.equipment, publication.evaluation.constraints, selection);
   restoreEquipmentFocus(focusState);
 }
 
@@ -343,6 +399,7 @@ function applyPreparedProjectImport(result: Extract<PreparedProjectImportResult,
   }
 
   try {
+    setInteractionState(createDefaultInteractionState(), "import");
     renderCommittedState(committed);
   } catch (error) {
     window.alert("Проект импортирован, но не удалось обновить отображение.");
@@ -438,16 +495,59 @@ window.addEventListener("beforeunload", () => {
 addEquipmentButton.addEventListener("click", () => {
   const equipmentPanel = addEquipmentButton.closest<HTMLDetailsElement>("details");
   if (equipmentPanel) equipmentPanel.open = true;
-  const committed = commitProjectCommand({ type: "AddEquipment" });
+  const before = projectStore.getSnapshot();
+  const beforeIds = before.equipment.map((e) => e.id);
+  const committed = projectStore.dispatch({ type: "AddEquipment" });
+  if (committed === before) return;
+  const newId = committed.equipment.map((e) => e.id).find((id) => !beforeIds.includes(id));
+  if (newId) {
+    setInteractionState(
+      selectEquipment(createDefaultInteractionState(), newId),
+      "add",
+    );
+  }
+  renderCommittedState(committed);
   logger.info("equipment added by user", { count: committed.equipment.length });
 });
 
 equipmentList.addEventListener("click", (event) => {
-  if (!isEquipmentDeleteEvent(event)) return;
-  const id = equipmentIdFromEvent(event);
-  if (!id) return;
-  const committed = commitProjectCommand({ type: "DeleteEquipment", id });
-  logger.info("equipment deleted by user", { id, count: committed.equipment.length });
+  if (isEquipmentDeleteEvent(event)) {
+    const id = equipmentIdFromEvent(event);
+    if (!id) return;
+    if (!window.confirm("Удалить выбранное оборудование?")) {
+      logger.debug("[ui.equipment] delete cancelled", { id, result: "cancelled" });
+      return;
+    }
+    logger.debug("[ui.equipment] delete confirmed", { id, result: "confirmed" });
+    const before = projectStore.getSnapshot();
+    const beforeIds = before.equipment.map((e) => e.id);
+    const currentSelectionId = getInteractionState().selectedEquipmentId;
+    const currentHoverId = getInteractionState().hoveredEquipmentId;
+    const committed = projectStore.dispatch({ type: "DeleteEquipment", id });
+    if (committed === before) return;
+    const afterIds = committed.equipment.map((e) => e.id);
+    let nextInteraction = interactionState;
+    if (currentSelectionId === id) {
+      const resolvedId = resolveSelectionAfterDelete(currentSelectionId, id, beforeIds, afterIds);
+      nextInteraction = { ...nextInteraction, selectedEquipmentId: resolvedId };
+    }
+    if (currentHoverId === id) {
+      nextInteraction = { ...nextInteraction, hoveredEquipmentId: null };
+    }
+    if (nextInteraction !== interactionState) {
+      setInteractionState(Object.freeze(nextInteraction), "delete");
+    }
+    renderCommittedState(committed);
+    logger.info("equipment deleted by user", { id, count: committed.equipment.length });
+    return;
+  }
+
+  if (!isEquipmentRowSelectionEvent(event)) return;
+  const rowId = equipmentIdFromEvent(event);
+  if (!rowId) return;
+  const nextState = selectEquipment(getInteractionState(), rowId);
+  setInteractionState(nextState, "row");
+  projectEvaluationRuntime.rerender();
 });
 
 equipmentList.addEventListener("change", (event) => {
@@ -478,6 +578,134 @@ equipmentList.addEventListener("input", (event) => {
   logger.debug("equipment state read from UI", { id });
   commitProjectCommand({ type: "UpdateEquipment", id, update: readEquipmentUpdate(row) });
 });
+
+canvas.addEventListener("click", (event) => {
+  const publication = projectEvaluationRuntime.getPublication();
+  if (!publication) return;
+  const equipment = publication.inputsSnapshot.equipment;
+  if (equipment.length === 0) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const cssX = event.clientX - rect.left;
+  const cssY = event.clientY - rect.top;
+  if (cssX < 0 || cssY < 0 || cssX > rect.width || cssY > rect.height) return;
+
+  const snapshot = publication.evaluation.hullGeometry;
+  const totalLength = snapshot.extents.totalLength;
+  const xMargin = 40;
+  const yMargin = 30;
+  const drawWidth = rect.width - xMargin * 2;
+  const drawHeight = rect.height - yMargin * 2;
+  const totalXRange = totalLength * 1.2;
+  const scaleX = drawWidth / totalXRange;
+  const maxExtentY = Math.max(snapshot.extents.maxHalfHeightZ + 0.3, snapshot.extents.maxHalfBreadthY + 0.3);
+  const yLimit = maxExtentY * 1.2;
+  const scaleY = drawHeight / (yLimit * 2);
+
+  const bodyX = (cssX - xMargin) / scaleX - totalXRange / 2;
+  const bodyZ = (rect.height / 2 - cssY) / scaleY;
+
+  if (Math.abs(bodyX) > totalLength / 2 + 2 || Math.abs(bodyZ) > maxExtentY + 2) return;
+
+  let hitId: string | null = null;
+  for (let idx = equipment.length - 1; idx >= 0; idx -= 1) {
+    const item = equipment[idx];
+    const projection = equipmentXzProjection(item);
+    const left = projection.center.right - projection.halfWidth;
+    const right = projection.center.right + projection.halfWidth;
+    const bottom = projection.center.down - projection.halfHeight;
+    const top = projection.center.down + projection.halfHeight;
+
+    if (bodyX >= left && bodyX <= right && bodyZ >= bottom && bodyZ <= top) {
+      hitId = item.id;
+      break;
+    }
+  }
+
+  if (!hitId) return;
+  const nextState = selectEquipment(getInteractionState(), hitId);
+  setInteractionState(nextState, "canvas");
+  projectEvaluationRuntime.rerender();
+});
+
+diagnosticsQueue.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const entry = target.closest<HTMLElement>(".diagnostics-entry");
+  if (!entry) return;
+  navigateDiagnosticsEntry(entry);
+});
+
+diagnosticsQueue.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const entry = target.closest<HTMLElement>(".diagnostics-entry");
+  if (!entry) return;
+  event.preventDefault();
+  navigateDiagnosticsEntry(entry);
+});
+
+function navigateDiagnosticsEntry(entry: HTMLElement): void {
+  const equipmentId = entry.dataset.diagnosticsTarget;
+  if (!equipmentId) return;
+
+  const nextState = selectEquipment(getInteractionState(), equipmentId);
+  setInteractionState(nextState, "diagnostics");
+  projectEvaluationRuntime.rerender();
+
+  const row = equipmentList.querySelector<HTMLElement>(`[data-equipment-id="${CSS.escape(equipmentId)}"]`);
+  if (row) {
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const details = row.closest<HTMLDetailsElement>("details");
+    if (details && !details.open) details.open = true;
+    row.focus({ preventScroll: true });
+  }
+}
+
+equipmentList.addEventListener("mouseenter", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const row = target.closest<HTMLElement>("[data-equipment-id]");
+  if (!row) return;
+  const id = row.dataset.equipmentId;
+  if (!id) return;
+  const nextState = hoverEquipment(getInteractionState(), id);
+  setInteractionState(nextState, "hover");
+  projectEvaluationRuntime.rerender();
+}, true);
+
+equipmentList.addEventListener("mouseleave", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const row = target.closest<HTMLElement>("[data-equipment-id]");
+  if (!row) return;
+  const nextState = clearHover(getInteractionState());
+  setInteractionState(nextState, "hover");
+  projectEvaluationRuntime.rerender();
+}, true);
+
+diagnosticsQueue.addEventListener("mouseenter", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const entry = target.closest<HTMLElement>(".diagnostics-entry[data-diagnostics-target]");
+  if (!entry) return;
+  const equipmentId = entry.dataset.diagnosticsTarget;
+  if (!equipmentId) return;
+  const nextState = hoverEquipment(getInteractionState(), equipmentId);
+  setInteractionState(nextState, "hover");
+  projectEvaluationRuntime.rerender();
+}, true);
+
+diagnosticsQueue.addEventListener("mouseleave", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const entry = target.closest<HTMLElement>(".diagnostics-entry[data-diagnostics-target]");
+  if (!entry) return;
+  const nextState = clearHover(getInteractionState());
+  setInteractionState(nextState, "hover");
+  projectEvaluationRuntime.rerender();
+}, true);
 
 downloadSvgButton.addEventListener("click", () => {
   const publication = projectEvaluationRuntime.getPublication();
@@ -572,6 +800,7 @@ resetButton.addEventListener("click", () => {
       balanceSettings: { ...defaultProject.balanceSettings, waterDensityKgPerM3: DEFAULT_WATER_DENSITY_KG_PER_M3 },
     },
   });
+  setInteractionState(createDefaultInteractionState(), "reset");
   writeProfileControls(committed.profile, projectViewState);
   writeScene3dControls(scene3dControls, projectViewState.scene3dSettings);
   waterDensityInput.value = String(DEFAULT_WATER_DENSITY_KG_PER_M3);

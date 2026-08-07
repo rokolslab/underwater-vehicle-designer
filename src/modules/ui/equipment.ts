@@ -4,6 +4,10 @@ import type { EquipmentItem, EquipmentShape } from "../equipment/model";
 import type { EquipmentUpdate } from "../equipment/placement";
 import { logger } from "../../shared/logger";
 import { equipmentConstraintUiStatus, uiStatusClassName, uiStatusHtmlAttributes } from "./statusTokens";
+export interface EquipmentRenderSelection {
+  readonly selectedEquipmentId: string | null;
+  readonly hoveredEquipmentId: string | null;
+}
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -86,14 +90,19 @@ function renderStatus(item: EquipmentItem, report: EquipmentConstraintReport | u
   return `<div id="${statusId}" class="equipment-status equipment-status--${status} ${uiStatusClassName(semanticStatus)}" ${uiStatusHtmlAttributes(semanticStatus)}>${statusLabel(status)}</div>`;
 }
 
-function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined, index: number): string {
+function renderItem(item: EquipmentItem, report: EquipmentConstraintReport | undefined, index: number, selection?: EquipmentRenderSelection): string {
   const status = equipmentStatus(report, item.id);
   const semanticStatus = equipmentConstraintUiStatus(status);
   const accessibilityIds = makeEquipmentAccessibilityIds(item.id, index);
   const issues = equipmentIssues(report, item.id);
   const describedBy = [accessibilityIds.status, ...(issues.length > 0 ? [accessibilityIds.issues] : [])].join(" ");
+  const isSelected = selection?.selectedEquipmentId === item.id;
+  const isHovered = !isSelected && selection?.hoveredEquipmentId === item.id;
+  const selectedClass = isSelected ? " equipment-row--selected" : "";
+  const hoveredClass = isHovered ? " equipment-row--hovered" : "";
+  const selectedAttrs = isSelected ? ' data-equipment-selected="true" aria-selected="true"' : "";
   return `
-    <div id="${accessibilityIds.row}" class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)} aria-labelledby="${accessibilityIds.nameLabel}" aria-describedby="${describedBy}">
+    <div id="${accessibilityIds.row}" class="equipment-row ${statusClass(status)} ${uiStatusClassName(semanticStatus)}${selectedClass}${hoveredClass}" data-equipment-id="${escapeHtml(item.id)}" ${uiStatusHtmlAttributes(semanticStatus)}${selectedAttrs} aria-labelledby="${accessibilityIds.nameLabel}" aria-describedby="${describedBy}">
       <label><span id="${accessibilityIds.nameLabel}">Наименование</span><input data-field="name" type="text" value="${escapeHtml(item.name)}" /></label>
       <label>
         <span>Форма</span>
@@ -133,10 +142,11 @@ export function renderEquipmentEditor(
   container: HTMLElement,
   items: readonly EquipmentItem[],
   report?: EquipmentConstraintReport,
+  selection?: EquipmentRenderSelection,
 ): void {
   logger.debug("equipment editor render started", { count: items.length, issueCount: report?.issues.length ?? 0 });
   container.innerHTML = items.length
-    ? `${renderSummary(report)}${items.map((item, index) => renderItem(item, report, index)).join("")}`
+    ? `${renderSummary(report)}${items.map((item, index) => renderItem(item, report, index, selection)).join("")}`
     : '<div class="equipment-empty">Список пуст</div>';
   logger.debug("equipment editor render completed", { count: items.length, issueCount: report?.issues.length ?? 0 });
 }
@@ -150,6 +160,14 @@ export function equipmentIdFromEvent(event: Event): string | null {
 export function isEquipmentDeleteEvent(event: Event): boolean {
   const target = event.target;
   return target instanceof HTMLElement && Boolean(target.closest("[data-action='delete-equipment']"));
+}
+
+export function isEquipmentRowSelectionEvent(event: Event): boolean {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.closest("input, select, button, [data-action], label")) return false;
+  const row = target.closest<HTMLElement>("[data-equipment-id]");
+  return row !== null;
 }
 
 function rowValue(row: HTMLElement, field: string): string | undefined {

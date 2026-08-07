@@ -166,13 +166,20 @@ function drawEquipmentOverlay(
   });
 }
 
+export interface CanvasInteractionState {
+  readonly selectedEquipmentId: string | null;
+  readonly hoveredEquipmentId: string | null;
+}
+
 export function renderCanvasProfile(
   canvas: HTMLCanvasElement,
   snapshot: ProfileSnapshot,
   options: RenderOptions,
   equipment: readonly EquipmentItem[] = [],
   report?: EquipmentConstraintReport,
+  _interaction?: CanvasInteractionState,
 ): void {
+  const interaction = _interaction;
   resizeCanvas(canvas);
   const context = canvas.getContext("2d");
   if (!context) {
@@ -233,6 +240,59 @@ export function renderCanvasProfile(
   context.stroke(shape);
 
   drawEquipmentOverlay(context, scale, equipment, report);
+
+  if (interaction && equipment.length > 0) {
+    const selectedId = interaction.selectedEquipmentId;
+    const hoveredId = interaction.hoveredEquipmentId;
+    const hoveredItem = hoveredId ? equipment.find((e) => e.id === hoveredId) : undefined;
+    const selectedItem = selectedId ? equipment.find((e) => e.id === selectedId) : undefined;
+    const hoverSkipId = selectedId === hoveredId ? selectedId : undefined;
+
+    const selectionStroke = "rgba(11, 127, 119, 0.85)";
+    const selectionFill = "rgba(11, 127, 119, 0.08)";
+    const hoverStroke = "rgba(56, 161, 156, 0.65)";
+    const hoverFill = "rgba(56, 161, 156, 0.06)";
+
+    const drawInteractionRect = (
+      item: EquipmentItem,
+      stroke: string,
+      fill: string,
+      expand: number,
+    ): void => {
+      const projection = equipmentXzProjection(item);
+      const left = scale.map({ right: projection.center.right - projection.halfWidth - expand, down: projection.center.down }).x;
+      const right = scale.map({ right: projection.center.right + projection.halfWidth + expand, down: projection.center.down }).x;
+      const top = scale.map({ right: projection.center.right, down: projection.center.down - projection.halfHeight - expand }).y;
+      const bottom = scale.map({ right: projection.center.right, down: projection.center.down + projection.halfHeight + expand }).y;
+      const width = Math.max(4, right - left);
+      const height = Math.max(4, bottom - top);
+
+      context.save();
+      context.strokeStyle = stroke;
+      context.fillStyle = fill;
+      context.lineWidth = 2.8;
+      context.globalAlpha = 1;
+
+      if (item.shape === "sphere") {
+        context.beginPath();
+        const center = scale.map(projection.center);
+        context.ellipse(center.x, center.y, width / 2, height / 2, 0, 0, Math.PI * 2);
+      } else {
+        context.beginPath();
+        context.rect(left, top, width, height);
+      }
+      context.fill();
+      context.stroke();
+      context.restore();
+    };
+
+    if (hoveredItem && hoveredItem.id !== hoverSkipId) {
+      drawInteractionRect(hoveredItem, hoverStroke, hoverFill, 0.12);
+    }
+    if (selectedItem) {
+      drawInteractionRect(selectedItem, selectionStroke, selectionFill, 0.12);
+    }
+  }
 
   if (options.showPoints) {
     context.fillStyle = "#2563eb";
