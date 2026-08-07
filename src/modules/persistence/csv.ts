@@ -2,6 +2,10 @@ import type { ProfileSnapshot } from "../geometry/model";
 import { logger } from "../../shared/logger";
 import { bodyXFromProfileS } from "../../shared/body-coordinates";
 
+function formatCsvValue(value: number | string): string {
+  return typeof value === "number" ? String(value).replace(".", ",") : value;
+}
+
 export function buildCsv(snapshot: ProfileSnapshot): string {
   const rows: Array<Array<number | string>> = [
     ["N", "s_m", "body_x_m", "half_breadth_y_m", "top_z_m", "bottom_z_m"],
@@ -32,5 +36,5 @@ export function buildCsv(snapshot: ProfileSnapshot): string {
     bodyZRange: [-snapshot.extents.maxHalfHeightZ, snapshot.extents.maxHalfHeightZ],
     rowCount: snapshot.stationPoints.length,
   });
-  return rows.map((row) => row.join(";")).join("\n");
+  return rows.map((row) => row.map(formatCsvValue).join(";")).join("\n");
 }
