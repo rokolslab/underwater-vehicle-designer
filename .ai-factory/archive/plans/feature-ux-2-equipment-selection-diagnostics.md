@@ -1,3 +1,7 @@
+---
+archived: 2026-08-07
+---
+
 # Implementation Plan: UX-2 Equipment Selection And Diagnostics
 
 Branch: feature/ux-2-equipment-selection-diagnostics
